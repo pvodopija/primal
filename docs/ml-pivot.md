@@ -650,7 +650,7 @@ deferred.
 
 ## File map
 
-This document lives in `pvodopija/locamotif-ml` (`ml/` submodule of hotlapp).
+This document lives in `pvodopija/locomotif-ml` (`ml/` submodule of hotlapp).
 It does not share code with the `locamotif` IMU crate. Start at
 [`README.md`](README.md) in this folder.
 
