@@ -1,4 +1,4 @@
-# PRIMAL — AC alignment dataset and feasibility training
+# PRIMAL
 
 **PRIMAL** (PRogress estIMation on repeAting signaL). Learned track-progress
 localization as **sequence alignment against a reference lap**, not absolute
