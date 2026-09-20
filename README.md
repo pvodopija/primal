@@ -1,11 +1,12 @@
-# Locamotif ML — AC alignment dataset and feasibility training
+# PRIMAL — AC alignment dataset and feasibility training
 
-Learned track-progress localization as **sequence alignment against a reference
-lap**, not absolute position regression. The network is given a live clip of K
-frames and one reference lap, and predicts which point of the reference lap the
-live clip is at. Track identity reaches the output only through a dot product
-between live and reference descriptors, so the weights structurally cannot
-memorize a circuit.
+**PRIMAL** (PRogress estIMation on repeAting signaL). Learned track-progress
+localization as **sequence alignment against a reference lap**, not absolute
+position regression. The network is given a live clip of K frames and one
+reference lap, and predicts which point of the reference lap the live clip is
+at. Track identity reaches the output only through a dot product between live
+and reference descriptors, so the weights structurally cannot memorize a
+circuit.
 
 Start at [docs/README.md](docs/README.md). The system design is
 [docs/ml-pivot.md](docs/ml-pivot.md).
@@ -13,7 +14,7 @@ Start at [docs/README.md](docs/README.md). The system design is
 ## Install
 
 ```powershell
-cd D:\Documents\code\hotlapp\ml
+cd D:\Documents\code\hotlapp\primal
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
@@ -30,7 +31,7 @@ from packing onward is portable.
 
 ```bash
 brew install python@3.13
-cd ~/code/hotlapp/ml
+cd ~/code/hotlapp/primal
 /opt/homebrew/bin/python3.13 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
 ```
