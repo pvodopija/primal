@@ -21,6 +21,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
+from train.model import _pool_to_grid
+
 
 def patch_normalise(images: Tensor, down: tuple[int, int], patch: int) -> Tensor:
     """
@@ -29,8 +31,12 @@ def patch_normalise(images: Tensor, down: tuple[int, int], patch: int) -> Tensor
     Patch normalisation rather than a global one is what buys SeqSLAM its
     illumination invariance, and it is the whole of its appearance model.
     """
+    if down[0] % patch or down[1] % patch:
+        raise ValueError(f"down {down} must divide by patch {patch}")
     grey = images.mean(dim=1, keepdim=True)
-    small = F.interpolate(grey, size=down, mode="area")
+    # Not interpolate(mode="area"): that is adaptive_avg_pool2d, which MPS only
+    # implements when the input divides the output. 80x128 down to 48x64 does not.
+    small = _pool_to_grid(grey, down)
     mean = F.avg_pool2d(small, patch, stride=patch)
     mean_sq = F.avg_pool2d(small * small, patch, stride=patch)
     std = (mean_sq - mean * mean).clamp_min(1e-8).sqrt()
