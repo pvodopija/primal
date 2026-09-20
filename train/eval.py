@@ -34,6 +34,7 @@ from train.model import (
     soft_argmax_circular,
     summarise,
 )
+from train.seqslam import SeqSLAM
 from train.train import default_device, holdout_live_laps
 
 ML_ROOT = Path(__file__).resolve().parents[1]
@@ -52,6 +53,27 @@ def load_model(checkpoint: Path, device: torch.device) -> tuple[SequenceAligner,
     model.load_state_dict(payload["model"])
     model.eval()
     return model, payload
+
+
+def build_matcher(args: argparse.Namespace, device: torch.device) -> tuple[torch.nn.Module, int]:
+    """
+    The trained aligner or the SeqSLAM baseline behind one interface, so the
+    measurement path below cannot differ between them.
+    """
+    if getattr(args, "matcher", "primal") == "seqslam":
+        model = SeqSLAM(
+            clip_len=args.clip_len,
+            down=tuple(args.sq_down),
+            patch=args.sq_patch,
+            temperature=args.sq_temperature,
+            norm_window=args.sq_norm_window,
+        ).to(device)
+        model.eval()
+        return model, args.clip_len
+    if not args.checkpoint:
+        raise SystemExit("--checkpoint is required unless --matcher seqslam")
+    model, payload = load_model(Path(args.checkpoint), device)
+    return model, payload["args"]["clip_len"]
 
 
 @torch.no_grad()
@@ -250,8 +272,7 @@ def cmd_lines(args: argparse.Namespace) -> None:
     """
     axis = SEPARATION_AXES[args.axis]
     device = torch.device(args.device)
-    model, payload = load_model(Path(args.checkpoint), device)
-    clip_len = payload["args"]["clip_len"]
+    model, clip_len = build_matcher(args, device)
     index = LapIndex.load(Path(args.data), split=args.split)
     if not index.laps:
         raise SystemExit(f"no laps in {args.data} for split={args.split}")
@@ -337,7 +358,12 @@ def cmd_lines(args: argparse.Namespace) -> None:
         print("  A large ratio means the model is matching viewpoint rather than place.")
 
     default_name = "lines.json" if args.axis == "line" else f"lines_{args.axis}.json"
-    out = Path(args.out) if args.out else Path(args.checkpoint).parent / default_name
+    if args.out:
+        out = Path(args.out)
+    elif args.checkpoint:
+        out = Path(args.checkpoint).parent / default_name
+    else:
+        out = Path(args.data) / default_name
     out.write_text(json.dumps(rows, indent=2))
     print(f"\nwrote {out}")
 
@@ -469,7 +495,13 @@ def main() -> None:
 
     lines = sub.add_parser("lines", help="error as a function of live/reference line separation")
     lines.add_argument("--data", required=True)
-    lines.add_argument("--checkpoint", required=True)
+    lines.add_argument("--checkpoint")
+    lines.add_argument("--matcher", default="primal", choices=["primal", "seqslam"])
+    lines.add_argument("--clip-len", type=int, default=12, help="only for --matcher seqslam")
+    lines.add_argument("--sq-down", type=int, nargs=2, default=(48, 64), metavar=("H", "W"))
+    lines.add_argument("--sq-patch", type=int, default=4)
+    lines.add_argument("--sq-temperature", type=float, default=6.0)
+    lines.add_argument("--sq-norm-window", type=int, default=0)
     lines.add_argument("--split", default="train")
     lines.add_argument(
         "--axis",
