@@ -30,6 +30,9 @@ from capture.timecode import ROWS, OverlayGeometry
 SESSIONS_DIR = Path(__file__).resolve().parents[1] / "data" / "sessions"
 DEFAULT_OUT = Path(__file__).resolve().parents[1] / "data" / "packed"
 CROP_MARGIN_PX = 4
+# Largest counter gap kept inside one lap; matches the widest stride in
+# train.dataset, so a missed render frame stays inside the training distribution.
+MAX_COUNTER_GAP = 4
 
 
 def write_lap(
@@ -80,7 +83,9 @@ class LapPlan:
         return float(self.s.max() - self.s.min())
 
 
-def plan_laps(labels: pd.DataFrame, fps: float, min_frames: int) -> list[LapPlan]:
+def plan_laps(
+    labels: pd.DataFrame, fps: float, min_frames: int, max_gap: int = MAX_COUNTER_GAP
+) -> list[LapPlan]:
     good = labels[labels.valid].sort_values("frame_idx")
     if good.empty:
         return []
@@ -88,9 +93,16 @@ def plan_laps(labels: pd.DataFrame, fps: float, min_frames: int) -> list[LapPlan
     counter = good.counter.to_numpy()
     spline = good.spline_pos.to_numpy().astype(np.float32)
 
+    # AC and OBS run on independent clocks, so a capture either repeats a render
+    # frame or misses one. A repeat is a genuine duplicate and is dropped. A miss
+    # leaves the surviving frames exactly labelled and evenly spaced in capture
+    # time, so it only ends a lap once it exceeds the sampler's largest stride.
+    fresh = np.concatenate([[True], np.diff(counter) != 0])
+    frame_idx, counter, spline = frame_idx[fresh], counter[fresh], spline[fresh]
+
     counter_step = np.diff(counter)
     spline_step = np.diff(spline)
-    breaks = np.nonzero((counter_step != 1) | (spline_step < -0.5))[0] + 1
+    breaks = np.nonzero((counter_step < 1) | (counter_step > max_gap) | (spline_step < -0.5))[0] + 1
     bounds = np.concatenate([[0], breaks, [frame_idx.size]])
 
     plans: list[LapPlan] = []
@@ -105,7 +117,7 @@ def plan_laps(labels: pd.DataFrame, fps: float, min_frames: int) -> list[LapPlan
                 end_frame=int(frame_idx[hi - 1]) + 1,
                 frame_idx=frame_idx[segment],
                 s=spline[segment],
-                t=((counter[segment] - counter[lo]) / fps).astype(np.float32),
+                t=((frame_idx[segment] - frame_idx[lo]) / fps).astype(np.float32),
             )
         )
     return plans

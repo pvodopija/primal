@@ -118,12 +118,18 @@ rate, so a wrong placement scores zero rather than decoding garbage.
 | Reading | Expected | If not |
 |---------|----------|--------|
 | checksum ok | > 99.9% | grid obscured, OBS rescaling, or overlay window moved mid-session |
-| counter step median | exactly 1 | 2 means AC rendered at 120 fps while OBS captured 60 — harmless, labels stay exact |
-| duplicate counters | 0 | OBS captured the same rendered frame twice; AC fps dropped below 60 |
-| gaps > 1 | 0 | OBS dropped frames; they are identified exactly, so packing can skip them |
+| counter step median | 1 or 2 | 2 means AC rendered at 120 fps while OBS captured 60, which is fine |
+| duplicate counters | hundreds is normal | the same rendered frame captured twice; `pack` drops the repeat |
+| gaps > 1 | hundreds is normal | a rendered frame was never captured; the survivors keep exact labels |
+| spline lap wraps | one per lap driven | `s` never advanced, or the timing line was not crossed |
 
-Duplicates and gaps are not fatal. Packing drops non-contiguous stretches, so
-a session with a few gaps loses a few clips rather than being silently wrong.
+Only the checksum is a pass/fail gate. AC and OBS run on independent clocks, so
+a capture continuously either repeats a rendered frame or misses one; a
+three-minute session shows several hundred of each. Demanding otherwise would
+mean two 60 Hz clocks holding lock-step across the ~3600 consecutive frames a
+lap takes, which does not happen. `pack` drops the repeats and keeps gaps up to
+`MAX_COUNTER_GAP`, matching the widest stride `train.dataset` samples, so
+neither ends a lap. A larger gap does.
 
 ## 5. Session protocol, roughly 30 minutes
 
