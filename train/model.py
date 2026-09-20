@@ -40,25 +40,71 @@ def _norm(channels: int) -> nn.Module:
     return nn.GroupNorm(min(8, channels), channels)
 
 
-class FrameEncoder(nn.Module):
-    """Small from-scratch CNN producing one L2-normalised descriptor per frame."""
+# Spatial grid the stem is pooled to before projection. Not 1x1: where a
+# landmark sits in frame is real evidence for precise alignment, and pooling it
+# away costs sub-bin precision. At the default 160x96 the stem already emits
+# exactly this grid, so the pool is an identity there and only does work when
+# the input resolution differs.
+POOL_GRID = (3, 5)
 
-    def __init__(self, dim: int = 128, width: int = 32, frame_size: tuple[int, int] = (96, 160)):
+
+def _pool_to_grid(features: Tensor, grid: tuple[int, int]) -> Tensor:
+    """
+    Resample a feature map to a fixed grid, on any device.
+
+    `adaptive_avg_pool2d` would say this in one line, but on MPS it is only
+    implemented when the input divides the output, and the stem emits 3x4 at
+    128x80 against a 3x5 grid. So: take the exact integer average where one
+    exists, then resample whatever fraction is left over. When the stem already
+    emits the grid -- which it does at the default 160x96 -- both steps are
+    skipped and this is an identity.
+    """
+    height, width = features.shape[-2:]
+    rows, columns = grid
+    if (height, width) == grid:
+        return features
+    if height % rows == 0 and width % columns == 0:
+        return F.adaptive_avg_pool2d(features, grid)
+    kernel = (max(1, height // rows), max(1, width // columns))
+    if kernel != (1, 1):
+        features = F.avg_pool2d(features, kernel_size=kernel, stride=kernel)
+    if features.shape[-2:] == grid:
+        return features
+    return F.interpolate(features, size=grid, mode="bilinear", align_corners=False)
+
+
+class FrameEncoder(nn.Module):
+    """
+    Small from-scratch CNN producing one L2-normalised descriptor per frame.
+
+    Resolution-agnostic by construction: the stem is adaptively pooled to a
+    fixed grid, so the weight shapes do not depend on the input size and one
+    checkpoint runs on 128x80 synthetic frames and 160x96 AC frames alike.
+    Flattening the stem directly would weld the training resolution into
+    `project`, and a checkpoint would then refuse to load at any other size.
+
+    Note that this makes the weights *loadable* across resolutions, not
+    *invariant* to them. A different field of view still moves the scene across
+    the frame; that is a packing-time concern, handled by cropping to a
+    canonical FOV before resizing.
+    """
+
+    def __init__(self, dim: int = 128, width: int = 32, frame_size: tuple[int, int] | None = None):
         super().__init__()
+        # frame_size is accepted and ignored: checkpoints record it, and it is
+        # still the right thing to report, but it no longer shapes any weight.
+        del frame_size
         channels = [3, width, width * 2, width * 3, width * 4, width * 4]
         layers: list[nn.Module] = []
         for inp, out in zip(channels[:-1], channels[1:]):
             layers += [nn.Conv2d(inp, out, 3, stride=2, padding=1), _norm(out), nn.GELU()]
         self.stem = nn.Sequential(*layers)
 
-        height, width_px = frame_size
-        for _ in range(len(channels) - 1):
-            height, width_px = (height + 1) // 2, (width_px + 1) // 2
-        self.project = nn.Linear(channels[-1] * height * width_px, dim)
+        self.project = nn.Linear(channels[-1] * POOL_GRID[0] * POOL_GRID[1], dim)
         self.dim = dim
 
     def forward(self, images: Tensor) -> Tensor:
-        features = self.stem(images).flatten(1)
+        features = _pool_to_grid(self.stem(images), POOL_GRID).flatten(1)
         return F.normalize(self.project(features), dim=-1)
 
 
