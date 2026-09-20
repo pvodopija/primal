@@ -346,11 +346,48 @@ def lateral_profile(
     return np.clip(bias_m + apex_gain * limit * apex + wander, -limit, limit)
 
 
+# A head turns; a bonnet camera does not. These bound how far.
+YAW_LIMIT_DEG = 30.0
+LOOK_AHEAD_M = 20
+LOOK_AHEAD_MAX_DEG = 25.0
+
+
+def yaw_profile(track: Track, bias_deg: float, look_ahead_gain: float) -> np.ndarray:
+    """
+    Camera yaw in degrees at 1 m of arc length, positive toward the inside of a
+    left-hand corner -- the same sense `lateral_profile` calls positive.
+
+    Mirrors `lateral_profile`, and splits into parts for the same reason: they
+    fail differently. `bias_deg` is a constant off-axis heading -- glasses worn
+    askew, or a rider who habitually holds their head turned -- and is the knob
+    the cross-yaw experiment turns. `look_ahead_gain` turns the camera into a
+    corner before arriving at it, which is what a head does and a fixed mount
+    does not; it is most of what separates head-worn footage from a bonnet cam.
+
+    Per-frame yaw wander is added by `render_lap`, which already owns the
+    temporal noise, so there is none here.
+
+    Clipped to +-30 deg: past that a 73 deg camera has the track leaving frame
+    and the sample tests scene extrapolation rather than yaw invariance, the
+    same reason `lateral_profile` keeps the camera on the tarmac.
+    """
+    turn = np.tanh(signed_curvature(track) * 120.0)
+    # Look where you are going, not where you are: the curvature LOOK_AHEAD_M
+    # further on. The profile is at 1 m spacing, so the roll is in metres.
+    look = np.roll(turn, -LOOK_AHEAD_M)
+    return np.clip(
+        bias_deg + look_ahead_gain * LOOK_AHEAD_MAX_DEG * look,
+        -YAW_LIMIT_DEG,
+        YAW_LIMIT_DEG,
+    )
+
+
 @dataclass
 class LapStyle:
     """Everything that differs between two laps of the same track."""
 
     lateral: np.ndarray  # [M] metres, indexed at 1 m spacing
+    yaw: np.ndarray  # [M] degrees, indexed at 1 m spacing
     speed: np.ndarray  # [M] m/s
     camera_height: float
     yaw_noise_deg: float
@@ -359,6 +396,8 @@ class LapStyle:
     tint: np.ndarray
     bias_m: float
     apex_gain: float
+    yaw_bias_deg: float
+    look_ahead_gain: float
 
     @staticmethod
     def sample(
@@ -367,6 +406,8 @@ class LapStyle:
         bias_m: float = 0.0,
         apex_gain: float = 0.0,
         wander_m: float | None = None,
+        yaw_bias_deg: float = 0.0,
+        look_ahead_gain: float = 0.0,
     ) -> "LapStyle":
         rng = np.random.default_rng(seed)
         count = track.centre.shape[0]
@@ -390,6 +431,9 @@ class LapStyle:
             tint=rng.uniform(0.88, 1.12, size=3),
             bias_m=float(bias_m),
             apex_gain=float(apex_gain),
+            yaw=yaw_profile(track, yaw_bias_deg, look_ahead_gain),
+            yaw_bias_deg=float(yaw_bias_deg),
+            look_ahead_gain=float(look_ahead_gain),
         )
 
 
@@ -413,6 +457,10 @@ def render_lap(
             2 * np.pi * order * arc_array / track.length_m + rng.uniform(0, 2 * np.pi)
         )
     yaw *= style.yaw_noise_deg / 4.0
+    # Per-lap bias and corner-seeking, on top of that wander. Zero for a
+    # dataset generated without --yaw-spread or --look-ahead-gain, so those
+    # datasets reproduce exactly.
+    yaw = yaw + style.yaw[arc_array.astype(int) % count]
     pitch = -1.5 + 0.6 * np.sin(2 * np.pi * arc_array / max(track.length_m, 1.0) * 3.0)
 
     frames = np.empty((arc_array.size, size[1], size[0], 3), dtype=np.uint8)
@@ -445,6 +493,11 @@ def cmd_packed(args: argparse.Namespace) -> None:
         track = build_track(name, args.length_m, seed=1000 + track_i)
         split = "holdout" if track_i >= args.tracks - args.holdout_tracks else "train"
         n_bins = max(int(round(track.length_m / args.ref_spacing_m)), 8)
+        # Yaw walks its own rung of the ladder, permuted per track, so the
+        # lap furthest left is not also reliably the lap looking left. Two
+        # correlated axes could be satisfied by one cue, and each would
+        # contaminate the separation the other's gate sweeps.
+        yaw_order = np.random.default_rng(7000 + track_i).permutation(args.laps)
         for lap_i in range(args.laps):
             seed = 100000 + track_i * 100 + lap_i
             # A deterministic ladder of biases rather than random draws, so
@@ -453,7 +506,20 @@ def cmd_packed(args: argparse.Namespace) -> None:
             ladder = (2.0 * lap_i / (args.laps - 1) - 1.0) if args.laps > 1 else 0.0
             bias = args.lateral_spread * ladder
             apex = float(np.random.default_rng(seed).uniform(*args.apex_gain))
-            style = LapStyle.sample(track, seed, bias_m=bias, apex_gain=apex)
+            yaw_rung = yaw_order[lap_i]
+            yaw_ladder = (2.0 * yaw_rung / (args.laps - 1) - 1.0) if args.laps > 1 else 0.0
+            yaw_bias = args.yaw_spread * yaw_ladder
+            look_ahead = float(
+                np.random.default_rng(seed + 50000).uniform(*args.look_ahead_gain)
+            )
+            style = LapStyle.sample(
+                track,
+                seed,
+                bias_m=bias,
+                apex_gain=apex,
+                yaw_bias_deg=yaw_bias,
+                look_ahead_gain=look_ahead,
+            )
             frames, s, t = render_lap(track, style, size, args.fps, seed)
             lap_id = f"{name}__lap{lap_i:02d}"
             write_lap(
@@ -482,12 +548,17 @@ def cmd_packed(args: argparse.Namespace) -> None:
                     "line_mean_m": float(style.lateral.mean()),
                     "line_std_m": float(style.lateral.std()),
                     "apex_gain": float(style.apex_gain),
+                    "yaw_bias_deg": float(style.yaw_bias_deg),
+                    "yaw_mean_deg": float(style.yaw.mean()),
+                    "yaw_std_deg": float(style.yaw.std()),
+                    "look_ahead_gain": float(style.look_ahead_gain),
                     "path": f"laps/{lap_id}",
                 }
             )
             print(
                 f"{lap_id}: {frames.shape[0]} frames, {track.length_m:.0f} m, split={split}, "
-                f"line mean {style.lateral.mean():+.2f} m (bias {style.bias_m:+.2f}, apex {style.apex_gain:.2f})"
+                f"line mean {style.lateral.mean():+.2f} m (bias {style.bias_m:+.2f}, apex {style.apex_gain:.2f}), "
+                f"yaw mean {style.yaw.mean():+.1f} deg (bias {style.yaw_bias_deg:+.1f}, look {style.look_ahead_gain:.2f})"
             )
 
     (out / "index.json").write_text(json.dumps({"schema": 1, "laps": index}, indent=2))
@@ -587,6 +658,20 @@ def main() -> None:
         default=(0.0, 0.0),
         metavar=("LO", "HI"),
         help="per-lap racing-line strength, 0 ignores corners and 1 hugs every apex",
+    )
+    packed.add_argument(
+        "--yaw-spread",
+        type=float,
+        default=0.0,
+        help="degrees; laps are spread evenly across [-spread, +spread] of camera yaw",
+    )
+    packed.add_argument(
+        "--look-ahead-gain",
+        type=float,
+        nargs=2,
+        default=(0.0, 0.0),
+        metavar=("LO", "HI"),
+        help="per-lap corner-seeking yaw; 0 stares straight ahead, 1 looks hard into apexes",
     )
     packed.set_defaults(func=cmd_packed)
 

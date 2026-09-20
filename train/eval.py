@@ -207,6 +207,36 @@ def cmd_gates(args: argparse.Namespace) -> None:
     print(f"\nwrote {out}")
 
 
+# What `lines` can sweep error against. Same machinery, different viewpoint
+# axis: how far the live lap sits from the reference laterally, or how far it
+# is turned. Each carries its own bin edges because degrees and metres are not
+# comparable, and its own "near"/"far" thresholds for the summary ratio.
+SEPARATION_AXES = {
+    "line": {
+        "attribute": "line_mean_m",
+        "unit": "m",
+        "title": "CROSS-LINE: error vs how far the live line sits from the reference line",
+        "label": "line separation",
+        "edges": [0.0, 0.5, 1.0, 2.0, 3.0, float("inf")],
+        "near": 0.5,
+        "far": 2.0,
+        "near_name": "same line",
+        "far_name": "opposite side",
+    },
+    "yaw": {
+        "attribute": "yaw_mean_deg",
+        "unit": "deg",
+        "title": "CROSS-YAW: error vs how far the live camera is turned from the reference",
+        "label": "yaw separation",
+        "edges": [0.0, 2.0, 5.0, 10.0, 20.0, float("inf")],
+        "near": 2.0,
+        "far": 10.0,
+        "near_name": "same heading",
+        "far_name": "turned away",
+    },
+}
+
+
 def cmd_lines(args: argparse.Namespace) -> None:
     """
     Sweep every ordered lap pair and report error against how far apart the two
@@ -218,6 +248,7 @@ def cmd_lines(args: argparse.Namespace) -> None:
     error against line separation separates "matches places" from "matches
     viewpoints".
     """
+    axis = SEPARATION_AXES[args.axis]
     device = torch.device(args.device)
     model, payload = load_model(Path(args.checkpoint), device)
     clip_len = payload["args"]["clip_len"]
@@ -250,7 +281,11 @@ def cmd_lines(args: argparse.Namespace) -> None:
                         "track": track,
                         "reference": reference.lap_id,
                         "live": live.lap_id,
-                        "separation_m": abs(live.line_mean_m - reference.line_mean_m),
+                        "axis": args.axis,
+                        "separation": abs(
+                            getattr(live, axis["attribute"])
+                            - getattr(reference, axis["attribute"])
+                        ),
                         "median_m": overall.median_m,
                         "p90_m": overall.p90_m,
                         "within_1_bin": overall.within_1_bin,
@@ -261,42 +296,48 @@ def cmd_lines(args: argparse.Namespace) -> None:
     if not rows:
         raise SystemExit("no usable lap pairs; each track needs a full-coverage reference lap")
 
+    unit = axis["unit"]
     print("=" * 100)
-    print("CROSS-LINE: error vs how far the live line sits from the reference line")
+    print(axis["title"])
     print("=" * 100)
-    separation = np.array([row["separation_m"] for row in rows])
+    separation = np.array([row["separation"] for row in rows])
     median = np.array([row["median_m"] for row in rows])
-    edges = [0.0, 0.5, 1.0, 2.0, 3.0, np.inf]
-    print(f"\n  {'line separation':<22} {'pairs':>6} {'median err':>12} {'worst pair':>12}")
+    edges = axis["edges"]
+    print(f"\n  {axis['label']:<22} {'pairs':>6} {'median err':>12} {'worst pair':>12}")
     for low, high in zip(edges[:-1], edges[1:]):
         mask = (separation >= low) & (separation < high)
         if not mask.any():
             continue
-        label = f"{low:.1f} to {high:.1f} m" if np.isfinite(high) else f"{low:.1f} m and up"
+        label = (
+            f"{low:.1f} to {high:.1f} {unit}"
+            if np.isfinite(high)
+            else f"{low:.1f} {unit} and up"
+        )
         print(
             f"  {label:<22} {int(mask.sum()):>6} "
             f"{np.median(median[mask]):>10.2f} m {median[mask].max():>10.2f} m"
         )
 
     print(f"\n  {'pair':<46} {'sep':>7} {'median':>9} {'p90':>9} {'within1':>8}")
-    for row in sorted(rows, key=lambda r: -r["separation_m"])[: args.show]:
+    for row in sorted(rows, key=lambda r: -r["separation"])[: args.show]:
         pair = f"{row['live']} vs {row['reference']}"
         print(
-            f"  {pair:<46} {row['separation_m']:>5.2f} m {row['median_m']:>7.2f} m "
+            f"  {pair:<46} {row['separation']:>5.2f} {unit} {row['median_m']:>7.2f} m "
             f"{row['p90_m']:>7.2f} m {row['within_1_bin'] * 100:>7.1f}%"
         )
 
-    near = median[separation < 0.5]
-    far = median[separation >= 2.0]
+    near = median[separation < axis["near"]]
+    far = median[separation >= axis["far"]]
     if near.size and far.size:
         ratio = float(np.median(far) / max(np.median(near), 1e-6))
         print(
-            f"\n  same line {np.median(near):.2f} m, opposite side {np.median(far):.2f} m, "
-            f"ratio {ratio:.2f}x"
+            f"\n  {axis['near_name']} {np.median(near):.2f} m, "
+            f"{axis['far_name']} {np.median(far):.2f} m, ratio {ratio:.2f}x"
         )
         print("  A large ratio means the model is matching viewpoint rather than place.")
 
-    out = Path(args.out) if args.out else Path(args.checkpoint).parent / "lines.json"
+    default_name = "lines.json" if args.axis == "line" else f"lines_{args.axis}.json"
+    out = Path(args.out) if args.out else Path(args.checkpoint).parent / default_name
     out.write_text(json.dumps(rows, indent=2))
     print(f"\nwrote {out}")
 
@@ -430,6 +471,12 @@ def main() -> None:
     lines.add_argument("--data", required=True)
     lines.add_argument("--checkpoint", required=True)
     lines.add_argument("--split", default="train")
+    lines.add_argument(
+        "--axis",
+        default="line",
+        choices=sorted(SEPARATION_AXES),
+        help="viewpoint axis to sweep error against",
+    )
     lines.add_argument("--batch-size", type=int, default=8)
     lines.add_argument("--steps", type=int, default=8, help="batches per lap pair")
     lines.add_argument("--window", type=int, default=8)

@@ -49,6 +49,11 @@ class Lap:
     # leave it at zero until a driving line is logged.
     line_mean_m: float = 0.0
     line_bias_m: float = 0.0
+    # Mean camera yaw in degrees. Synthetic data sets this so cross-yaw
+    # generalization can be measured; real captures leave it at zero until
+    # a head pose is logged.
+    yaw_mean_deg: float = 0.0
+    yaw_bias_deg: float = 0.0
 
     @property
     def directory(self) -> Path:
@@ -120,6 +125,8 @@ class LapIndex:
                     path=entry["path"],
                     line_mean_m=float(entry.get("line_mean_m", 0.0)),
                     line_bias_m=float(entry.get("line_bias_m", 0.0)),
+                    yaw_mean_deg=float(entry.get("yaw_mean_deg", 0.0)),
+                    yaw_bias_deg=float(entry.get("yaw_bias_deg", 0.0)),
                 )
             )
         index = LapIndex(laps)
