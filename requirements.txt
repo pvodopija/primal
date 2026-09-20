@@ -1,0 +1,14 @@
+# Capture and packing
+numpy>=1.26
+opencv-python>=4.10
+pandas>=2.2
+pyarrow>=16
+
+# Training
+torch>=2.5
+tqdm>=4.66
+
+# On a laptop without CUDA, install torch from the CPU index first:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+# On the cloud box, plain `pip install -r requirements.txt` picks the CUDA build.
