@@ -13,30 +13,32 @@ Start at [docs/README.md](docs/README.md). The system design is
 
 ## Install
 
+Only capture is Windows-only. Everything from packing onward is portable.
+
+**macOS.** The default wheel already carries Metal support, so there is no
+index to choose.
+
+```bash
+brew install python@3.13
+/opt/homebrew/bin/python3.13 -m venv .venv
+./.venv/bin/python -m pip install -r requirements.txt
+```
+
+Training must run **unsandboxed** or Metal reports itself unavailable. Check
+with `python -c "import torch; print(torch.backends.mps.is_available())"`.
+
+**Windows**, needed for AC capture:
+
 ```powershell
-cd D:\Documents\code\hotlapp\primal
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m capture.install_overlay
 ```
 
-On a GPU box, skip the CPU-index line and let `requirements.txt` pull the CUDA build.
-
-Every command below is run from this repo root with `.\.venv\Scripts\python.exe`.
-
-On macOS, the default wheel already carries Metal support, so there is no index
-to choose. Only the capture half of the pipeline is Windows-only; everything
-from packing onward is portable.
-
-```bash
-brew install python@3.13
-cd ~/code/hotlapp/primal
-/opt/homebrew/bin/python3.13 -m venv .venv
-./.venv/bin/python -m pip install -r requirements.txt
-```
-
-Substitute `./.venv/bin/python` for `.\.venv\Scripts\python.exe` below.
+On a GPU box, skip the CPU-index line and let `requirements.txt` pull the CUDA
+build. Commands below are written as `./.venv/bin/python`; substitute
+`.\.venv\Scripts\python.exe` on Windows.
 
 ---
 
@@ -195,18 +197,21 @@ sub-pixel disparity out of a stereo cost volume.
 
 ### Gates
 
-```powershell
+```bash
 # G0: overfit one lap pair. If this is slow the architecture is wrong.
-.\.venv\Scripts\python.exe -m train.train --data data\packed --gate g0
+./.venv/bin/python -m train.train --data data/packed --gate g0
 
 # G1: held-out laps of seen tracks, full augmentation
-.\.venv\Scripts\python.exe -m train.train --data data\packed --gate g1
+./.venv/bin/python -m train.train --data data/packed --gate g1
+
+# G2: held-out tracks. `train.eval gates` also reports G2 from a G1 checkpoint.
+./.venv/bin/python -m train.train --data data/packed --gate g2
 
 # all gates plus the wrong-reference control, against one checkpoint
-.\.venv\Scripts\python.exe -m train.eval gates --data data\packed --checkpoint runs\<name>\best.pt
+./.venv/bin/python -m train.eval gates --data data/packed --checkpoint runs/<name>/best.pt
 
 # the leakage control, trained from scratch
-.\.venv\Scripts\python.exe -m train.eval leakage --data data\packed
+./.venv/bin/python -m train.eval leakage --data data/packed
 ```
 
 | Gate | Question | Reading |
@@ -215,6 +220,10 @@ sub-pixel disparity out of a stereo cost volume.
 | G1 | unseen laps of a seen track | median and worst error in m and ms |
 | G2 | unseen track | the actual product question |
 | lines | live lap on a different driving line from the reference | error must not grow with line separation |
+| lines --axis yaw | live lap with the camera turned relative to the reference | error must not grow with yaw separation |
+
+Measured on 18 synthetic tracks: G1 1.35 m, G2 1.41 m, line ratio 1.06x,
+yaw ratio 1.16x, both controls passing. See [docs/ml-pivot.md](docs/ml-pivot.md).
 
 ### Devices
 
