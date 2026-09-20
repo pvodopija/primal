@@ -4,8 +4,9 @@ This repository is **visual track-progress localization**: given one reference
 lap and a live POV clip, estimate progress `s` along that lap. Everything the
 product shows (time delta, delta rate, line offset) is a lookup on top of `s`.
 
-The parent checkout is `hotlapp`. This folder is a **submodule** at `ml/`.
-It is not part of the `locamotif` Rust crate.
+The parent checkout is `hotlapp`. This folder is a **submodule** at `ml/`,
+from the private repo `pvodopija/locamotif-ml`. It is not part of the
+`locamotif` Rust crate and is not under peanut-butter-technologies.
 
 ## Reading order
 
