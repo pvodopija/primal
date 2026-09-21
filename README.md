@@ -76,11 +76,20 @@ almost immediately and reports a validation loss that means nothing.
 - [ ] Racing line off (`Settings > Assists > Ideal racing line`).
 - [ ] Delta / lap-time / sector apps off. Driver name tags off.
 - [ ] Windowed mode at a fixed resolution, 1280x720 is plenty. Do not resize mid-session.
-- [ ] Cockpit camera (F1). Do not change camera during a session.
+- [ ] Bumper camera (cycle with F1): no car body in frame, about 1.15 m up. Use
+      the same camera for every session and every track.
+- [ ] Damage 0% and ghost car off. With damage on, AC draws a white car schematic
+      on every tyre lock-up; it was in 29% of one session's frames.
+- [ ] One weather system. Use the Pure renderer (CSP → Weather FX) with a `pure`
+      post-processing filter. Sol's renderer under Pure's filter flattens the sky
+      to one colour and makes time of day invisible.
 - [ ] Do not press `H`; hiding the HUD hides the Timecode app too.
-- [ ] Enable the Timecode app and drag it to the bottom-left corner.
-- [ ] To confirm it is alive, set `SHOW_TEXT = true` in the Lua file, check the
-      numbers advance, then set it back to `false`.
+- [ ] Enable the Timecode app and drag it to the bottom of the window, fully on
+      screen. Left or centre does not matter: packing crops the whole row band.
+- [ ] To confirm it is alive, watch the cells: the counter cells change every
+      frame. (`SHOW_TEXT` is clipped by the pinned window and draws nothing.)
+- [ ] Save the replay after every session. `capture/ac_rig` can re-render it
+      later from other viewpoints, with exact labels.
 
 `python -m capture.ac_shm` prints a live status line and is the quickest check
 that shared memory is up and reporting the track you expect.
@@ -91,7 +100,13 @@ that shared memory is up and reporting the track you expect.
 - **Base and output resolution identical to the AC window.** Any rescale blurs
   the cell edges and is the most likely cause of decode failures.
 - FPS: 60, fixed, from Common FPS Values.
-- Encoder: NVENC H.264. Rate control CQP/CQ 18.
+- Output Mode **Advanced**; the encoder settings below only appear there.
+  Rescale Output disabled.
+- Encoder: NVENC H.264. Rate control CQP/CQ 18. If NVENC is missing from the
+  list, OBS 32 is hiding it because the driver is older than it accepts;
+  `obs-nvenc-test.exe` in OBS's `bin4bit` prints the reason. x264 with rate
+  control CRF 18 at `veryfast` is a sound fallback: the grid decodes at 100% and
+  frames are downscaled 8x before training anyway.
 - Keyframe interval 15 frames. Packing decodes sequentially so this does not
   matter for the pipeline; it only buys cheap random access into the mp4 later.
 - Turn off Look-ahead, Psycho Visual Tuning, and Dynamic Bitrate. All three
@@ -99,6 +114,9 @@ that shared memory is up and reporting the track you expect.
 - Container mp4.
 
 ## 4. Per-session workflow
+
+Measurements behind these steps, and the inventory of recorded sessions, are in
+[docs/capture-log.md](docs/capture-log.md).
 
 ```powershell
 # after recording, while AC is still on the same session

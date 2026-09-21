@@ -168,6 +168,48 @@ wrong, the correct answer is typically still the second or third peak of the
 distribution. This is the failure a single-shot estimate cannot fix and is the
 whole argument for the estimator below.
 
+### Against a classical baseline
+
+`train/seqslam.py` implements SeqSLAM (Milford & Wyeth, 2012) behind the same
+`forward(live, reference) -> logits` interface, so `train.eval lines --matcher
+seqslam` measures it through the identical path: same pairs, same rolled
+reference, same soft-argmax readout. It was sanity-checked first by localising a
+lap against itself: 0.53–0.58 bins median. Chance is 175 m.
+
+Each checkpoint was evaluated on its own training set, so these PRIMAL numbers
+are seen-lap numbers; the honest figure for an unseen track is G2 above.
+SeqSLAM has no weights, so the split does not matter to it.
+
+| Line separation | Pairs | PRIMAL | SeqSLAM |
+|---|---|---|---|
+| 0.0–0.5 m | 78 | 1.14 m | 119.95 m |
+| 0.5–1.0 m | 134 | 1.11 m | 118.25 m |
+| 1.0–2.0 m | 246 | 1.07 m | 137.23 m |
+| 2.0–3.0 m | 186 | 1.17 m | 154.69 m |
+| 3.0 m and up | 196 | 1.35 m | 175.66 m |
+
+| Yaw separation | Pairs | PRIMAL | SeqSLAM |
+|---|---|---|---|
+| 0–2° | 40 | 2.29 m | 158.02 m |
+| 2–5° | 114 | 2.33 m | 166.46 m |
+| 5–10° | 190 | 2.39 m | 170.74 m |
+| 10–20° | 320 | 2.59 m | 184.20 m |
+| 20° and up | 176 | 3.01 m | 188.51 m |
+
+(This re-run of the line sweep gave a 1.18× ratio for PRIMAL where the table
+above gives 1.06×; sampling differs between runs, and both are flat.)
+
+**The near/far ratio cannot rank matchers.** On the yaw axis SeqSLAM scores a
+*better* ratio than PRIMAL, 1.19× against 1.32×, while sitting at or above
+chance in every band. A matcher that fails everywhere is perfectly
+"invariant". Always read the ratio next to the absolute error per band.
+
+**SeqSLAM fails on lap identity, not on separation.** It localises a lap against
+itself to about 1.1 m, and a different lap of the same track under 0.5 m away at
+120 m. The cliff comes before the first band; the rise across bands after it is
+drift toward chance. Whole-image pixel difference does not survive a second lap,
+which is the case a learned descriptor exists for.
+
 ### What these do not establish
 
 The renderer is flat-shaded polygons with no textures, weather, motion blur, or
@@ -240,6 +282,10 @@ trajectories.
 A product output in the goal table with no current source. The head predicts
 progress only. Revisit once the estimator exists.
 
+For *training* line invariance on real footage, the camera rig in
+`capture/ac_rig` re-renders a replay from known sideways offsets, which gives AC
+data the line separation the `lines` gate needs.
+
 ### Cameras and field of view
 
 The encoder loads at any resolution, but a different **field of view** moves
@@ -285,15 +331,19 @@ time — metres of label noise at speed, and jittery, so it cannot be calibrated
 away.
 
 The fix is to make the game render its own ground truth. A CSP Lua app draws a
-2×27 grid of black and white cells encoding a frame counter, the spline
-position as 20-bit fixed point, and parity. `calibrate` locks the geometry,
+2×27 grid of black and white cells encoding a frame counter, the rendering
+camera's track position as 20-bit fixed point, and parity. It encodes the camera
+rather than the car because the two sit up to 1.7 m apart along the track, by
+an amount that differs per car. `calibrate` locks the geometry,
 `decode` reads cell centres and verifies the checksum, and **`pack.py` crops
 the band away before resizing**. That crop is load-bearing: without it the
 network would read the answer off the screen, which is exactly what the leakage
 control exists to catch.
 
-Acceptance before a real session: checksum pass rate > 99.9%, counter step
-median exactly 1, zero duplicates.
+Acceptance before a real session: checksum pass rate > 99.9%. Duplicate
+counters and gaps are normal — AC and OBS run on independent clocks — and
+packing absorbs them. Measurements, setup and the session inventory are in
+[`capture-log.md`](capture-log.md).
 
 **HUD completely off, especially the track map with the position dot.**
 

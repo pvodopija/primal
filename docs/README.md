@@ -15,6 +15,8 @@ The parent checkout is `hotlapp`. This folder is a **submodule** at
 2. [`ml-pivot.md`](ml-pivot.md) — the design: what is built, what it measures,
    what is not built yet, and what has been ruled out.
 3. [`../README.md`](../README.md) — how to capture, pack, train, and run gates.
+   [`capture-log.md`](capture-log.md) holds the measurements behind the capture
+   setup and the inventory of recorded sessions.
 4. Code, in this order: `train/dataset.py`, `train/model.py`, `train/eval.py`,
    `train/synthetic.py`. Capture only if the task is the AC overlay / labels.
 
@@ -50,6 +52,13 @@ Two things that result does *not* settle, and they are the next work:
 - **The aliasing tail is unfixed.** ~1–2% of ticks land 175–300 m out, and no
   amount of data changed it. The particle filter is the answer and it does not
   exist yet.
+
+Against classical SeqSLAM on the same data and the same measurement path,
+PRIMAL holds about 1.1 m where SeqSLAM sits near chance at 120–175 m.
+
+Real capture now works end to end: four usable Brands Hatch sessions across
+time of day, weather and car, packed in `data/packed_ac`, with labels that
+describe the camera rather than the car. None of it has been evaluated yet.
 
 Numbers, method, and the full gate table are in [`ml-pivot.md`](ml-pivot.md).
 
