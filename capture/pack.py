@@ -210,6 +210,9 @@ def pack_session(
                 "track_config": meta.get("track_config", ""),
                 "session_id": meta["session_id"],
                 "car_model": meta.get("car_model", ""),
+                # Sideways offset of the rendering camera, for renders made with the
+                # camera rig; recorded laps have no known line and stay at 0.
+                "line_mean_m": float(meta.get("line_offset_m", 0.0)),
                 "split": meta.get("split", "train"),
                 "n_frames": int(plan.frame_idx.size),
                 "s_span": plan.span,
