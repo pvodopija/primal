@@ -118,6 +118,7 @@ def cmd_import(args: argparse.Namespace) -> None:
         "track_config": config,
         "track_length_m": float(length),
         "car_model": car,
+        "label_offset_m": 0.0,
         "ac_version": snap.ac_version if snap else "",
         "fps": fps,
         "resolution": [width, height],

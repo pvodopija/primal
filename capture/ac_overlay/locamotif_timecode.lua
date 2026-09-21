@@ -1,9 +1,9 @@
 --- Locamotif timecode overlay.
 ---
 --- Draws a 2x27 grid of pure black / pure white cells encoding a render-frame
---- counter and the player car's spline position. Every captured video frame
---- therefore carries its own exact label, which removes screen-capture latency,
---- frame drops and clock skew as sources of label error.
+--- counter and the track position of the camera that rendered the frame. Every
+--- captured video frame therefore carries its own exact label, which removes
+--- screen-capture latency, frame drops and clock skew as sources of label error.
 ---
 --- Wire format (must stay identical to ml/capture/timecode.py):
 ---   cells are row-major, 27 per row, 2 rows
@@ -17,7 +17,7 @@
 ---
 --- Data bits:
 ---   bits  0..21    frame counter, LSB first, wraps at 2^22
----   bits 22..41    spline position as round(clamp(s,0,1) * (2^20 - 1)), LSB first
+---   bits 22..41    camera track progress as round(clamp(s,0,1) * (2^20 - 1)), LSB first
 ---   bits 42..47    checksum; bit j = parity of payload bits j, j+6, ... j+36
 
 local CELL = 14
@@ -80,13 +80,13 @@ function script.windowMain(dt)
   -- advances once per rendered frame, matching what the capture sees.
   counter = (counter + 1) % COUNTER_WRAP
 
-  local car = ac.getCar(0)
-  local spline = 0
-  if car ~= nil then
-    spline = car.splinePosition or 0
-    -- AC reports slightly outside [0,1] around the timing line on some tracks.
-    spline = spline - math.floor(spline)
-  end
+  -- The label has to describe where the image was taken. The car's spline position
+  -- is its centre, and the camera sits up to a couple of metres ahead of or behind
+  -- that by an amount that differs per car and per camera, so encode the camera's
+  -- own track position.
+  local spline = ac.worldCoordinateToTrack(ac.getSim().cameraPosition).z
+  -- AC reports slightly outside [0,1] around the timing line on some tracks.
+  spline = spline - math.floor(spline)
 
   writeBits(counter, 1, COUNTER_BITS)
   writeBits(math.floor(spline * SPLINE_MAX + 0.5), 1 + COUNTER_BITS, SPLINE_BITS)

@@ -146,6 +146,11 @@ def pack_session(
     if not labels_path.exists():
         raise SystemExit(f"{labels_path} missing; run `overlay_decode decode` first")
     labels = pd.read_parquet(labels_path)
+    # Sessions recorded before the timecode encoded the camera's own position carry
+    # the car's centre instead; `label_offset_m` moves those labels to the viewpoint.
+    offset_m = float(meta.get("label_offset_m", 0.0))
+    if offset_m:
+        labels["spline_pos"] = (labels["spline_pos"] + offset_m / float(meta["track_length_m"])) % 1.0
 
     geometry = None
     overlay_path = session / "overlay.json"

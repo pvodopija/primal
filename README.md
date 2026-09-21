@@ -52,7 +52,8 @@ noise.
 
 The fix is to make AC render its own ground truth. `capture/ac_overlay/` is a
 CSP Lua app that draws a 2x27 grid of pure black and white cells encoding a
-render-frame counter plus `ac.getCar(0).splinePosition`. Every captured frame
+render-frame counter plus the camera's own track position, from
+`ac.worldCoordinateToTrack(ac.getSim().cameraPosition)`. Every captured frame
 carries its own exact label in its own pixels, so capture latency, dropped
 frames, and clock skew stop being sources of label error and become detectable
 counter anomalies instead.

@@ -17,7 +17,7 @@ Layout: 2 rows of 27 square cells, row-major.
 Data bits:
 
     bits  0..21   frame counter, LSB first, wraps at 2^22
-    bits 22..41   spline position as round(clamp(s, 0, 1) * (2^20 - 1))
+    bits 22..41   camera track progress as round(clamp(s, 0, 1) * (2^20 - 1))
     bits 42..47   checksum; bit j is the parity of payload bits j, j+6, ... j+36
 """
 
