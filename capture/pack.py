@@ -199,7 +199,9 @@ def pack_session(
         entries.append(
             {
                 "lap_id": lap_id,
-                "track": meta["track"],
+                # Layouts of one circuit share an AC track name but not a spline, so
+                # grouping by name alone would pair laps whose s values do not correspond.
+                "track": "__".join(filter(None, (meta["track"], meta.get("track_config", "")))),
                 "track_config": meta.get("track_config", ""),
                 "session_id": meta["session_id"],
                 "car_model": meta.get("car_model", ""),
