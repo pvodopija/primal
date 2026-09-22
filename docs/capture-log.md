@@ -124,8 +124,9 @@ virtual lines with exactly known separation, which is what the `lines` gate
 needs and what bot footage otherwise lacks.
 
 Settings live in `rig.txt` next to the script, re-read twice a second:
-`enabled`, `replay_only`, `lateral_m` (**positive is right**), `forward_m`,
-`height_m`, `fov_deg`, `edge_limit`, and `weather` / `rain` to override the
+`enabled`, `replay_only`, `lateral_m` (**positive is right**), `wander_m`,
+`wander_len_m`, `wander_yaw`, `wander_seed`, `forward_m`, `height_m`, `fov_deg`,
+`edge_limit`, and `weather` / `rain` to override the
 recorded conditions (`-1` keeps them; values are `ac.WeatherType`, e.g. 15 clear,
 17 scattered clouds, 19 overcast, 7 rain). Offsets that would leave the tarmac
 are shrunk by bisection in track coordinates.
@@ -136,6 +137,25 @@ the camera's lateral position in metres, the track width, and the offset
 actually applied. Import a render with `session import --rig`: the log is copied
 into the session as `rig_log.csv`, and packing derives `line_mean_m` and
 `line_std_m` from it.
+
+**Wander, for training data.** `wander_m` adds a smooth random sideways drift on
+top of `lateral_m`: three sines at incommensurate wavelengths around
+`wander_len_m` (default 200 m) with seeded random phases, driven by distance
+driven rather than track position, so every lap takes a different line through
+the same corner instead of the model being able to learn line-by-place. With
+`wander_yaw = 1` the camera also turns along the drift, as a car changing line
+does. At 2.5 m and 200 m, over 20 km: offset within ±1.8 m for 90% of the
+distance, heading turn 4.5° at the 95th percentile and 5.3° at most, and 26 cm
+of sideways drift inside a median 12-frame clip at 35 m/s (65 cm at most) —
+continuous, a few centimetres per frame. Doubling `wander_len_m` halves both the
+drift and the turn. A lap's mean offset is then close to zero and says nothing
+about which lines it covered, so evaluating wander laps needs per-frame lateral
+position, not `line_mean_m`. Keep fixed offsets for evaluation renders.
+
+**Live or replay.** With `replay_only = 0` the rig runs while the bot drives, and
+the car is unaffected — only the viewpoint moves. Live is preferred for training
+data: physics at 60 fps, where a replay is recorded at ~33 Hz and interpolated,
+and no second pass. Save the replay anyway, for fixed-offset renders later.
 
 Time of day probably cannot be changed in a replay. CSP's replay override covers
 weather, rain, wetness, wind and temperature but has no time field, and its time
