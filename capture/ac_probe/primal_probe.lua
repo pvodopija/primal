@@ -24,8 +24,13 @@ local lastError
 local lastSaveOk = true
 
 local function makeHeader()
-  -- One file per car, so comparing two cars never overwrites the first.
-  path = ac.getFolder(ac.FolderID.ScriptOrigin) .. '/probe_' .. tostring(ac.getCarID(0)) .. '.csv'
+  -- One file per car per launch, at the first free index, so no run overwrites another.
+  local base = ac.getFolder(ac.FolderID.ScriptOrigin) .. '/probe_' .. tostring(ac.getCarID(0))
+  local n = 1
+  repeat
+    path = string.format('%s_%d.csv', base, n)
+    n = n + 1
+  until not io.fileExists(path)
   local eyes = ac.getOnboardCameraDefaultParams(0)
   return string.format('# car=%s driver_eyes=%.4f,%.4f,%.4f onboard_pitch=%.2f\n',
       tostring(ac.getCarID(0)), eyes.position.x, eyes.position.y, eyes.position.z, eyes.pitch)

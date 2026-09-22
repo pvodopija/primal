@@ -23,6 +23,7 @@ import cv2
 import pandas as pd
 
 from capture.ac_shm import AcSharedMemory
+from capture.install_overlay import find_ac_root
 
 SESSIONS_DIR = Path(__file__).resolve().parents[1] / "data" / "sessions"
 SCHEMA = 1
@@ -80,6 +81,22 @@ def cmd_log(args: argparse.Namespace) -> None:
     print(f"\nwrote {len(rows)} rows to {out}")
 
 
+def attach_rig_log(session: Path) -> str:
+    """
+    Copy the camera rig's newest log into the session, for recordings rendered from
+    a replay through `capture/ac_rig`. The rig starts a new log for every render, so
+    the newest one belongs to the recording that just stopped.
+    """
+    root = find_ac_root()
+    logs = sorted((root / "apps" / "lua" / "primal_rig").glob("rig_*.csv"), key=lambda p: p.stat().st_mtime) if root else []
+    if not logs:
+        raise SystemExit("--rig given but no rig log found under apps/lua/primal_rig")
+    if time.time() - logs[-1].stat().st_mtime > 15 * 60:
+        raise SystemExit(f"newest rig log {logs[-1].name} is over 15 minutes old; was the rig enabled for this render?")
+    shutil.copy2(logs[-1], session / "rig_log.csv")
+    return logs[-1].name
+
+
 def cmd_import(args: argparse.Namespace) -> None:
     video = Path(args.video)
     if not video.exists():
@@ -127,6 +144,8 @@ def cmd_import(args: argparse.Namespace) -> None:
         "notes": args.notes,
         "created": stamp,
     }
+    if args.rig:
+        meta["rig_log"] = attach_rig_log(session)
     (session / "run.json").write_text(json.dumps(meta, indent=2))
 
     print(f"created {session}")
@@ -155,6 +174,7 @@ def main() -> None:
     imp.add_argument("--track-length", type=float, help="spline length in metres")
     imp.add_argument("--car", help="override AC shared memory")
     imp.add_argument("--copy", action="store_true", help="copy instead of moving the video")
+    imp.add_argument("--rig", action="store_true", help="recording is a camera-rig render; attach its log")
     imp.set_defaults(func=cmd_import)
 
     args = parser.parse_args()

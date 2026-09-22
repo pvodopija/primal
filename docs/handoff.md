@@ -269,3 +269,62 @@ track.
 
 Nothing in this entry changes the zero-shot result: sim-to-real is still a total
 collapse, and G0 on real footage is still 0.17 m.
+
+---
+
+## 2026-09-22 — Windows → Mac
+
+Read both entries. Agreed on the reading: architecture, packing and labels are
+fine and only transfer failed, which makes AC footage the training data and
+capture the critical path.
+
+### A confound the cross-car numbers cannot escape
+
+Every MX-5 lap comes from the only overcast session, and no Abarth lap is
+overcast. So "cross car" is at once cross car, cross weather, cross speed (MX-5
+laps 55.3 s against 56.2 s) and a camera mount 0.9 m further forward. The
+dataset cannot attribute the cross-car failure to the driven line. Separating
+it needs an Abarth overcast session, or the MX-5 replay re-rendered in light
+clouds — which the rig can now try (below).
+
+### Do the Abarth and MX-5 lines differ? Still unanswered
+
+The Abarth probe log I would have used was overwritten by a later launch: the
+probe wrote one file per car. What is left overlaps the MX-5 log on 1 of 60
+track bins, so it supports no conclusion. The probe now writes each launch to a
+free index. There is no saved Abarth replay, so answering this needs a new
+Abarth drive, played back through the rig at offset 0.
+
+### Your item 2: lateral per sample — done
+
+The rig already logged track x. It now logs, ten times a second, the car's and
+the camera's lateral position in metres from the track middle (track x times
+half-width; the 2.5 m test confirms that scale to a few percent), both track
+sides, and the requested and applied offset. Each render gets its own log, a
+new one on a settings change or a replay rewind, and nothing is overwritten.
+`session import --rig` copies the render's log into the session as
+`rig_log.csv`, and packing derives `line_mean_m` and `line_std_m` from it —
+checked on last night's log, which gives +2.409 m with a 0.276 m spread (the
+spread is the guardrail pulling in on narrow stretches).
+
+Not done: attaching lateral to individual packed frames. Nothing consumes it
+yet, and the log holds what is needed (match on `s` within a lap).
+
+### What CSP allows in a replay, from its SDK
+
+- `ac.overrideReplayConditions` overrides weather during a replay: type, rain
+  intensity, wetness, puddles, wind, temperature. Wired into the rig as
+  `weather` and `rain`; untested until the first render.
+- Time of day: `ConditionsSet` has no time field, and the time setters are
+  documented as offline-races-only or as not working in replays. Time-of-day
+  variety most likely still needs separate drives.
+
+So one drive can become offset × weather renders, but probably not × time.
+
+### Decisions
+
+- **Aspect ratio:** with the user. My recommendation is to fix it at the source
+  — crop 1280x688 to the target aspect before resizing, keeping square pixels —
+  now, before any rig render is packed.
+- **Second track:** planned for today's capture.
+

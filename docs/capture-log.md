@@ -93,7 +93,9 @@ bright white. The detector is a scratch script and is not in the repo yet.
 
 A CSP app that logs, ten times a second, where the active camera sits relative
 to the car and the track, plus replay state. It only logs while its window is
-open, so it can never end up in capture footage.
+open, so it can never end up in capture footage. Each launch writes
+`probe_<car>_<n>.csv` at a free index; an earlier version wrote one file per car
+and a later launch overwrote the Abarth measurement.
 
 MX-5 Cup, every camera mode:
 
@@ -123,10 +125,22 @@ needs and what bot footage otherwise lacks.
 
 Settings live in `rig.txt` next to the script, re-read twice a second:
 `enabled`, `replay_only`, `lateral_m` (**positive is right**), `forward_m`,
-`height_m`, `fov_deg`, `edge_limit`. Offsets that would leave the tarmac are
-shrunk by bisection in track coordinates. The offset actually applied is logged
-to `rig_log_lat<offset>.csv`; set a render's `line_offset_m` in `run.json` from
-it, and packing writes it into the index as `line_mean_m`.
+`height_m`, `fov_deg`, `edge_limit`, and `weather` / `rain` to override the
+recorded conditions (`-1` keeps them; values are `ac.WeatherType`, e.g. 15 clear,
+17 scattered clouds, 19 overcast, 7 rain). Offsets that would leave the tarmac
+are shrunk by bisection in track coordinates.
+
+Each render logs to its own `rig_<settings>_<n>.csv` — a new file whenever the
+settings change or the replay is rewound, never overwriting — with the car's and
+the camera's lateral position in metres, the track width, and the offset
+actually applied. Import a render with `session import --rig`: the log is copied
+into the session as `rig_log.csv`, and packing derives `line_mean_m` and
+`line_std_m` from it.
+
+Time of day probably cannot be changed in a replay. CSP's replay override covers
+weather, rain, wetness, wind and temperature but has no time field, and its time
+setters are documented as offline-races-only. Time-of-day variety needs separate
+drives.
 
 Verified in the MX-5 replay at 2.5 m: median applied offset 2.50 m, guardrail
 active on 14% of samples and never below 0.96 m, camera track x never past the

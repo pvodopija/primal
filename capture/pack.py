@@ -134,6 +134,17 @@ def crop_rows(height: int, geometry: OverlayGeometry | None) -> tuple[int, int]:
     return 0, min(max(top, 1), height)
 
 
+def rig_line_stats(rig_log: Path) -> tuple[float, float]:
+    """
+    Mean and spread of the sideways offset a rig render actually applied, from
+    samples where the car was moving. The spread is not noise: it is where the
+    rig pulled the camera in from a track edge.
+    """
+    log = pd.read_csv(rig_log)
+    moving = log[log["car_spline"].diff().abs() > 1e-6]
+    return float(moving["applied_lateral_m"].mean()), float(moving["applied_lateral_m"].std())
+
+
 def pack_session(
     session: Path,
     out: Path,
@@ -156,6 +167,12 @@ def pack_session(
     overlay_path = session / "overlay.json"
     if overlay_path.exists():
         geometry = OverlayGeometry.from_dict(json.loads(overlay_path.read_text()))
+
+    rig_log = session / "rig_log.csv"
+    if rig_log.exists():
+        line_mean_m, line_std_m = rig_line_stats(rig_log)
+    else:
+        line_mean_m, line_std_m = float(meta.get("line_offset_m", 0.0)), 0.0
 
     fps = float(meta["fps"])
     track_length = float(meta["track_length_m"])
@@ -210,9 +227,10 @@ def pack_session(
                 "track_config": meta.get("track_config", ""),
                 "session_id": meta["session_id"],
                 "car_model": meta.get("car_model", ""),
-                # Sideways offset of the rendering camera, for renders made with the
-                # camera rig; recorded laps have no known line and stay at 0.
-                "line_mean_m": float(meta.get("line_offset_m", 0.0)),
+                # Sideways offset of the rendering camera from the car, for renders
+                # made with the camera rig; recorded laps ride on the car, at 0.
+                "line_mean_m": line_mean_m,
+                "line_std_m": line_std_m,
                 "split": meta.get("split", "train"),
                 "n_frames": int(plan.frame_idx.size),
                 "s_span": plan.span,
