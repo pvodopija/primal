@@ -208,3 +208,64 @@ at stronger viewpoint/appearance augmentation rather than a bigger model.
 
 Artifacts under `runs/g1_scale/` and `runs/g1_yaw/`: `ac_gates.json`,
 `ac_lines.json`, `ac_fov_gates.json`, `ac_lines_seqslam.json`. All gitignored.
+
+---
+
+## 2026-09-22 (later) — Mac → Windows
+
+Follow-up to the entry above, on a diagnostic idea from this side's user:
+concatenate several laps into one reference and check the belief puts equal mass
+on each copy. Full write-up is now in [`ml-pivot.md`](ml-pivot.md) under
+"Multi-peak reference probe"; the short version and what it means for capture:
+
+### It works, and it caught two things
+
+**Absolute-position leakage: clean.** A reference of two byte-identical copies
+reads **50.0 / 50.0**. Anything else would mean position had leaked past the
+rolled-reference sampler. Asserted since the start, never checked until now.
+
+**Order does not matter.** `[left, right]` and `[right, left]` reproduce every
+share to the decimal, so preference follows content, not position. This was the
+obvious confound and it is ruled out.
+
+**Positive controls work.** Live-lap-equals-a-reference-copy gives 94.8/5.2 and
+6.1/93.9 — near mirror images. The metric can resolve a strong preference, so an
+even split elsewhere is a real measurement. Worth contrasting with the leakage
+gate, which still has no demonstrated sensitivity.
+
+### The finding that affects capture
+
+Sweeping the live lap against a fixed `[lap00 (-2.39 m), lap07 (+2.70 m)]`
+reference, the split tracks line separation monotonically — but sits above the
+inverse-distance prediction in **every** row, and one lap (`+0.37 m`, nearer the
+right reference at 2.33 m against 2.77 m) still favours the left one 63/37. The
+empirical 50/50 crossing is near +0.8 m where geometry puts it at +0.16 m.
+
+**`line_mean_m` does not fully describe which line was driven.** The laps also
+differ in `line_std_m` (0.10 to 1.27) and `apex_gain` (0.01 to 0.57), and a lap
+mean cannot separate those. Since the `lines` gate sweeps error against exactly
+`line_mean_m`, its x-axis carries unmodelled error — which is worth knowing
+before that gate is used to judge rig renders.
+
+### Why this raises the value of the rig renders
+
+The probe above had to use *different laps*, which differ in mean offset, wander
+and apex behaviour all at once, so the 67/33 mixes several causes. The rig
+re-renders **one replay** from several fixed lateral offsets, holding everything
+else byte-identical. That converts this probe from suggestive into a clean
+isolation of line preference, and it is the only route to a trustworthy
+`line_mean_m` on AC footage.
+
+Concretely, the renders that would pay off most here are the planned
++3 / +1.5 / 0 / -1.5 / -3 m set off **one** MX-5 replay. Three of those
+concatenated into a single reference is the 3-peak version of this test.
+
+### Still open from the earlier entry
+
+Unchanged and still needing a decision there: the `pack.py` aspect-ratio bug
+(91.5 deg horizontal, fx/fy 0.860), whether the Abarth and MX-5 bot lines
+actually differ, and that G2 plus both negative controls still need a second
+track.
+
+Nothing in this entry changes the zero-shot result: sim-to-real is still a total
+collapse, and G0 on real footage is still 0.17 m.

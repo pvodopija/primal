@@ -210,6 +210,74 @@ itself to about 1.1 m, and a different lap of the same track under 0.5 m away at
 drift toward chance. Whole-image pixel difference does not survive a second lap,
 which is the case a learned descriptor exists for.
 
+### Multi-peak reference probe
+
+Concatenate several laps into one reference and check where the belief puts its
+mass. Because the repeat structure is *constructed*, the correct answer is known
+exactly, which makes this the only test here that probes the shape of the
+distribution rather than the error of its argmax.
+
+Measured on 18-track synthetic data with `runs/g1_scale`, 64 live clips per row,
+mass counted within +-5 bins of each copy's correct position:
+
+| reference | live | shares | mass captured |
+|---|---|---|---|
+| `[lap00, lap00]` identical | middle lap | **50.0 / 50.0** | 98.7% |
+| `[lap00, lap07]` left+right | middle lap | 67.4 / 32.6 | 97.0% |
+| `[lap00, lap07]` left+right | lap00 | 94.8 / 5.2 | 99.0% |
+| `[lap00, lap07]` left+right | lap07 | 6.1 / 93.9 | 98.8% |
+
+**The identical case is a leakage test and it passes exactly.** Two byte-identical
+copies make the logits at `p` and `p+N` equal by construction, so anything other
+than 50/50 would mean absolute position had leaked past the rolled-reference
+sampler. It reads 50.0/50.0. That property was asserted from the start and had
+never been checked.
+
+**The two lopsided rows are the positive control**, and they are what make the
+middle row trustworthy: the metric demonstrably *can* resolve a strong
+preference, so an even split elsewhere is a measurement rather than a blind
+instrument. This is exactly the sensitivity the leakage gate still lacks.
+
+**Order does not matter.** Swapping the reference to `[lap07, lap00]` reproduces
+every share to the decimal, so the preference follows content, not position.
+
+### What the probe found that the `lines` gate cannot see
+
+Sweeping the live lap across the ladder against a fixed `[lap00, lap07]`
+reference:
+
+| live | line_mean_m | dist to L / R | inverse-distance | measured share of L |
+|---|---|---|---|---|
+| lap01 | -0.98 | 1.41 / 3.68 | 72.3% | 81.9% |
+| lap03 | -0.34 | 2.05 / 3.04 | 59.7% | 67.4% |
+| lap02 | -0.25 | 2.14 / 2.95 | 58.0% | 60.3% |
+| lap04 | +0.37 | 2.77 / 2.33 | 45.7% | **63.0%** |
+| lap05 | +1.51 | 3.90 / 1.19 | 23.4% | 39.4% |
+| lap06 | +2.33 | 4.72 / 0.37 | 7.3% | 10.6% |
+
+The trend is monotonic and in the right direction, but **every row sits above the
+inverse-distance prediction**, and `lap04` prefers the *farther* reference
+outright. The empirical 50/50 crossing sits near +0.8 m where the geometric
+midpoint is +0.16 m -- a bias worth about 0.65 m of line separation.
+
+Two conclusions, the second more important than the first:
+
+- The model's *confidence* is graded by viewpoint similarity even where its
+  *answer* is not. The `lines` gate reports a flat 1.06-1.18x error ratio and
+  concludes "matches place, not viewpoint"; both hold at once, because that gate
+  measures only error magnitude and is structurally blind to how mass is
+  allocated.
+- **`line_mean_m` is an incomplete descriptor of which line was driven.** It
+  cannot explain `lap04`, and the laps differ in `line_std_m` (0.10 to 1.27) and
+  `apex_gain` (0.01 to 0.57) as well as in mean. The `lines` gate sweeps error
+  against exactly this quantity, so its x-axis carries unmodelled error. A
+  per-frame lateral separation would be sharper than a lap mean.
+
+The rig (`capture/ac_rig`) re-renders one replay from several fixed offsets, so
+every other variable is held byte-identical. That would make this probe a clean
+isolation of line preference instead of a suggestive one, and is the reason the
+rig renders matter beyond just populating `line_mean_m`.
+
 ### What these do not establish
 
 The renderer is flat-shaded polygons with no textures, weather, motion blur, or
