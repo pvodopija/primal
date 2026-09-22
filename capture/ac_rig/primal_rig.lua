@@ -200,6 +200,12 @@ local function step(dt)
   camera.transform.look:set(look)
   camera.transform.up:set(car.up)
   camera.fov = cfg.fov_deg
+  -- A grabbed camera replaces every camera parameter, not just the pose. Pure
+  -- does much of its look through camera exposure, so pass exposure and depth of
+  -- field through from AC, or the image renders flat, like stock AC.
+  camera.exposure = camera.exposureOriginal
+  camera.dofFactor = camera.dofFactorOriginal
+  camera.dofDistance = camera.dofDistanceOriginal
   camera.ownShare = 1
   applied, trackX, clamped, wanderNow, yawNow = lateral, x, wasClamped, offset, yaw
 
