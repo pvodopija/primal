@@ -60,19 +60,25 @@ local function loadConfig()
   end
 end
 
---- Three sines at incommensurate wavelengths around wander_len_m, with random
+--- A fixed hash of seed and index into [0, 1). Used instead of math.random,
+--- which the CSP app sandbox may not provide.
+local function hash01(seed, i)
+  local v = math.sin(seed * 12.9898 + i * 78.233) * 43758.5453
+  return v - math.floor(v)
+end
+
+--- Three sines at incommensurate wavelengths around wander_len_m, with seeded
 --- phases, so the wander never repeats and is smooth at every scale a clip sees.
 local function makeWaves()
   local seed = cfg.wander_seed
-  if seed == 0 then seed = ac.getSim().systemTime end
-  math.randomseed(seed)
+  if seed == 0 then seed = ac.getSim().systemTime % 100000 end
   waves = {}
   local shape = { { 0.62, 1.0 }, { 1.0, 0.7 }, { 1.73, 0.5 } }
   for i = 1, #shape do
     waves[i] = {
       k = 2 * math.pi / (cfg.wander_len_m * shape[i][1]),
       weight = shape[i][2],
-      phase = math.random() * 2 * math.pi,
+      phase = hash01(seed, i) * 2 * math.pi,
     }
   end
   wavesSeed = cfg.wander_seed
@@ -222,9 +228,31 @@ local function step(dt)
   end
 end
 
+local failedKey
+
+--- A failure releases the camera rather than leaving it frozen, so a broken rig can
+--- never record a stationary view, and it stays off until rig.txt changes. The
+--- full error goes to rig_error.txt, since the window truncates it.
 function script.update(dt)
+  if failedKey then
+    sinceConfig = sinceConfig + dt
+    if sinceConfig >= 0.5 then
+      sinceConfig = 0
+      loadConfig()
+    end
+    if renderKey() .. cfg.enabled == failedKey then return end
+    failedKey = nil
+  end
   local ok, err = pcall(step, dt)
-  if not ok then lastError = 'update: ' .. tostring(err) end
+  if not ok then
+    lastError = 'update: ' .. tostring(err)
+    io.save(folder .. '/rig_error.txt', lastError .. '\n')
+    if camera then
+      pcall(function() camera:dispose() end)
+      camera = nil
+    end
+    failedKey = renderKey() .. cfg.enabled
+  end
 end
 
 function script.windowMain(dt)
