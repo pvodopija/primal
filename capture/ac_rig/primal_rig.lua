@@ -49,7 +49,9 @@ local lastFrame = -1
 local applied, trackX, clamped, wanderNow, yawNow = 0, 0, false, 0, 0
 local clampFrames, heldFrames = 0, 0
 local distance = 0
+local smoothLat, smoothSlope
 local waves, wavesSeed
+local lastWander = 2.5
 
 local function loadConfig()
   local text = io.load(cfgPath)
@@ -103,21 +105,33 @@ local function place(car, lateral)
   return car.position + car.look * cfg.forward_m - car.side * lateral + car.up * cfg.height_m
 end
 
---- Shrinks the sideways offset where the requested one would leave the tarmac.
---- Works in track coordinates, so it is independent of which way `side` points.
-local function clampedPlacement(car, requested)
-  local position = place(car, requested)
-  local x = ac.worldCoordinateToTrack(position).x
-  if math.abs(x) <= cfg.edge_limit or requested == 0 then
-    return position, requested, x, false
-  end
-  local lo, hi = 0, requested
-  for _ = 1, 10 do
+local KNEE_M = 0.6    -- width of the soft zone before the edge limit
+local SMOOTH_M = 6.0  -- distance over which the applied offset and heading are smoothed
+
+--- How far the camera can go in one direction before leaving edge_limit, searched
+--- up to `reach`. Track coordinates, so independent of which way `side` points.
+local function edgeRoom(car, direction, reach)
+  if math.abs(ac.worldCoordinateToTrack(place(car, direction * reach)).x) <= cfg.edge_limit then return reach end
+  local lo, hi = 0, reach
+  for _ = 1, 12 do
     local mid = (lo + hi) / 2
-    if math.abs(ac.worldCoordinateToTrack(place(car, mid)).x) > cfg.edge_limit then hi = mid else lo = mid end
+    if math.abs(ac.worldCoordinateToTrack(place(car, direction * mid)).x) > cfg.edge_limit then hi = mid else lo = mid end
   end
-  position = place(car, lo)
-  return position, lo, ac.worldCoordinateToTrack(position).x, true
+  return lo
+end
+
+--- A soft limit instead of a hard clamp: offsets pass unchanged until KNEE_M from
+--- the edge, then compress smoothly toward it with matching slope, so reaching the
+--- edge bends the path instead of kinking it.
+local function softLimit(car, requested)
+  if requested == 0 then return 0, false end
+  local direction = requested > 0 and 1 or -1
+  local want = math.abs(requested)
+  local room = edgeRoom(car, direction, want + KNEE_M)
+  local knee = room - KNEE_M
+  if want <= knee then return requested, false end
+  local limited = room - KNEE_M * math.exp(-(want - knee) / KNEE_M)
+  return direction * math.max(0, math.min(want, limited)), true
 end
 
 --- Track x is -1 at the left edge and +1 at the right, so half the track width
@@ -143,6 +157,7 @@ local function startLog(key)
   logKey = key
   rows = {}
   clampFrames, heldFrames = 0, 0
+  smoothLat = nil
 end
 
 local function applyConditions(active)
@@ -176,7 +191,7 @@ local function step(dt)
   applyConditions(want and sim.isReplayActive)
   if want and not camera then
     local grabbed, err = ac.grabCamera('primal rig')
-    if grabbed then camera = grabbed else lastError = 'grab: ' .. tostring(err) end
+    if grabbed then camera, smoothLat = grabbed, nil else lastError = 'grab: ' .. tostring(err) end
   elseif not want and camera then
     camera:dispose()
     camera = nil
@@ -186,15 +201,27 @@ local function step(dt)
   local car = ac.getCar(0)
   -- Distance driven, not track position, drives the wander, so each lap takes a
   -- different line through the same corner instead of repeating one.
-  distance = distance + math.abs(car.speedKmh) / 3.6 * dt
-  local offset, slope = wander(distance)
-  local position, lateral, x, wasClamped = clampedPlacement(car, cfg.lateral_m + offset)
+  local ds = math.abs(car.speedKmh) / 3.6 * dt
+  distance = distance + ds
+  local offset = wander(distance)
+  local target, wasClamped = softLimit(car, cfg.lateral_m + offset)
+
+  -- Smooth the applied offset over distance, and take the heading from the path
+  -- the camera actually follows, so the edge limit can never snap either of them.
+  if smoothLat == nil then smoothLat, smoothSlope = target, 0 end
+  local previous = smoothLat
+  local alpha = 1 - math.exp(-ds / SMOOTH_M)
+  smoothLat = smoothLat + alpha * (target - smoothLat)
+  if ds > 1e-4 then smoothSlope = smoothSlope + alpha * ((smoothLat - previous) / ds - smoothSlope) end
+  local lateral = smoothLat
+  local position = place(car, lateral)
+  local x = ac.worldCoordinateToTrack(position).x
 
   local look = car.look
   local yaw = 0
-  if cfg.wander_yaw == 1 and not wasClamped and slope ~= 0 then
-    look = car.look - car.side * slope
-    yaw = math.deg(math.atan(slope))
+  if cfg.wander_yaw == 1 then
+    look = car.look - car.side * smoothSlope
+    yaw = math.deg(math.atan(smoothSlope))
   end
   camera.transform.position:set(position)
   camera.transform.look:set(look)
@@ -262,7 +289,33 @@ function script.update(dt)
   end
 end
 
+local CFG_KEYS = { 'enabled', 'replay_only', 'lateral_m', 'wander_m', 'wander_len_m', 'wander_yaw', 'wander_seed',
+  'forward_m', 'height_m', 'fov_deg', 'edge_limit', 'weather', 'rain' }
+
+--- The toggles write rig.txt, so the file stays the one source of settings and the
+--- next re-read does not undo a click.
+local function saveConfig()
+  local lines = {}
+  for _, key in ipairs(CFG_KEYS) do lines[#lines + 1] = key .. ' = ' .. tostring(cfg[key]) end
+  io.save(cfgPath, table.concat(lines, '\n') .. '\n')
+end
+
 function script.windowMain(dt)
+  if cfg.wander_m > 0 then lastWander = cfg.wander_m end
+  if ui.checkbox('Rig on', cfg.enabled == 1) then
+    cfg.enabled = 1 - cfg.enabled
+    saveConfig()
+  end
+  if ui.checkbox('Live driving too (off: replays only)', cfg.replay_only == 0) then
+    cfg.replay_only = 1 - cfg.replay_only
+    saveConfig()
+  end
+  if ui.checkbox(string.format('Wander (%.1f m)', lastWander), cfg.wander_m > 0) then
+    cfg.wander_m = cfg.wander_m > 0 and 0 or lastWander
+    saveConfig()
+  end
+  ui.text('Close this window before recording: it would be in the footage.')
+  ui.separator()
   ui.text(string.format('enabled %d   replay only %d   holding camera %s', cfg.enabled, cfg.replay_only,
     tostring(camera ~= nil)))
   ui.text(string.format('lateral %+.2f + wander %+.2f   applied %+.2f m   yaw %+.1f   track x %+.3f %s',
@@ -271,5 +324,5 @@ function script.windowMain(dt)
     cfg.height_m, cfg.fov_deg, cfg.weather, cfg.rain))
   ui.text(string.format('clamped %d of %d frames   log rows %d   saved %s', clampFrames, heldFrames, #rows,
     lastSaveOk and 'ok' or 'FAILED'))
-  if lastError then ui.text('ERROR ' .. lastError) end
+  if lastError then ui.textWrapped('ERROR ' .. lastError) end
 end
