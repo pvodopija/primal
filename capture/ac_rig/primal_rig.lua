@@ -71,7 +71,8 @@ end
 --- phases, so the wander never repeats and is smooth at every scale a clip sees.
 local function makeWaves()
   local seed = cfg.wander_seed
-  if seed == 0 then seed = ac.getSim().systemTime % 100000 end
+  -- systemTime arrives as a 64-bit cdata integer, which math functions reject.
+  if seed == 0 then seed = tonumber(ac.getSim().systemTime) % 100000 end
   waves = {}
   local shape = { { 0.62, 1.0 }, { 1.0, 0.7 }, { 1.73, 0.5 } }
   for i = 1, #shape do
@@ -203,7 +204,7 @@ local function step(dt)
   applied, trackX, clamped, wanderNow, yawNow = lateral, x, wasClamped, offset, yaw
 
   local key = renderKey()
-  local frame = sim.replayCurrentFrame or -1
+  local frame = tonumber(sim.replayCurrentFrame) or -1
   if key ~= logKey or frame < lastFrame - 60 then startLog(key) end
   lastFrame = frame
   heldFrames = heldFrames + 1
