@@ -145,10 +145,28 @@ def rig_line_stats(rig_log: Path) -> tuple[float, float]:
     return float(moving["applied_lateral_m"].mean()), float(moving["applied_lateral_m"].std())
 
 
+AC_VFOV_DEG = 60.0  # vertical FOV of AC's cameras and of the rig's default
+
+
+def field_of_view(width: int, height: int, keep_lo: int, keep_hi: int, vfov_deg: float) -> dict:
+    """
+    Horizontal and vertical FOV of the packed image. The barcode band comes off one
+    edge only, so the vertical FOV is asymmetric about the optical axis and is
+    summed from both halves rather than doubled from one.
+    """
+    focal = (height / 2) / np.tan(np.radians(vfov_deg / 2))
+    up = np.degrees(np.arctan((height / 2 - keep_lo) / focal))
+    down = np.degrees(np.arctan((keep_hi - height / 2) / focal))
+    return {
+        "fov_h_deg": round(float(2 * np.degrees(np.arctan((width / 2) / focal))), 2),
+        "fov_v_deg": round(float(up + down), 2),
+    }
+
+
 def pack_session(
     session: Path,
     out: Path,
-    size: tuple[int, int],
+    size: tuple[int | None, int],
     ref_spacing_m: float,
     min_frames: int,
 ) -> list[dict]:
@@ -187,7 +205,13 @@ def pack_session(
     if not cap.isOpened():
         raise SystemExit(f"cannot open {video}")
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     keep_lo, keep_hi = crop_rows(height, geometry)
+    if size[0] is None:
+        # Keep pixels square: derive the width from the height and the frame's own
+        # proportions after the barcode band is removed, rather than squeezing it.
+        size = (int(round(size[1] * width / (keep_hi - keep_lo) / 2)) * 2, size[1])
+    fov = field_of_view(width, height, keep_lo, keep_hi, float(meta.get("camera_vfov_deg", AC_VFOV_DEG)))
 
     (out / "laps").mkdir(parents=True, exist_ok=True)
     wanted = {int(i): (plan, position) for plan in plans for position, i in enumerate(plan.frame_idx)}
@@ -239,6 +263,8 @@ def pack_session(
                 "ref_spacing_m": track_length / n_bins,
                 "fps": fps,
                 "frame_size": [size[0], size[1]],
+                **fov,
+                "pixel_aspect": round((width / size[0]) / ((keep_hi - keep_lo) / size[1]), 4),
                 "path": f"laps/{lap_id}",
             }
         )
@@ -269,7 +295,10 @@ def main() -> None:
     parser.add_argument("sessions", nargs="*", help="session directories")
     parser.add_argument("--all", action="store_true", help="every decoded session under data/sessions")
     parser.add_argument("--out", default=str(DEFAULT_OUT))
-    parser.add_argument("--width", type=int, default=160)
+    parser.add_argument(
+        "--width", type=int, default=None,
+        help="force a width, stretching the frame; by default it follows --height so pixels stay square",
+    )
     parser.add_argument("--height", type=int, default=96)
     parser.add_argument("--ref-spacing-m", type=float, default=1.0)
     parser.add_argument("--min-frames", type=int, default=120)
