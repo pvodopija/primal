@@ -30,7 +30,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from capture.pack import reference_index_map, write_lap
+from capture.pack import write_lap
 
 WORLD_UP = np.array([0.0, 1.0, 0.0], dtype=np.float64)
 
@@ -527,7 +527,6 @@ def cmd_packed(args: argparse.Namespace) -> None:
                 frames=frames,
                 s=s,
                 t=t,
-                ref_idx=reference_index_map(s, n_bins),
             )
             index.append(
                 {

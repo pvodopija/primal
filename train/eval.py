@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import zlib
 from dataclasses import asdict
 from pathlib import Path
 
@@ -55,10 +56,26 @@ def load_model(checkpoint: Path, device: torch.device) -> tuple[SequenceAligner,
     return model, payload
 
 
-def build_matcher(args: argparse.Namespace, device: torch.device) -> tuple[torch.nn.Module, int]:
+def reference_axis_of(payload: dict) -> str:
+    """The reference axis a checkpoint was trained on, which evaluation must reuse."""
+    axis = payload["args"].get("reference_axis")
+    if axis is None:
+        raise SystemExit(
+            "checkpoint predates the reference-grid fix: it was trained with reference "
+            "frames at bin centres and targets at bin starts, so on the current grid every "
+            "answer reads half a bin off. Retrain it, or evaluate it with the code it was "
+            "trained with."
+        )
+    return axis
+
+
+def build_matcher(
+    args: argparse.Namespace, device: torch.device
+) -> tuple[torch.nn.Module, int, str]:
     """
-    The trained aligner or the SeqSLAM baseline behind one interface, so the
-    measurement path below cannot differ between them.
+    (matcher, clip length, reference axis): the trained aligner or the SeqSLAM
+    baseline behind one interface, so the measurement path cannot differ.
+    SeqSLAM has no training, so it takes whichever axis is asked for.
     """
     if getattr(args, "matcher", "primal") == "seqslam":
         model = SeqSLAM(
@@ -69,11 +86,11 @@ def build_matcher(args: argparse.Namespace, device: torch.device) -> tuple[torch
             norm_window=args.sq_norm_window,
         ).to(device)
         model.eval()
-        return model, args.clip_len
+        return model, args.clip_len, args.reference_axis
     if not args.checkpoint:
         raise SystemExit("--checkpoint is required unless --matcher seqslam")
     model, payload = load_model(Path(args.checkpoint), device)
-    return model, payload["args"]["clip_len"]
+    return model, payload["args"]["clip_len"], reference_axis_of(payload)
 
 
 @torch.no_grad()
@@ -103,7 +120,7 @@ def measure(
     for batch in loader:
         reference = batch["reference"]
         target = batch["target"]
-        speed = batch["ref_speed_mps"]
+        grid = batch
         spacing_m = batch["ref_spacing_m"]
         if wrong is not None:
             try:
@@ -112,7 +129,7 @@ def measure(
                 break
             if other["track"] == batch["track"]:
                 continue
-            reference, speed = other["reference"], other["ref_speed_mps"]
+            reference, grid = other["reference"], other
             spacing_m = other["ref_spacing_m"]
             bins = reference.shape[0]
             # Keep the target on the same axis length so the error stays comparable.
@@ -126,7 +143,12 @@ def measure(
         )
         predicted = soft_argmax_circular(logits, window=window)
         m, ms = compute_metrics(
-            predicted, target.to(device), logits.shape[-1], spacing_m, speed.to(device)
+            predicted,
+            target.to(device),
+            grid["ref_pos_m"],
+            grid["ref_time_s"],
+            grid["track_length_m"],
+            grid["lap_time_s"],
         )
         key = batch["track"]
         metres.setdefault(key, []).append(m)
@@ -148,6 +170,7 @@ def cmd_gates(args: argparse.Namespace) -> None:
     device = torch.device(args.device)
     model, payload = load_model(Path(args.checkpoint), device)
     clip_len = payload["args"]["clip_len"]
+    axis = reference_axis_of(payload)
     data = Path(args.data)
 
     train_index = LapIndex.load(data, split="train")
@@ -161,6 +184,7 @@ def cmd_gates(args: argparse.Namespace) -> None:
             clip_len=clip_len,
             roll_reference=True,
             jitter=False,
+            reference_axis=axis,
             reference_only=reference_only,
             live_only=live_only,
         )
@@ -272,7 +296,7 @@ def cmd_lines(args: argparse.Namespace) -> None:
     """
     axis = SEPARATION_AXES[args.axis]
     device = torch.device(args.device)
-    model, clip_len = build_matcher(args, device)
+    model, clip_len, axis = build_matcher(args, device)
     index = LapIndex.load(Path(args.data), split=args.split)
     if not index.laps:
         raise SystemExit(f"no laps in {args.data} for split={args.split}")
@@ -280,7 +304,7 @@ def cmd_lines(args: argparse.Namespace) -> None:
     rows: list[dict] = []
     for track, group in sorted(index.by_track.items()):
         for reference in group:
-            if reference.s_span < 0.9:
+            if not reference.usable_as_reference(0.9, axis):
                 continue
             for live in group:
                 if live.lap_id == reference.lap_id:
@@ -290,11 +314,15 @@ def cmd_lines(args: argparse.Namespace) -> None:
                     clip_len=clip_len,
                     roll_reference=True,
                     jitter=False,
+                    reference_axis=axis,
                     reference_only=frozenset({reference.lap_id}),
                     live_only=frozenset({live.lap_id}),
                 )
+                # crc32, not hash(): str hashing is salted per process, so hash()
+                # drew different clips on every run and for every matcher.
                 dataset = AlignmentBatches(
-                    LapIndex(list(group)), config, steps=args.steps, seed=hash(live.lap_id) % 9973
+                    LapIndex(list(group)), config, steps=args.steps,
+                    seed=zlib.crc32(live.lap_id.encode()) % 9973
                 )
                 overall, _, entropy = measure(model, dataset, device, args.window)
                 rows.append(
@@ -498,6 +526,12 @@ def main() -> None:
     lines.add_argument("--checkpoint")
     lines.add_argument("--matcher", default="primal", choices=["primal", "seqslam"])
     lines.add_argument("--clip-len", type=int, default=12, help="only for --matcher seqslam")
+    lines.add_argument(
+        "--reference-axis",
+        default="distance",
+        choices=["distance", "time"],
+        help="only for --matcher seqslam; a checkpoint carries its own",
+    )
     lines.add_argument("--sq-down", type=int, nargs=2, default=(48, 64), metavar=("H", "W"))
     lines.add_argument("--sq-patch", type=int, default=4)
     lines.add_argument("--sq-temperature", type=float, default=6.0)

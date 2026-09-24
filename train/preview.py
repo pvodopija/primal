@@ -32,6 +32,12 @@ from train.dataset import AlignmentBatches, Lap, LapIndex, SampleConfig, _to_chw
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 
 
+def _nearest_frame(s: np.ndarray, target_s: float) -> int:
+    """Index of the frame whose track position is nearest `target_s`, around the loop."""
+    gap = np.abs(np.asarray(s, dtype=np.float64) - target_s) % 1.0
+    return int(np.argmin(np.minimum(gap, 1.0 - gap)))
+
+
 def _upscale(frame: np.ndarray, scale: int) -> np.ndarray:
     if scale <= 1:
         return np.ascontiguousarray(frame)
@@ -211,11 +217,9 @@ def cmd_pair(args: argparse.Namespace) -> None:
     reference_lap, live_lap = _pick_pair(index, track, args.reference, args.live)
 
     reference_frames = reference_lap.frames()
-    reference_index = reference_lap.ref_idx()
     reference_s = reference_lap.s()
     live_frames = live_lap.frames()
     live_s = live_lap.s()
-    n_bins = reference_index.size
 
     out = Path(args.out) if args.out else Path(args.data) / f"preview_pair_{track}.mp4"
     tile_h, tile_w = live_frames.shape[1] * args.scale, live_frames.shape[2] * args.scale
@@ -223,8 +227,7 @@ def cmd_pair(args: argparse.Namespace) -> None:
     writer = _writer(out, (tile_w * 2 + gap, tile_h), args.fps)
     try:
         for i in range(live_lap.n_frames):
-            bin_index = int(round(float(live_s[i]) * n_bins)) % n_bins
-            frame_index = int(reference_index[bin_index])
+            frame_index = _nearest_frame(reference_s, float(live_s[i]))
 
             left = _upscale(np.asarray(live_frames[i]), args.scale)
             right = _upscale(np.asarray(reference_frames[frame_index]), args.scale)
@@ -358,8 +361,8 @@ def cmd_infer(args: argparse.Namespace) -> None:
     """
     import torch
 
-    from train.eval import load_model
-    from train.model import circular_offset, soft_argmax_circular
+    from train.eval import load_model, reference_axis_of
+    from train.model import compute_metrics, soft_argmax_circular
 
     index = _load_index(args.data, None)
     track = args.track or sorted(index.by_track)[0]
@@ -369,9 +372,13 @@ def cmd_infer(args: argparse.Namespace) -> None:
     model, payload = load_model(Path(args.checkpoint), device)
     clip_len = int(payload["args"]["clip_len"])
 
-    ref_raw = np.asarray(reference_lap.frames()[reference_lap.ref_idx()])
-    n_bins = ref_raw.shape[0]
+    grid = reference_lap.reference_grid(reference_axis_of(payload))
+    ref_raw = np.asarray(reference_lap.frames()[grid.frame_idx])
+    n_bins = grid.n_bins
     spacing = reference_lap.ref_spacing_m
+    grid_pos = torch.from_numpy(grid.pos_m.astype(np.float32))
+    grid_time = torch.from_numpy(grid.time_s.astype(np.float32))
+    reference_frames, reference_s = reference_lap.frames(), reference_lap.s()
     live_raw = np.asarray(live_lap.frames())
     live_s = live_lap.s()
     speed = live_lap.speed_mps()
@@ -405,20 +412,22 @@ def cmd_infer(args: argparse.Namespace) -> None:
                 belief = logits.softmax(-1)[0].float().cpu().numpy()
                 single = correlation[0, -1].softmax(-1).float().cpu().numpy()
 
-            true_bin = float(live_s[i]) * n_bins % n_bins
-            offset = float(
-                circular_offset(
-                    torch.tensor([predicted]), torch.tensor([true_bin]), n_bins
-                )[0]
+            true_bin = float(grid.target(float(live_s[i])))
+            m, ms = compute_metrics(
+                torch.tensor([predicted]), torch.tensor([true_bin]),
+                grid_pos, grid_time, grid.track_length_m, grid.lap_time_s,
             )
-            error_m = abs(offset) * spacing
-            error_ms = error_m / max(float(speed[i]), 0.5) * 1000.0
+            error_m, error_ms = float(m[0]), float(ms[0])
             errors_m.append(error_m)
             errors_ms.append(error_ms)
 
             live_tile = _upscale(live_raw[i], args.scale)
             picked = _upscale(ref_raw[int(round(predicted)) % n_bins], args.scale)
-            truth = _upscale(ref_raw[int(round(true_bin)) % n_bins], args.scale)
+            # The reference frame at the live frame's exact position, not the one
+            # filed under the nearest bin: that can sit half a bin away and make
+            # a correct answer look wrong.
+            exact = _nearest_frame(reference_s, float(live_s[i]))
+            truth = _upscale(np.asarray(reference_frames[exact]), args.scale)
             _label(
                 live_tile,
                 [
@@ -443,7 +452,7 @@ def cmd_infer(args: argparse.Namespace) -> None:
                 truth,
                 [
                     f"TRUE  {reference_lap.lap_id}",
-                    f"bin {int(round(true_bin)) % n_bins}/{n_bins}",
+                    f"bin {true_bin:.1f}/{n_bins}   at {float(reference_s[exact]) * grid.track_length_m:.1f} m",
                     f"line {reference_lap.line_mean_m:+.2f} m",
                 ],
                 font_scale=0.6,

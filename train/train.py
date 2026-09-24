@@ -145,9 +145,10 @@ def evaluate(
         m, ms = compute_metrics(
             predicted,
             target,
-            logits.shape[-1],
-            batch["ref_spacing_m"],
-            batch["ref_speed_mps"].to(device),
+            batch["ref_pos_m"],
+            batch["ref_time_s"],
+            batch["track_length_m"],
+            batch["lap_time_s"],
         )
         track = batch["track"]
         metres.setdefault(track, []).append(m)
@@ -180,6 +181,19 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--sigma-bins", type=float, default=2.0)
+    parser.add_argument(
+        "--reference-axis",
+        default="time",
+        choices=["distance", "time"],
+        help="space reference bins evenly in reference lap time (one bin = the same slice of "
+        "delta everywhere) or in track distance",
+    )
+    parser.add_argument(
+        "--aux-all-frames",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="supervise every clip frame's correlation row against its own position, not just the last",
+    )
     parser.add_argument("--aux-weight", type=float, default=0.5)
     parser.add_argument("--refine-weight", type=float, default=0.5)
     parser.add_argument("--window", type=int, default=8)
@@ -217,6 +231,7 @@ def main() -> None:
         roll_reference=gate.roll_reference,
         jitter=gate.jitter,
         sigma_bins=args.sigma_bins,
+        reference_axis=args.reference_axis,
         reference_only=trainable if reserved else None,
         live_only=trainable if reserved else None,
     )
@@ -228,6 +243,7 @@ def main() -> None:
         roll_reference=gate.roll_reference,
         jitter=False,
         sigma_bins=args.sigma_bins,
+        reference_axis=args.reference_axis,
         reference_only=trainable if reserved else None,
         live_only=reserved if reserved else None,
     )
@@ -285,6 +301,8 @@ def main() -> None:
             aux_weight=args.aux_weight,
             refine_weight=args.refine_weight,
             window=args.window,
+            frame_target=batch["frame_targets"].to(device) if args.aux_all_frames else None,
+            sigma_bins=args.sigma_bins,
         )
         optimiser.zero_grad(set_to_none=True)
         parts.total.backward()
@@ -298,9 +316,10 @@ def main() -> None:
                 metres, _ = compute_metrics(
                     predicted,
                     target,
-                    logits.shape[-1],
-                    batch["ref_spacing_m"],
-                    batch["ref_speed_mps"].to(device),
+                    batch["ref_pos_m"],
+                    batch["ref_time_s"],
+                    batch["track_length_m"],
+                    batch["lap_time_s"],
                 )
             print(
                 f"step {step:5d}/{steps}  loss {parts.total.item():7.4f} "

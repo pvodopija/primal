@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from capture.pack import pack_session, reference_index_map
+from capture.pack import pack_session
 from capture.timecode import COLS, SPLINE_MAX, OverlayGeometry
 
 ML_ROOT = Path(__file__).resolve().parents[1]
@@ -97,15 +97,9 @@ def test_capture_pipeline_roundtrip() -> None:
         lap = WORK / "packed" / entry["path"]
         frames = np.load(lap / "frames.npy", mmap_mode="r")
         s = np.load(lap / "s.npy")
-        ref_idx = np.load(lap / "ref_idx.npy")
         assert frames.shape == (entry["n_frames"], 96, 160, 3)
         assert s.shape == (entry["n_frames"],)
         assert entry["ref_bins"] == round(meta["track_length_m"] / 1.0)
-        assert ref_idx.shape == (entry["ref_bins"],)
-        assert ref_idx.min() >= 0 and ref_idx.max() < entry["n_frames"]
-        # The reference grid should be close to uniform in s by construction.
-        targets = (np.arange(entry["ref_bins"]) + 0.5) / entry["ref_bins"]
-        assert np.abs(s[ref_idx] - targets).max() < 0.02
         # The timecode band must be gone: no pure-white/pure-black cell rows left.
         assert float(np.asarray(frames[::10]).std()) > 5.0
         del frames
@@ -115,19 +109,6 @@ def test_capture_pipeline_roundtrip() -> None:
     assert len(index["laps"]) == 2
 
     shutil.rmtree(WORK)
-
-
-def test_reference_index_map_handles_stationary_frames() -> None:
-    # A lap that stops dead for a while, then continues. Nearest-bin lookup must
-    # still cover every bin and never index out of range.
-    s = np.concatenate(
-        [np.linspace(0.0, 0.4, 200), np.full(50, 0.4), np.linspace(0.4, 1.0, 300)]
-    ).astype(np.float32)
-    ref = reference_index_map(s, 128)
-    assert ref.shape == (128,)
-    assert ref.min() >= 0 and ref.max() < s.size
-    targets = (np.arange(128) + 0.5) / 128
-    assert np.abs(s[ref] - targets).max() < 0.01
 
 
 if __name__ == "__main__":

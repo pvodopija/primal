@@ -233,6 +233,14 @@ def circular_offset(predicted: Tensor, target: Tensor, n_bins: int) -> Tensor:
     return (predicted - target + n_bins / 2.0) % n_bins - n_bins / 2.0
 
 
+def circular_gaussian(target: Tensor, n_bins: int, sigma: float) -> Tensor:
+    """Normalised Gaussian over bins around continuous targets, wrapped at the lap end."""
+    bins = torch.arange(n_bins, device=target.device, dtype=target.dtype)
+    offset = torch.remainder(bins - target[..., None] + n_bins / 2, n_bins) - n_bins / 2
+    weight = torch.exp(-0.5 * (offset / sigma) ** 2)
+    return weight / weight.sum(dim=-1, keepdim=True)
+
+
 @dataclass
 class LossParts:
     total: Tensor
@@ -249,6 +257,8 @@ def alignment_loss(
     aux_weight: float = 0.5,
     refine_weight: float = 0.5,
     window: int = 8,
+    frame_target: Tensor | None = None,
+    sigma_bins: float = 2.0,
 ) -> LossParts:
     """
     Soft cross-entropy on the head, plus two supporting terms.
@@ -260,12 +270,20 @@ def alignment_loss(
 
     `refine` is an L1 on the soft-argmax, gated to samples whose peak is already
     within `window` bins. Ungated it would sharpen a confidently wrong peak.
+
+    `frame_target` [B, K], when given, supervises every clip frame's row against
+    its own position instead of only the last frame's. Every frame then has to
+    localise on its own, which sharpens what the head combines.
     """
     n_bins = logits.shape[-1]
     cross_entropy = -(soft_target * logits.log_softmax(dim=-1)).sum(dim=-1).mean()
 
-    current_row = correlation[:, -1, :]
-    auxiliary = -(soft_target * current_row.log_softmax(dim=-1)).sum(dim=-1).mean()
+    if frame_target is None:
+        current_row = correlation[:, -1, :]
+        auxiliary = -(soft_target * current_row.log_softmax(dim=-1)).sum(dim=-1).mean()
+    else:
+        rows = circular_gaussian(frame_target, n_bins, sigma_bins)
+        auxiliary = -(rows * correlation.log_softmax(dim=-1)).sum(dim=-1).mean()
 
     predicted = soft_argmax_circular(logits, window=window)
     offset = circular_offset(predicted, target, n_bins).abs()
@@ -298,19 +316,45 @@ class AlignmentMetrics:
         )
 
 
+def _interp_circular(values: Tensor, x: Tensor, period: float) -> Tensor:
+    """A per-bin quantity that wraps at `period`, interpolated at continuous bins."""
+    values = values.to(device=x.device, dtype=x.dtype)
+    n = values.shape[0]
+    base = torch.floor(x)
+    k0 = base.long() % n
+    k1 = (k0 + 1) % n
+    step = torch.remainder(values[k1] - values[k0] + period / 2, period) - period / 2
+    return torch.remainder(values[k0] + (x - base) * step, period)
+
+
+def _circular_distance(a: Tensor, b: Tensor, period: float) -> Tensor:
+    return (torch.remainder(a - b + period / 2, period) - period / 2).abs()
+
+
 def compute_metrics(
     predicted: Tensor,
     target: Tensor,
-    n_bins: int,
-    spacing_m: float,
-    speed_mps: Tensor,
+    pos_m: Tensor,
+    time_s: Tensor,
+    track_length_m: float,
+    lap_time_s: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Per-sample (metres, milliseconds) error. Milliseconds use reference speed."""
-    offset = circular_offset(predicted, target, n_bins).abs()
-    metres = offset * spacing_m
-    bin_index = target.round().long().clamp(0, n_bins - 1)
-    milliseconds = metres / speed_mps[bin_index].clamp_min(0.5) * 1000.0
-    return metres.detach().cpu().numpy(), milliseconds.detach().cpu().numpy()
+    """
+    Per-sample (metres, milliseconds) error, read off the reference grid.
+
+    Milliseconds are the difference in reference lap time between the predicted
+    and the true place, which is exactly the error the delta readout would show.
+    Dividing metres by local speed only approximates that, and the approximation
+    is worst in slow corners where it matters most.
+    """
+    length, lap = float(track_length_m), float(lap_time_s)
+    metres = _circular_distance(
+        _interp_circular(pos_m, predicted, length), _interp_circular(pos_m, target, length), length
+    )
+    seconds = _circular_distance(
+        _interp_circular(time_s, predicted, lap), _interp_circular(time_s, target, lap), lap
+    )
+    return metres.detach().cpu().numpy(), (seconds * 1000.0).detach().cpu().numpy()
 
 
 def summarise(
@@ -320,6 +364,8 @@ def summarise(
     milliseconds = np.concatenate(milliseconds_list) if len(milliseconds_list) else np.zeros(0)
     if metres.size == 0:
         return AlignmentMetrics(0, *([float("nan")] * 6), 0.0, 0.0)
+    # Nominal bins, i.e. metres over the distance-axis spacing, so "within one
+    # bin" means the same thing on either reference axis.
     bins = metres / max(spacing_m, 1e-9)
     return AlignmentMetrics(
         count=int(metres.size),

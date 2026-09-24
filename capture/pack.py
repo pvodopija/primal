@@ -35,9 +35,7 @@ CROP_MARGIN_PX = 4
 MAX_COUNTER_GAP = 4
 
 
-def write_lap(
-    directory: Path, frames: np.ndarray, s: np.ndarray, t: np.ndarray, ref_idx: np.ndarray
-) -> None:
+def write_lap(directory: Path, frames: np.ndarray, s: np.ndarray, t: np.ndarray) -> None:
     """
     One directory of plain .npy per lap.
 
@@ -49,24 +47,6 @@ def write_lap(
     np.save(directory / "frames.npy", frames)
     np.save(directory / "s.npy", s.astype(np.float32))
     np.save(directory / "t.npy", t.astype(np.float32))
-    np.save(directory / "ref_idx.npy", ref_idx.astype(np.int32))
-
-
-def reference_index_map(s: np.ndarray, n_bins: int) -> np.ndarray:
-    """
-    For each uniform-`s` bin, the index of the nearest frame by `s`.
-
-    Nearest rather than blended: averaging two frames would produce an image no
-    camera ever saw. Handles non-monotonic `s` because it sorts first.
-    """
-    order = np.argsort(s)
-    sorted_s = s[order]
-    targets = (np.arange(n_bins) + 0.5) / n_bins
-    right = np.searchsorted(sorted_s, targets)
-    left = np.clip(right - 1, 0, sorted_s.size - 1)
-    right = np.clip(right, 0, sorted_s.size - 1)
-    take_left = np.abs(sorted_s[left] - targets) <= np.abs(sorted_s[right] - targets)
-    return order[np.where(take_left, left, right)].astype(np.int32)
 
 
 @dataclass
@@ -240,7 +220,6 @@ def pack_session(
             frames=buffers[plan.index],
             s=plan.s,
             t=plan.t,
-            ref_idx=reference_index_map(plan.s, n_bins),
         )
         entries.append(
             {

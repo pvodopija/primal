@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -68,17 +69,33 @@ class Lap:
     def t(self) -> np.ndarray:
         return np.load(self.directory / "t.npy")
 
-    def ref_idx(self) -> np.ndarray:
-        return np.load(self.directory / "ref_idx.npy")
+    def reference_grid(self, axis: str = "distance") -> "ReferenceGrid":
+        return _cached_grid(self, axis)
+
+    def usable_as_reference(self, min_span: float, axis: str = "distance") -> bool:
+        """
+        Covers the lap and holds a frame within one bin of every bin.
+
+        A hole in a reference is a bin whose picture shows somewhere else, which
+        is a wrong answer baked into the map. A live lap with the same hole is
+        harmless, so this only restricts the reference role.
+        """
+        if self.s_span < min_span:
+            return False
+        return float(self.reference_grid(axis).placement_m.max()) <= self.ref_spacing_m
 
     def speed_mps(self) -> np.ndarray:
-        """Per-frame speed from the labels, used to report delta error in ms."""
-        s, t = self.s().astype(np.float64), self.t().astype(np.float64)
-        if s.size < 3:
-            return np.full(s.size, 1e-3)
-        ds = np.gradient(np.unwrap(s * 2 * np.pi) / (2 * np.pi)) * self.track_length_m
-        dt = np.gradient(t)
-        return np.abs(ds / np.maximum(dt, 1e-6)).clip(0.5, 120.0)
+        """Per-frame speed from the labels."""
+        return _speed_from_labels(self.s(), self.t(), self.track_length_m)
+
+
+def _speed_from_labels(s: np.ndarray, t: np.ndarray, track_length_m: float) -> np.ndarray:
+    s, t = np.asarray(s, dtype=np.float64), np.asarray(t, dtype=np.float64)
+    if s.size < 3:
+        return np.full(s.size, 1e-3)
+    ds = np.gradient(np.unwrap(s * 2 * np.pi) / (2 * np.pi)) * track_length_m
+    dt = np.gradient(t)
+    return np.abs(ds / np.maximum(dt, 1e-6)).clip(0.5, 120.0)
 
 
 @dataclass
@@ -141,11 +158,14 @@ class LapIndex:
         min_ref_span: float,
         reference_only: frozenset[str] | None = None,
         live_only: frozenset[str] | None = None,
+        axis: str = "distance",
     ) -> list[str]:
         """Tracks that can supply a full-coverage reference and a different live lap."""
         out = []
         for track in self.by_track:
-            references, lives = self.split_group(track, min_ref_span, reference_only, live_only)
+            references, lives = self.split_group(
+                track, min_ref_span, reference_only, live_only, axis
+            )
             if any(live.lap_id != reference.lap_id for reference in references for live in lives):
                 out.append(track)
         return sorted(out)
@@ -156,17 +176,154 @@ class LapIndex:
         min_ref_span: float,
         reference_only: frozenset[str] | None = None,
         live_only: frozenset[str] | None = None,
+        axis: str = "distance",
     ) -> tuple[list[Lap], list[Lap]]:
         """(laps usable as reference, laps usable as live) for one track."""
         group = self.by_track[track]
         references = [
             lap
             for lap in group
-            if lap.s_span >= min_ref_span
+            if lap.usable_as_reference(min_ref_span, axis)
             and (reference_only is None or lap.lap_id in reference_only)
         ]
         lives = [lap for lap in group if live_only is None or lap.lap_id in live_only]
         return references, lives
+
+
+REFERENCE_AXES = ("distance", "time")
+
+
+def _circular_nearest(sorted_u: np.ndarray, queries: np.ndarray) -> np.ndarray:
+    """Index into `sorted_u` (period 1) of the value circularly nearest each query."""
+    n = sorted_u.size
+    right = np.searchsorted(sorted_u, queries) % n
+    left = (right - 1) % n
+
+    def gap(i: np.ndarray) -> np.ndarray:
+        d = np.abs(sorted_u[i] - queries)
+        return np.minimum(d, 1.0 - d)
+
+    return np.where(gap(left) <= gap(right), left, right)
+
+
+@dataclass
+class ReferenceGrid:
+    """
+    One reference lap resampled onto N bins along a chosen axis.
+
+    Bin k sits at axis coordinate k/N and holds the frame nearest to it, found
+    around the loop so the finish line is not a boundary. The target for a live
+    frame is its own axis coordinate times N, so a live frame at the same place
+    as bin k's frame targets exactly k.
+
+    `distance` spaces bins evenly along the track. `time` spaces them evenly in
+    the reference lap's own elapsed time, so one bin is the same slice of delta
+    everywhere: dense in slow corners, sparse on straights. Either way a bin is
+    a place on the track. The live clock never moves it.
+
+    Every bin carries its position in metres and its reference time in seconds,
+    so errors in both units are read off the grid exactly on either axis.
+    """
+
+    axis: str
+    frame_idx: np.ndarray
+    frame_s: np.ndarray
+    speed_mps: np.ndarray
+    pos_m: np.ndarray
+    time_s: np.ndarray
+    placement_m: np.ndarray
+    track_length_m: float
+    lap_time_s: float
+    s_knots: np.ndarray
+    tau_knots: np.ndarray
+
+    @property
+    def n_bins(self) -> int:
+        return int(self.frame_idx.size)
+
+    def target(self, s: np.ndarray | float) -> np.ndarray:
+        """Continuous bin coordinate of track position `s` on this grid."""
+        s = np.asarray(s, dtype=np.float64) % 1.0
+        if self.axis == "distance":
+            u = s
+        else:
+            u = np.interp(s, self.s_knots, self.tau_knots) / self.lap_time_s
+        return (u * self.n_bins) % self.n_bins
+
+
+def build_reference_grid(
+    s: np.ndarray,
+    t: np.ndarray,
+    speed_mps: np.ndarray,
+    n_bins: int,
+    track_length_m: float,
+    axis: str = "distance",
+) -> ReferenceGrid:
+    if axis not in REFERENCE_AXES:
+        raise ValueError(f"axis must be one of {REFERENCE_AXES}, got {axis!r}")
+    s = np.asarray(s, dtype=np.float64)
+    t = np.asarray(t, dtype=np.float64)
+    length = float(track_length_m)
+
+    # Walk the lap in recording order and unwrap position along it. Sorting by
+    # s instead files a frame that sits exactly on the finish line (s == 1.0,
+    # wrapping to 0) at the start of the lap with the lap's latest timestamp.
+    x = np.unwrap(s * 2 * np.pi) / (2 * np.pi)
+    x -= np.floor(np.median(x))
+    # Monotonic, so the time axis stays a valid reparametrisation of position
+    # through a stationary or briefly reversing stretch.
+    x = np.maximum.accumulate(x)
+    x_knots, t_knots = x, t
+    # A lap's first and last frames sit a little either side of the line;
+    # extend to it at the local speed where the recording stops short.
+    if x_knots[0] > 0.0:
+        t0 = t_knots[0] - x_knots[0] * length / max(float(speed_mps[0]), 0.5)
+        x_knots, t_knots = np.concatenate([[0.0], x_knots]), np.concatenate([[t0], t_knots])
+    if x_knots[-1] < 1.0:
+        t1 = t_knots[-1] + (1.0 - x_knots[-1]) * length / max(float(speed_mps[-1]), 0.5)
+        x_knots, t_knots = np.concatenate([x_knots, [1.0]]), np.concatenate([t_knots, [t1]])
+    t_line = float(np.interp(0.0, x_knots, t_knots))
+    lap_time = float(np.interp(1.0, x_knots, t_knots)) - t_line
+    tau_knots = t_knots - t_line
+
+    u_bins = np.arange(n_bins, dtype=np.float64) / n_bins
+    if axis == "distance":
+        u_frame = x % 1.0
+        pos_m = u_bins * length
+        time_s = np.interp(u_bins, x_knots, tau_knots)
+    else:
+        u_frame = ((t - t_line) / lap_time) % 1.0
+        time_s = u_bins * lap_time
+        pos_m = np.interp(time_s, tau_knots, x_knots) * length
+
+    u_order = np.argsort(u_frame, kind="stable")
+    frame_idx = u_order[_circular_nearest(u_frame[u_order], u_bins)].astype(np.int64)
+    frame_s = x[frame_idx] % 1.0
+    gap = np.abs(frame_s - pos_m / length)
+    return ReferenceGrid(
+        axis=axis,
+        frame_idx=frame_idx,
+        frame_s=frame_s,
+        speed_mps=np.asarray(speed_mps, dtype=np.float64)[frame_idx],
+        pos_m=pos_m,
+        time_s=time_s,
+        placement_m=np.minimum(gap, 1.0 - gap) * length,
+        track_length_m=length,
+        lap_time_s=lap_time,
+        s_knots=x_knots,
+        tau_knots=tau_knots,
+    )
+
+
+@lru_cache(maxsize=4096)
+def _grid_for(directory: Path, n_bins: int, track_length_m: float, axis: str) -> ReferenceGrid:
+    s, t = np.load(directory / "s.npy"), np.load(directory / "t.npy")
+    speed = _speed_from_labels(s, t, track_length_m)
+    return build_reference_grid(s, t, speed, n_bins, track_length_m, axis)
+
+
+def _cached_grid(lap: Lap, axis: str) -> ReferenceGrid:
+    return _grid_for(lap.directory, lap.ref_bins, lap.track_length_m, axis)
 
 
 @dataclass
@@ -180,6 +337,7 @@ class SampleConfig:
     roll_reference: bool = True
     jitter: bool = True
     min_ref_span: float = 0.9
+    reference_axis: str = "distance"
     # Restrict which laps may serve each role. Used to hold out whole laps: the
     # reference stays in the training set while the live lap has never been seen.
     reference_only: frozenset[str] | None = None
@@ -239,7 +397,7 @@ class AlignmentBatches(Dataset):
         self.steps = steps
         self.seed = seed
         self.tracks = index.pairable_tracks(
-            config.min_ref_span, config.reference_only, config.live_only
+            config.min_ref_span, config.reference_only, config.live_only, config.reference_axis
         )
         if not self.tracks:
             raise SystemExit(
@@ -254,14 +412,13 @@ class AlignmentBatches(Dataset):
     def __len__(self) -> int:
         return self.steps
 
-    def _reference_arrays(self, lap: Lap) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """(frames [N,H,W,3] uint8, bin s [N], bin speed [N]) on the uniform s grid."""
+    def _reference(self, lap: Lap) -> tuple[np.ndarray, ReferenceGrid]:
+        """(frames [N,H,W,3] uint8, grid) for one reference lap."""
         hit = self._cache.get(lap.lap_id)
         if hit is not None:
             return hit
-        ref_idx = lap.ref_idx()
-        gathered = np.asarray(lap.frames()[ref_idx])
-        value = (gathered, lap.s()[ref_idx], lap.speed_mps()[ref_idx])
+        grid = lap.reference_grid(self.config.reference_axis)
+        value = (np.asarray(lap.frames()[grid.frame_idx]), grid)
         if len(self._cache) >= self._cache_limit:
             self._cache.pop(next(iter(self._cache)))
         self._cache[lap.lap_id] = value
@@ -289,7 +446,8 @@ class AlignmentBatches(Dataset):
 
         track = str(rng.choice(self.tracks))
         references, lives = self.index.split_group(
-            track, config.min_ref_span, config.reference_only, config.live_only
+            track, config.min_ref_span, config.reference_only, config.live_only,
+            config.reference_axis,
         )
         reference_lap = references[int(rng.integers(0, len(references)))]
         live_pool = [lap for lap in lives if lap.lap_id != reference_lap.lap_id]
@@ -299,19 +457,19 @@ class AlignmentBatches(Dataset):
             reference_lap = next(r for r in references if any(l.lap_id != r.lap_id for l in lives))
             live_pool = [lap for lap in lives if lap.lap_id != reference_lap.lap_id]
 
-        ref_raw, ref_s, ref_speed = self._reference_arrays(reference_lap)
-        n_bins = ref_raw.shape[0]
+        ref_raw, grid = self._reference(reference_lap)
+        n_bins = grid.n_bins
         roll = int(rng.integers(0, n_bins)) if config.roll_reference else 0
-        if roll:
-            ref_raw = np.roll(ref_raw, roll, axis=0)
-            ref_s = np.roll(ref_s, roll)
-            ref_speed = np.roll(ref_speed, roll)
+        ref_raw = np.roll(ref_raw, roll, axis=0)
+        ref_s, ref_speed = np.roll(grid.frame_s, roll), np.roll(grid.speed_mps, roll)
+        ref_pos, ref_time = np.roll(grid.pos_m, roll), np.roll(grid.time_s, roll)
         ref_frames = _to_chw(ref_raw)
 
         clips = np.empty(
             (config.batch_size, config.clip_len) + ref_frames.shape[1:], dtype=np.float32
         )
         target = np.empty(config.batch_size, dtype=np.float64)
+        frame_targets = np.empty((config.batch_size, config.clip_len), dtype=np.float64)
         live_s = np.empty(config.batch_size, dtype=np.float64)
         live_ids: list[str] = []
         for i in range(config.batch_size):
@@ -320,9 +478,12 @@ class AlignmentBatches(Dataset):
             clip = _to_chw(np.asarray(live_lap.frames()[indices]))
             clips[i] = photometric_jitter(clip, rng) if config.jitter else clip
             # The final frame is the one being localised: causal, matching runtime.
-            s_now = float(live_lap.s()[indices[-1]])
+            frame_s = live_lap.s()[indices]
+            s_now = float(frame_s[-1])
             live_s[i] = s_now
-            target[i] = (s_now * n_bins + roll) % n_bins
+            target[i] = (float(grid.target(s_now)) + roll) % n_bins
+            # Where every clip frame sits, for supervising each frame's own row.
+            frame_targets[i] = (grid.target(frame_s) + roll) % n_bins
             live_ids.append(live_lap.lap_id)
 
         reference = photometric_jitter(ref_frames, rng) if config.jitter else ref_frames
@@ -331,10 +492,17 @@ class AlignmentBatches(Dataset):
             "live": torch.from_numpy(clips),
             "reference": torch.from_numpy(np.ascontiguousarray(reference)),
             "target": torch.from_numpy(target.astype(np.float32)),
+            "frame_targets": torch.from_numpy(frame_targets.astype(np.float32)),
             "soft_target": torch.from_numpy(
                 circular_soft_target(target, n_bins, config.sigma_bins)
             ),
             "ref_speed_mps": torch.from_numpy(ref_speed.astype(np.float32)),
+            # Position and reference time of every bin after the roll: errors
+            # in metres and milliseconds are both read off these.
+            "ref_pos_m": torch.from_numpy(ref_pos.astype(np.float32)),
+            "ref_time_s": torch.from_numpy(ref_time.astype(np.float32)),
+            "track_length_m": grid.track_length_m,
+            "lap_time_s": grid.lap_time_s,
             # Diagnostics: `ref_s` is the true s at each reference bin after the
             # roll, `live_s` the true s of each clip's final frame. Tests assert
             # that the target actually indexes the matching reference frame.

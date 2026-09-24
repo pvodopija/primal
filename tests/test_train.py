@@ -20,8 +20,19 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from train.dataset import AlignmentBatches, LapIndex, SampleConfig, circular_soft_target
-from train.model import SequenceAligner, alignment_loss, soft_argmax_circular
+from train.dataset import (
+    AlignmentBatches,
+    LapIndex,
+    SampleConfig,
+    build_reference_grid,
+    circular_soft_target,
+)
+from train.model import (
+    SequenceAligner,
+    alignment_loss,
+    compute_metrics,
+    soft_argmax_circular,
+)
 
 ML_ROOT = Path(__file__).resolve().parents[1]
 DATA = ML_ROOT / "data" / "_train_test"
@@ -62,11 +73,123 @@ def test_target_indexes_the_matching_reference_frame() -> None:
         expected = (live_s * n_bins + roll) % n_bins
         assert np.abs(target - expected).max() < 1e-3
 
-        # And the reference frame sitting at that index is the same place.
+        # Every bin holds a frame from its own position, not half a bin along.
+        # Frames filed at bin centres against targets at bin starts put every
+        # frame exactly half a bin off, which a looser bound let through.
+        # Frames land anywhere within half a frame-spacing of their bin, so the
+        # median, not the maximum, is what separates this from the bug.
+        home = (np.arange(n_bins) - roll) % n_bins
+        placement = np.abs(ref_s * n_bins - home) % n_bins
+        placement = np.minimum(placement, n_bins - placement)
+        assert np.median(placement) < 0.3, f"median placement {np.median(placement):.2f} bins"
+        assert placement.max() < 0.5, f"a bin holds a frame {placement.max():.2f} bins away"
+
+        # So the frame at the target index is the same place as the live frame,
+        # within rounding to the nearest bin plus that bin's own placement.
         bin_index = np.round(target).astype(np.int64) % n_bins
         gap = np.abs(ref_s[bin_index] - live_s)
         gap = np.minimum(gap, 1.0 - gap)  # the lap is a loop
-        assert gap.max() < 2.0 / n_bins, f"reference at target is {gap.max() * n_bins:.2f} bins away"
+        bound = 0.5 + placement.max() + 1e-3
+        assert gap.max() * n_bins <= bound, f"reference at target is {gap.max() * n_bins:.2f} bins away"
+
+
+def test_frame_targets_place_every_clip_frame() -> None:
+    index = _dataset()
+    for axis in ("distance", "time"):
+        config = SampleConfig(batch_size=6, clip_len=4, roll_reference=True, reference_axis=axis)
+        batches = AlignmentBatches(index, config, steps=6, seed=6)
+        for step in range(6):
+            batch = batches[step]
+            frames = batch["frame_targets"].numpy().astype(np.float64)
+            assert frames.shape == (6, 4)
+            # The last frame is the one being localised, so it is the target.
+            assert np.abs(frames[:, -1] - batch["target"].numpy()).max() < 1e-3
+            # A forward clip moves forward along the reference, a reversed one
+            # backward, a frozen one not at all.
+            n_bins = batch["reference"].shape[0]
+            step_bins = (np.diff(frames, axis=1) + n_bins / 2) % n_bins - n_bins / 2
+            signs = np.sign(np.round(step_bins, 3))
+            assert np.all((signs == signs[:, :1]) | (signs == 0)), "a clip changed direction"
+
+def test_time_axis_target_follows_the_reference_clock() -> None:
+    index = _dataset()
+    config = SampleConfig(
+        batch_size=6, clip_len=4, roll_reference=True, jitter=False, reference_axis="time"
+    )
+    batches = AlignmentBatches(index, config, steps=8, seed=4)
+    for step in range(8):
+        batch = batches[step]
+        grid = next(
+            lap for lap in index.laps if lap.lap_id == batch["reference_lap"]
+        ).reference_grid("time")
+        n_bins, roll = grid.n_bins, batch["roll"]
+        live_s = batch["live_s"].numpy().astype(np.float64)
+        expected = (grid.target(live_s) + roll) % n_bins
+        assert np.abs(batch["target"].numpy() - expected).max() < 1e-3
+        # Every bin is the same slice of reference time.
+        widths = np.diff(grid.time_s)
+        assert np.abs(widths - grid.lap_time_s / n_bins).max() < 1e-6
+
+
+def test_grid_handles_the_finish_line() -> None:
+    # The lap's last frame sits just before the line and its first a little
+    # after. Bin 0 must take whichever is nearer around the loop; a straight
+    # search only ever looked forward from the first frame.
+    s = np.linspace(0.02, 0.999, 500)
+    t = np.linspace(0.0, 50.0, 500)
+    speed = np.full(500, 20.0)
+    for axis in ("distance", "time"):
+        grid = build_reference_grid(s, t, speed, 100, 1000.0, axis)
+        assert grid.frame_idx[0] == 499, f"{axis}: bin 0 took frame {grid.frame_idx[0]}"
+        assert grid.placement_m.max() < 11.0
+
+
+def test_a_frame_exactly_on_the_line_ends_the_lap() -> None:
+    # Real laps can finish with a frame at s == 1.0. Wrapped to 0 before
+    # ordering, it was filed at the start of the lap carrying the lap's last
+    # timestamp, and the lap collapsed to zero duration.
+    s = np.linspace(0.0005, 1.0, 1000)
+    t = np.linspace(0.0, 85.0, 1000)
+    grid = build_reference_grid(s, t, np.full(1000, 20.0), 200, 1700.0, "time")
+    assert abs(grid.lap_time_s - 85.0) < 0.5, f"lap time {grid.lap_time_s:.2f} s"
+    assert np.all(np.diff(grid.time_s) > 0)
+    # And a live frame half way round lands half way along the time axis.
+    assert abs(float(grid.target(0.5)) - 100.0) < 1.0
+
+def test_grid_handles_a_stationary_stretch() -> None:
+    # A lap that stops dead for a while, then continues. On the time axis the
+    # stop spans many bins at one place, which must stay well-formed.
+    s = np.concatenate([np.linspace(0.0, 0.4, 200), np.full(50, 0.4), np.linspace(0.4, 1.0, 300)])
+    t = np.concatenate([np.linspace(0, 20, 200), np.linspace(20.1, 30, 50), np.linspace(30.1, 60, 300)])
+    speed = np.full(s.size, 20.0)
+    for axis in ("distance", "time"):
+        grid = build_reference_grid(s, t, speed, 128, 800.0, axis)
+        assert grid.frame_idx.shape == (128,)
+        assert grid.frame_idx.min() >= 0 and grid.frame_idx.max() < s.size
+        assert np.all(np.isfinite(grid.pos_m)) and np.all(np.isfinite(grid.time_s))
+        assert np.all(np.diff(grid.pos_m) >= -1e-9) and np.all(np.diff(grid.time_s) >= -1e-9)
+        assert grid.placement_m.max() < 800.0 / 128
+
+
+def test_metrics_read_both_units_off_the_grid() -> None:
+    # 100 bins over a 1000 m lap taking 100 s; the first half is twice as slow.
+    s = np.linspace(0.0, 0.999, 2000)
+    t = np.where(s < 0.5, s * 133.33, 66.67 + (s - 0.5) * 66.67)
+    speed = np.where(s < 0.5, 7.5, 15.0)
+    grid = build_reference_grid(s, t, speed, 100, 1000.0, "distance")
+    pos, time_s = torch.tensor(grid.pos_m), torch.tensor(grid.time_s)
+    # One bin (10 m) off in the slow half costs twice the time of the fast half.
+    m, ms = compute_metrics(
+        torch.tensor([20.0, 70.0]), torch.tensor([21.0, 71.0]),
+        pos, time_s, grid.track_length_m, grid.lap_time_s,
+    )
+    assert np.allclose(m, [10.0, 10.0], atol=1e-3)
+    assert abs(ms[0] / ms[1] - 2.0) < 0.05, f"slow/fast delta ratio {ms[0] / ms[1]:.3f}"
+    # And across the finish line the error is short, not most of a lap.
+    m, _ = compute_metrics(
+        torch.tensor([99.5]), torch.tensor([0.5]), pos, time_s, grid.track_length_m, grid.lap_time_s
+    )
+    assert abs(float(m[0]) - 10.0) < 1e-2
 
 
 def test_live_and_reference_are_never_the_same_lap() -> None:
