@@ -328,3 +328,89 @@ So one drive can become offset × weather renders, but probably not × time.
   now, before any rig render is packed.
 - **Second track:** planned for today's capture.
 
+
+---
+
+## 2026-09-24 — Windows → Mac
+
+### Ready: `data/packed_ac_v2`
+
+The first dataset built for **training** on real footage, rather than evaluating
+synthetic checkpoints. The user is bringing it over on USB; copy it into
+`data/packed_ac_v2`. `data/packed_ac` is unchanged and remains the zero-shot
+baseline.
+
+| Track | Split | Sessions | Complete laps | Notes |
+|---|---|---|---|---|
+| Brands Hatch Indy | train | 4 | 16 | no wander; one is the teal-sky style variant |
+| Vallelunga Club | train | 3 | 23 | |
+| Magione | train | 3 | 17 | |
+| Red Bull Ring National | train | 3 | 30 | |
+| Black Cat County Short | train | 3 | 8 | road-like, 6.4 km laps; see item 3 below |
+| **Silverstone National** | **holdout** | 3 | 23 | never trained on |
+
+Every track except Brands has the same three drives: Abarth at 12:00, Abarth at
+18:30, MX-5 at 09:00 overcast. Partial laps are packed too: 19 sessions, 143 laps
+(117 complete), 528,728 frames, 18 GB. The Brands smoke test is excluded.
+
+- **Wander on every session except Brands.** The camera drifts sideways from
+  the car, smoothly and at random, about ±1.7 m (5th–95th percentile), with the
+  heading turning along the drift (under 5°). It follows distance driven, so no
+  two laps take the same line through a corner. Labels are the camera's own
+  track position, so they stay exact. See `docs/capture-log.md`.
+- **Geometry:** 148x80, square pixels (`pixel_aspect` 1.006), 91.5° horizontal
+  and 57.8° vertical FOV, 2 m bins, 60 fps, all recorded per lap in
+  `index.json`. The synthetic data was 128x80 and squeezed; the encoder pools to
+  a fixed grid, so 148x80 loads as is.
+
+### Verified before packing
+
+- Checksum 100.00% on every session; no HUD or damage schematic anywhere.
+- One split per track, Silverstone the only holdout; one track length per
+  track; label offsets only on the four pre-change Brands sessions.
+- **Independent label check across sessions:** ORB + RANSAC inliers between
+  frames labelled with the same `s` in different sessions, against the same
+  frames 40 m ahead and behind. The aligned pair wins 82–100% per track. The
+  losses are low-feature ties (1–17 inliers each side), never a confident match
+  at the wrong place.
+- Fixed during the check: the Silverstone MX-5 had been imported as `train` and
+  is now `holdout`; two Silverstone Abarth drives had not been imported and were
+  imported by hand, with their rig logs matched by timestamp.
+
+### Caveats
+
+- **`line_mean_m` is about 0 on wander laps by construction** and says nothing
+  about which lines a lap covered, so the `lines` gate is meaningless on this
+  set. Per-frame lateral position is in each session's `rig_log.csv`, in
+  `data/sessions` on the Windows box, not in the packed data.
+- Two AC freezes of about 0.35 s split a lap each (Black Cat `183526Z`, Red
+  Bull Ring `174436Z`).
+- OBS duplicated 1–8% of frames (dropped at packing) and left 0–1 holes per
+  MP4 timeline.
+- Dusk is less dark on some tracks (sunset depends on location), but it is
+  clearly colour-shifted in every case.
+
+### What the user would like run, in order
+
+1. `train.preview pair` on one training track and on Silverstone.
+2. **Train on `packed_ac_v2`**, G1, then G2 on Silverstone, with **both the
+   wrong-reference and leakage controls** — mandatory per `AGENTS.md`, and
+   possible now that there are six tracks. `g1_yaw` transferred better than
+   `g1_scale` zero-shot, which points at stronger augmentation, not a bigger
+   model.
+3. **Black Cat ablation:** the same run without Black Cat County, compared on
+   G2. It looks like a road rather than a circuit, and its long stretches of
+   similar desert with regular lane markings are a candidate for aliasing, so
+   report its own per-track error too.
+4. **Sky test:** evaluate with the top third of every frame blacked out. Clouds
+   are too far away to say much about position, but they do say which way the
+   camera faces, and within one session they look the same every lap, so a
+   model can localise partly by heading. Cross-session pairs (about two thirds
+   of training pairs) punish that; same-session pairs reward it. A large error
+   rise with the sky hidden means it leans on clouds. If it does, randomly mask
+   the sky during training, bias the sampler toward cross-session pairs, or both.
+5. **Frame-drop robustness:** the product streams wirelessly from glasses to a
+   phone, so augment clips with randomly dropped and duplicated frames,
+   irregular timing, and compression blur.
+
+Numbers even if they are bad, please.
