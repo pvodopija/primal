@@ -77,14 +77,15 @@ class ProgressEstimator:
         self.speed: np.ndarray | None = None
         self.weight: np.ndarray | None = None
 
-    def _to_bin(self, position: np.ndarray) -> np.ndarray:
-        return np.interp(position % self.length, self._pos, self._bins)
+    def bin_of(self, position: np.ndarray) -> np.ndarray:
+        """Reference bin coordinate of a track position: what a delta lookup needs."""
+        return np.interp(np.asarray(position) % self.length, self._pos, self._bins)
 
     def _to_position(self, bins: np.ndarray) -> np.ndarray:
         return np.interp(bins % self.n_bins, self._bins, self._pos)
 
     def _likelihood(self, belief: np.ndarray, position: np.ndarray) -> np.ndarray:
-        x = self._to_bin(position)
+        x = self.bin_of(position)
         k0 = np.floor(x).astype(np.int64) % self.n_bins
         frac = x - np.floor(x)
         p = (1.0 - frac) * belief[k0] + frac * belief[(k0 + 1) % self.n_bins]

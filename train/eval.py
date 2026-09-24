@@ -26,7 +26,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from train.dataset import AlignmentBatches, LapIndex, SampleConfig, circular_soft_target
+from train.dataset import AlignmentBatches, Lap, LapIndex, SampleConfig, _to_chw, circular_soft_target
+from train.estimator import EstimatorConfig, ProgressEstimator
 from train.model import (
     AlignmentMetrics,
     FrameOnlyRegressor,
@@ -506,6 +507,164 @@ def cmd_leakage(args: argparse.Namespace) -> None:
     print(f"\nwrote {out}")
 
 
+STREAM_HZ = 15.0
+ACQUISITION_S = 2.0
+# With an independent speed signal the filter should lean on dead reckoning and
+# temper vision hard; tuned on held-out laps of trained tracks with speed known
+# to +-2 m/s.
+SPEED_FED = dict(accel_noise=8.0, likelihood_power=0.2)
+
+
+def _stream_pairs(data: Path, axis: str, holdout_laps: int) -> list[tuple[str, Lap, Lap]]:
+    """
+    (gate, reference, live) triples, always across sessions: in the product the
+    reference lap and the live lap are driven on different days. G1 lives are the
+    laps held out of training; G2 lives come from the held-out track.
+    """
+    pairs: list[tuple[str, Lap, Lap]] = []
+    for split, gate in (("train", "G1"), ("holdout", "G2")):
+        index = LapIndex.load(data, split=split)
+        reserved = holdout_live_laps(index, 1) if gate == "G1" else None
+        for _, group in sorted(index.by_track.items()):
+            lives = [l for l in group if l.s_span > 0.98 and (reserved is None or l.lap_id in reserved)]
+            if gate == "G2":
+                lives = lives[:holdout_laps]
+            for live in lives:
+                by_session: dict[str, Lap] = {}
+                for ref in group:
+                    if ref.session_id == live.session_id or ref.session_id in by_session:
+                        continue
+                    if reserved is not None and ref.lap_id in reserved:
+                        continue
+                    if ref.usable_as_reference(0.98, axis):
+                        by_session[ref.session_id] = ref
+                pairs += [(gate, ref, live) for ref in list(by_session.values())[:2]]
+    return pairs
+
+
+def _instantaneous_speed(s: np.ndarray, t: np.ndarray, frames: np.ndarray, length: float) -> np.ndarray:
+    """Speed now, from the labels: a central difference over 0.1 s, not a clip average."""
+    a = np.clip(frames - 3, 0, s.size - 1)
+    b = np.clip(frames + 3, 0, s.size - 1)
+    ds = ((s[b].astype(np.float64) - s[a] + 0.5) % 1.0 - 0.5) * length
+    return ds / np.maximum(t[b].astype(np.float64) - t[a], 1e-3)
+
+
+@torch.no_grad()
+def _lap_stream(model, clip_len: int, reference: Lap, live: Lap, axis: str, stride: int,
+                device: torch.device, window: int) -> dict:
+    """One belief per tick along a whole live lap, as the phone would receive them."""
+    grid = reference.reference_grid(axis)
+    ref = model.encode_reference(
+        torch.from_numpy(_to_chw(np.asarray(reference.frames()[grid.frame_idx]))).to(device),
+        use_checkpoint=False,
+    )
+    frames = live.frames()
+    desc = torch.cat([
+        model.encode_reference(
+            torch.from_numpy(_to_chw(np.asarray(frames[i : i + 256]))).to(device), use_checkpoint=False
+        )
+        for i in range(0, live.n_frames, 256)
+    ])
+    every = max(int(round(live.fps / STREAM_HZ)), 1)
+    ticks = np.arange((clip_len - 1) * stride, live.n_frames, every)
+    clip_idx = ticks[:, None] - np.arange(clip_len - 1, -1, -1)[None, :] * stride
+    scale = model.logit_scale.exp()
+    beliefs, single = [], []
+    for chunk in np.array_split(np.arange(ticks.size), max(1, ticks.size // 64)):
+        corr = torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(clip_idx[chunk]).to(device)], ref) * scale
+        logits = model.head(corr)
+        single.append(soft_argmax_circular(logits, window=window).float().cpu())
+        beliefs.append(logits.softmax(dim=-1).cpu().double())  # MPS has no float64
+    s, t = live.s(), live.t()
+    return {
+        "grid": grid,
+        "belief": torch.cat(beliefs).numpy(),
+        "single": torch.cat(single),
+        "target": torch.from_numpy(grid.target(s[ticks]).astype(np.float32)),
+        "t": t[ticks].astype(np.float64),
+        "speed": _instantaneous_speed(s, t, ticks, live.track_length_m),
+    }
+
+
+def _stream_errors(stream: dict, predicted_bins: torch.Tensor) -> tuple[np.ndarray, np.ndarray]:
+    g = stream["grid"]
+    m, ms = compute_metrics(
+        predicted_bins.float(), stream["target"],
+        torch.from_numpy(g.pos_m.astype(np.float32)), torch.from_numpy(g.time_s.astype(np.float32)),
+        g.track_length_m, g.lap_time_s,
+    )
+    skip = int(ACQUISITION_S * STREAM_HZ)
+    return m[skip:], ms[skip:]
+
+
+def _run_estimator(stream: dict, config: EstimatorConfig, speed: np.ndarray | None,
+                   speed_sigma: float | None, seed: int) -> torch.Tensor:
+    g = stream["grid"]
+    est = ProgressEstimator(g.pos_m, g.track_length_m, config, seed=seed)
+    dts = np.diff(stream["t"], prepend=stream["t"][0] - 1.0 / STREAM_HZ)
+    out = np.empty(dts.size)
+    for i, (belief, dt) in enumerate(zip(stream["belief"], dts)):
+        obs = None if speed is None else float(speed[i])
+        out[i] = est.bin_of(est.step(belief, dt, speed_obs=obs, speed_sigma=speed_sigma).position_m)
+    return torch.from_numpy(out)
+
+
+def cmd_stream(args: argparse.Namespace) -> None:
+    """
+    Whole laps at 15 Hz through the estimator, the way the product runs.
+
+    Scores the aligner's single-shot answers against the particle filter on the
+    same ticks, cross-session only. With --speed-sigma, it also feeds the filter
+    the true speed from the labels plus --speed-noise (fractional, random per
+    tick), which measures how much an independent speed sensor would be worth
+    before anyone builds one. The first two seconds of each lap are acquisition
+    and are left out of the scores.
+    """
+    device = torch.device(args.device)
+    model, payload = load_model(Path(args.checkpoint), device)
+    clip_len = int(payload["args"]["clip_len"])
+    axis = reference_axis_of(payload)
+    pairs = _stream_pairs(Path(args.data), axis, args.holdout_laps)
+    rng = np.random.default_rng(args.seed)
+
+    kinds = ["single", "filter"] + (["filter + speed"] if args.speed_sigma else [])
+    scores: dict[str, dict[str, list]] = {g: {k: [[], []] for k in kinds} for g in ("G1", "G2")}
+    for gate, reference, live in pairs:
+        stream = _lap_stream(model, clip_len, reference, live, axis, args.stride, device, args.window)
+        runs = {
+            "single": stream["single"],
+            "filter": _run_estimator(stream, EstimatorConfig(), None, None, args.seed),
+        }
+        if args.speed_sigma:
+            speed = stream["speed"] * (1.0 + rng.normal(0.0, args.speed_noise, stream["speed"].size))
+            runs["filter + speed"] = _run_estimator(
+                stream, EstimatorConfig(**SPEED_FED), speed, args.speed_sigma, args.seed
+            )
+        for kind, bins in runs.items():
+            m, ms = _stream_errors(stream, bins)
+            scores[gate][kind][0].append(m)
+            scores[gate][kind][1].append(ms)
+        print(f"  {gate} {live.track[:28]:<28} ref {reference.session_id[-7:]}  live {live.session_id[-7:]}", flush=True)
+
+    report = {}
+    print(f"\n{'':22}{'median':>17}{'p90':>9}{'>100 ms':>9}{'>10 m':>8}{'worst':>10}")
+    for gate in ("G1", "G2"):
+        for kind in kinds:
+            m, ms = (np.concatenate(v) for v in scores[gate][kind])
+            if m.size == 0:
+                continue
+            row = dict(median_m=float(np.median(m)), median_ms=float(np.median(ms)),
+                       p90_ms=float(np.percentile(ms, 90)), over_100ms=float(np.mean(ms > 100)),
+                       over_10m=float(np.mean(m > 10)), worst_m=float(m.max()), ticks=int(m.size))
+            report[f"{gate} {kind}"] = row
+            print(f"{gate + ' ' + kind:<22}{row['median_m']:>8.2f} m {row['median_ms']:>4.0f} ms"
+                  f"{row['p90_ms']:>6.0f} ms{100 * row['over_100ms']:>8.1f}%{100 * row['over_10m']:>7.1f}%"
+                  f"{row['worst_m']:>9.1f} m")
+    if args.out:
+        Path(args.out).write_text(json.dumps({"checkpoint": args.checkpoint, "args": {k: v for k, v in vars(args).items() if k != "func"}, "report": report}, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -560,6 +719,19 @@ def main() -> None:
     leak.add_argument("--out")
     leak.add_argument("--device", default=default_device())
     leak.set_defaults(func=cmd_leakage)
+
+    stream = sub.add_parser("stream", help="whole laps at 15 Hz through the estimator, as the product runs")
+    stream.add_argument("--data", required=True)
+    stream.add_argument("--checkpoint", required=True)
+    stream.add_argument("--stride", type=int, default=4, help="frames between clip frames")
+    stream.add_argument("--holdout-laps", type=int, default=3, help="live laps taken from the held-out track")
+    stream.add_argument("--speed-sigma", type=float, help="also feed the filter the true speed, stated to +-this m/s")
+    stream.add_argument("--speed-noise", type=float, default=0.0, help="fractional random error added to that speed")
+    stream.add_argument("--window", type=int, default=8)
+    stream.add_argument("--seed", type=int, default=0)
+    stream.add_argument("--out")
+    stream.add_argument("--device", default=default_device())
+    stream.set_defaults(func=cmd_stream)
 
     args = parser.parse_args()
     args.func(args)
