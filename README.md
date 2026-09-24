@@ -237,7 +237,16 @@ sub-pixel disparity out of a stereo cost volume.
 
 # the leakage control, trained from scratch
 ./.venv/bin/python -m train.eval leakage --data data/packed
+
+# whole laps at 15 Hz through the estimator, the way the product runs;
+# --speed-sigma also feeds it the true speed, to price a speed sensor
+./.venv/bin/python -m train.eval stream --data data/packed --checkpoint runs/<name>/best.pt --speed-sigma 2.0
 ```
+
+Training defaults to time-spaced reference bins (`--reference-axis time`) and to
+supervising every clip frame (`--aux-all-frames`). A checkpoint records its axis
+and evaluation reuses it; checkpoints from before the reference-grid fix refuse
+to load.
 
 | Gate | Question | Reading |
 |------|----------|---------|
@@ -247,8 +256,8 @@ sub-pixel disparity out of a stereo cost volume.
 | lines | live lap on a different driving line from the reference | error must not grow with line separation |
 | lines --axis yaw | live lap with the camera turned relative to the reference | error must not grow with yaw separation |
 
-Measured on 18 synthetic tracks: G1 1.35 m, G2 1.41 m, line ratio 1.06x,
-yaw ratio 1.16x, both controls passing. See [docs/ml-pivot.md](docs/ml-pivot.md).
+On real Assetto Corsa footage (six tracks, Silverstone held out): G1 1.45 m /
+46 ms, G2 3.58 m / 96 ms, both controls passing. See [docs/ml-pivot.md](docs/ml-pivot.md).
 
 ### Devices
 
@@ -393,7 +402,8 @@ is wrong, and no amount of training will fix it.
 ```powershell
 .\.venv\Scripts\python.exe -m tests.test_timecode      # wire format, compression, locator
 .\.venv\Scripts\python.exe -m tests.test_pipeline_e2e  # fake recording -> calibrate -> decode -> pack
-.\.venv\Scripts\python.exe -m tests.test_train         # sampler invariants and a learning smoke test
+.\.venv\Scripts\python.exe -m tests.test_train         # sampler and reference-grid invariants, learning smoke test
+.\.venv\Scripts\python.exe -m tests.test_estimator     # particle filter on synthetic belief streams
 ```
 
 ---
@@ -412,10 +422,11 @@ is wrong, and no amount of training will fix it.
     overlay_decode.py    mp4 -> labels.parquet
     pack.py              mp4 + labels -> packed per-lap arrays
   train/
-    dataset.py           lap pairing, reference rolling, stride, soft targets
-    model.py             encoder + correlation + dilated 1-D conv head
+    dataset.py           lap pairing, reference grid (distance or time bins), rolling, stride, soft targets
+    model.py             encoder + correlation + dilated 1-D conv head, exact metrics
+    estimator.py         particle filter over (position, speed) fed one belief per tick
     train.py
-    eval.py              gates and negative controls
+    eval.py              gates, negative controls, whole-lap estimator streams
     synthetic.py         procedural track renderer, for pipeline and architecture checks
     preview.py           render packed laps back out as video or contact sheets
   tests/

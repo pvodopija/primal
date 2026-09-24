@@ -555,3 +555,97 @@ tail even where it does not move the centre.
 Artifacts: `runs/ac2_g1/` (best.pt, gates.json, leakage.json) and
 `runs/ac2_g1_noblackcat/`. Gitignored, as is
 `data/packed_ac_v2_noblackcat` (symlinks only, no frames copied).
+
+---
+
+## 2026-09-24 (later) — Mac → Windows
+
+A long implementation session on `data/packed_ac_v2`. Design detail and every
+number are in [`ml-pivot.md`](ml-pivot.md) (*Measured, on real footage*,
+*What moved the numbers*, *Estimator*). This entry covers what affects the
+capture side and what is worth knowing there.
+
+### Code changes that touch the Windows side
+
+- **`pack.py` no longer writes `ref_idx.npy`**, and `reference_index_map` is
+  gone. Training now builds each reference grid itself from `s.npy` and `t.npy`.
+  Existing packed data still works; the extra file is just ignored. Anything on
+  the Windows side that reads `ref_idx.npy` should stop.
+- **Checkpoints trained before this change refuse to load.** They were trained
+  on the old grid (below) and would read half a bin off.
+- `train.train` now defaults to `--reference-axis time` and `--aux-all-frames`.
+
+### Bugs found in the reference grid, now fixed
+
+- Reference frames were filed at bin *centres* while targets counted from bin
+  *starts*: every frame sat 1 m from its index. Trained models learned the
+  offset, so accuracy was unaffected, but it put the demo videos' TRUE panel on
+  the wrong frame about half the time and inflated the SeqSLAM self-match check
+  to 0.55 bins (it was really ~0.05).
+- The nearest-frame search ignored the lap wrap, so bin 0 could hold a frame
+  2.2 m past the line (up to 17 m) while a closer one sat just before it. This is
+  what the user spotted in the finish-line frame of the demo.
+
+### Recording holes
+
+Four laps have a gap wider than one bin and are no longer used as references
+(they still serve as live laps):
+
+| lap | worst gap | span |
+|---|---|---|
+| `ks_red_bull_ring__layout_national__20260922T232216Z__lap09` | 62.6 m | 0.946 |
+| `ks_brands_hatch__indy__20260921T171903Z__lap04` | 9.1 m | 0.990 |
+| `ks_brands_hatch__indy__20260921T221531Z__lap02` | 5.2 m | 0.994 |
+| `ks_vallelunga__club_circuit__20260922T222513Z__lap00` | 2.6 m | 0.997 |
+
+The Red Bull Ring one is the lap split by the 0.35 s AC freeze. The other three
+end or start short of the line; worth knowing if the lap splitter can be made
+to keep the frames either side of the wrap.
+
+### Inter-session label offsets
+
+Matching session A against B and B against A gives biases of opposite sign if
+the *labels* disagree, and the same sign if the *model* is biased. The
+antisymmetric part, consistent across sessions within each track:
+
+- **Silverstone `105441Z` vs `105442Z`: about 1.0-1.3 m.** Both Abarth, and the
+  two sessions that were imported by hand with rig logs matched by timestamp.
+  Same car should show no offset. Worth a look.
+- **Brands MX-5 (`221531Z`) against the Abarth sessions: about 0.6-0.8 m.**
+  Probably a residue of the pre-change `label_offset_m` correction.
+- **Vallelunga dusk against noon: about 0.67 m**, same car, unexplained.
+
+This test goes through the model, so an appearance-dependent model bias could
+mimic an offset; treat these as upper bounds. At slow-corner speeds 0.67 m is
+about 45 ms of systematic delta error.
+
+### What was measured
+
+- **Time-spaced reference bins** cut delta error in slow sections by up to ~20%
+  and are neutral at speed. Now the default.
+- **Supervising every clip frame** gives the best model on trained tracks (26%
+  -> 21% of ticks over 100 ms); the unseen track is unchanged.
+- **Weighting the loss by 1/speed** moved error from corners to straights with
+  no net gain. Removed.
+- **A particle filter** (`train/estimator.py`) removes the catastrophic tail
+  but leaves the median alone.
+- **Speed is the missing input.** Given the true speed, the filter takes
+  Silverstone from 57% of ticks over budget to 12-17%, catastrophic errors under
+  1%. A slowly *drifting* speed is worse than none. Speed read off the
+  reference match is capped by per-frame precision (11% error on trained tracks,
+  33% on Silverstone) and does not work.
+
+### Most useful from the capture side
+
+1. **Log AC's own acceleration and speed per frame** from shared memory
+   (`accG`, `speedKmh`) alongside the timecode. That allows simulating a
+   drifting phone IMU with exact ground truth, and building the filter's
+   bias-estimating speed fusion before any hardware exists.
+2. **More circuits.** Track generalisation costs 2.7x and nothing tried has
+   moved it.
+3. The Silverstone hand-imported pair's offset, and whether the lap splitter
+   can keep frames across the wrap.
+
+`python -m train.eval stream` reproduces the estimator and speed results; its
+reports for the current model are in `runs/ac2_time_allframes/stream_seed*.json`
+(gitignored).

@@ -97,6 +97,32 @@ is not 1×1 on purpose: *where* a landmark sits in frame is evidence for
 sub-bin alignment. Note this makes the weights *loadable* across resolutions,
 not *invariant* to field of view — see *Cameras and field of view*.
 
+**The reference is a grid built from the lap's own labels.** Each reference lap
+is resampled onto N bins. Bin k sits at axis coordinate k/N and holds the frame
+nearest it, found around the loop so the finish line is not an edge. A live
+frame's target is its own axis coordinate times N, so a live frame at the same
+place as bin k's frame targets exactly k. Every bin also records its track
+position and the reference lap's elapsed time there, so errors in metres and in
+milliseconds are read straight off the grid. The milliseconds are the difference
+in reference time between the predicted and the true place, which is exactly
+the delta error.
+
+**Bins are spaced in reference time, not distance** (`--reference-axis`, default
+`time`). A time bin is the same slice of delta everywhere: about 1 m apart in
+slow corners and 2.5 m on straights, at the same bin count. A 2 m distance bin
+instead spans anything from 28 ms on a fast straight to 191 ms in a slow
+corner. Either way a bin is a *place*: the reference lap is a finished
+recording, so standing still keeps you in one bin while your own clock runs.
+
+A reference lap with a hole wider than one bin is not used as a reference: a bin
+whose picture shows somewhere else is a wrong answer baked into the map. It
+still serves as a live lap, where a hole does no harm.
+
+**Every clip frame is supervised**, not just the last (`--aux-all-frames`,
+default on): each frame's correlation row is trained against its own position.
+
+**An estimator tracks progress over time** — see *Estimator*.
+
 ### Why the output is a distribution
 
 The prediction is continuous, read out by soft-argmax over reference bins, but
@@ -289,30 +315,36 @@ The sim-to-real gap is entirely unmeasured and is the largest open risk.
 
 ## Measured, on real footage
 
-19 Assetto Corsa sessions over six tracks, 143 laps, 148x80 square pixels, 2 m
-bins, Silverstone National held out entirely. Trained from scratch on this data;
-the synthetic checkpoints were not used as initialisation.
+19 Assetto Corsa sessions over six tracks, 143 laps, 148x80 square pixels,
+Silverstone National held out entirely. Trained from scratch on this data; the
+synthetic checkpoints were not used as initialisation. Current model: time bins,
+every frame supervised (`runs/ac2_time_allframes`).
 
 | gate | median | p90 | within 5 | entropy |
 |---|---|---|---|---|
-| seen laps, seen tracks | 1.54 m / 44.9 ms | 4.74 m | 98.1% | 2.296 |
-| **G1** held-out laps | **1.72 m / 54.4 ms** | 5.01 m | 99.7% | 2.300 |
-| **G2** unseen track | **3.85 m / 99.1 ms** | 100.5 m / 2945 ms | 77.5% | 2.983 |
-| wrong-reference control | 1.44 m -> 575.65 m | | | PASS |
+| seen laps, seen tracks | 1.33 m / 41.8 ms | 4.49 m / 145 ms | 98.8% | 2.259 |
+| **G1** held-out laps | **1.45 m / 46.1 ms** | 4.55 m / 147 ms | 99.7% | 2.273 |
+| **G2** unseen track | **3.58 m / 95.9 ms** | 87.3 m / 1860 ms | 78.1% | 3.126 |
+| wrong-reference control | 1.28 m -> 577.19 m | | | PASS |
 | leakage control | seen 4.15 bins, holdout 58.47 (chance 64) | | | PASS |
+
+The leakage control measures the data rather than the model, and the data has
+not changed since it passed. Milliseconds are exact reference-time differences;
+earlier figures divided metres by local speed, which misstates slow corners.
 
 ### What this established
 
 **Synthetic pretraining does not transfer, and the architecture was never the
 problem.** Evaluated zero-shot on real footage, a synthetic checkpoint read
 464 m against a 479 m chance level — indistinguishable from guessing. The same
-architecture trained on real footage reaches 1.72 m on held-out laps. G0 on a
+architecture trained on real footage reaches 1.45 m on held-out laps. G0 on a
 single real lap pair reaches 0.17 m. Nothing was wrong with the model, the
 packing or the labels; the sim-to-real gap is simply total.
 
-**The binding constraint is number of tracks.** Lap generalisation costs 1.12x
-(1.54 -> 1.72 m). Track generalisation costs 2.5x (1.54 -> 3.85 m). Six
-circuits is what limits G2, not laps per circuit and not capacity.
+**The binding constraint is number of tracks.** Lap generalisation costs 1.09x
+(1.33 -> 1.45 m). Track generalisation costs 2.7x (1.33 -> 3.58 m). Six
+circuits is what limits G2, not laps per circuit and not capacity. Nothing that
+has improved held-out laps has moved the unseen track.
 
 **The leakage control is now a working instrument.** On synthetic it scored at
 chance on seen tracks as well as held-out ones, so a null result could not
@@ -321,11 +353,10 @@ succeeds where memorisation is possible (4.15 bins against chance 64) and fails
 where it must (58.47 bins). Its PASS now carries evidential weight.
 
 **The aliasing tail survived the move to real data, and it is what blocks the
-product.** G2's median meets the 100 ms budget at 99.1 ms; its p90 is 2945 ms,
-roughly 30x over, and 22.5% of ticks land outside five bins against 0.3% on G1.
-On an unseen circuit the model is usually right and occasionally catastrophically
-wrong. No amount of data has moved this, on synthetic or real. Closing it is the
-estimator's entire job.
+product.** G2's median sits at the 100 ms budget; its p90 is 1860 ms and 22% of
+ticks land outside five bins against 0.3% on G1. On an unseen circuit the model
+is usually right and occasionally catastrophically wrong. No amount of data has
+moved this, on synthetic or real. See *Estimator* for what does.
 
 ### Where the model looks
 
@@ -351,6 +382,119 @@ Degrading only the live clip, since the reference is a stored map: held frames
 track. The existing sampler already covers this — `p_static` is a wireless
 stall and the stride ladder is irregular timing. The blur figure is optimistic;
 a box filter is not low-bitrate H.264.
+
+### What moved the numbers, and what did not
+
+| change | measured effect | verdict |
+|---|---|---|
+| Grid fix (frames at bin centres against targets at bin starts; finish-line search) | accuracy unchanged | the model had learned the half-bin offset; the bug corrupted the demo videos, the SeqSLAM check and the metrics |
+| Loss weighted by 1/speed | slow corners 55% -> 45% over budget, fast straights 17% -> 20%; overall 24% -> 25% | no net gain: the model is precision-limited, not allocation-limited. Removed |
+| Time bins | slow sections up to ~20% less delta error on whole-lap streams, neutral at speed | modest gain exactly where the budget is tightest. Default |
+| Every clip frame supervised | G1 26% -> 21% of ticks over 100 ms; G2 unchanged | best model on trained tracks. Default |
+| Clip span 0.37 s -> 0.73 s at inference | Silverstone single-shot p90 2.3 s -> 0.8 s | more temporal context is cheap robustness against look-alikes |
+
+One training seed each; the per-speed comparisons were checked on both random
+clips and whole-lap streams before being believed, and the first read of time
+bins overstated them.
+
+## Estimator
+
+`train/estimator.py` is a particle filter over (track position, speed) that folds
+in one belief per tick, as the phone would receive them. No learning.
+
+- **Predict**: advance each particle by its speed, with room to brake and accelerate.
+- **Update**: weight it by the belief at its position — tempered, because ticks
+  are correlated and the softmax is overconfident, and floored, so a confidently
+  wrong tick only dents the true place.
+- **Recover**: redraw a small share of particles from the belief every tick at
+  a tiny prior weight. One wrong tick barely registers; a few ticks of
+  consistent contradicting evidence take over. That is "recover as soon as the
+  driver looks forward again".
+- **Output**: the densest particle cluster's position, and its share of the
+  weight as confidence.
+
+Measured with `python -m train.eval stream`: whole cross-session laps at 15 Hz,
+clip frames 1/15 s apart (a 0.73 s span), the first 2 s of each lap left out as
+acquisition. Streams are harsher than the random-clip gates: every pair crosses
+sessions, and every Silverstone live lap is an MX-5 against Abarth references.
+
+| | median | p90 | >100 ms | >10 m | worst |
+|---|---|---|---|---|---|
+| G1 single-shot | 1.66 m / 59 ms | 151 ms | 25.2% | 0.8% | 110 m |
+| G1 filter | 1.66 m / 58 ms | 158 ms | 26.2-26.6% | 0.7% | 37 m |
+| G2 single-shot | 4.60 m / 125 ms | 1558 ms | 59.5% | 22.1% | 1272 m |
+| G2 filter | 4.34 m / 117 ms | 313 ms | 56.9-57.4% | 15.9% | 1178 m |
+
+**It removes the tail and leaves the median alone.** The worst case on trained
+tracks falls from 110 m to 37 m, and the unseen track's p90 from 1.6 s to 0.3 s.
+
+### Why the median does not move
+
+Per-tick errors are correlated noise rather than a fixed bias. Consecutive
+ticks share most of their clip frames (lag-1 autocorrelation 0.84-0.96), but
+errors decorrelate within about a second, so they *could* be averaged — by
+carrying position accurately across more than a second, which needs the speed.
+The filter can only infer speed from the same noisy position stream, so it
+cannot average without lagging through braking zones. On the unseen track the
+remaining failures are sticky: the aligner stays confidently wrong for 1-3 s,
+and after a few ticks the filter follows it. A constant per-pair bias of up to
+0.9 m sits underneath, consistent with the inter-session label offsets.
+
+### Speed is the missing input
+
+The same streams, with the filter also given the true speed from the labels
+(a 0.1 s central difference) plus controlled error. Ranges are over three
+filter seeds.
+
+| speed given to the filter | G1 >100 ms | G2 >100 ms | G2 >10 m | G2 median |
+|---|---|---|---|---|
+| none | 26.2-26.6% | 56.9-57.4% | 15.9% | 117 ms |
+| **true, stated to +-2 m/s** | **6.1-6.8%** | **12.4-16.5%** | **0.6%** | **52-55 ms** |
+| true, +3% random per tick | 9.9% | 20.6% | 2.7% | 60 ms |
+| true, 5% slowly drifting error | 50.3% | 71.6% | 17.1% | 152 ms |
+| true, 10% slowly drifting error | 68.8% | 71.0% | 27.0% | 171 ms |
+
+**An unbiased speed signal is worth more on the unseen track than everything
+else measured put together.** It takes Silverstone from 57% of ticks over budget
+to 12-17%, and catastrophic errors from 16% to under 1%, worst case 14.7 m.
+With it the filter wants to trust vision far less (likelihood power 0.2) and
+dead-reckon between fixes.
+
+**A slowly drifting speed is worse than none.** The filter believes it and
+dead-reckons away from the truth. A speed source must be unbiased, or the filter
+must carry its bias as a state — the standard way to fuse a drifting inertial
+sensor with position fixes, which vision would provide here.
+
+The filter must also be told a realistic uncertainty. Given the exact speed but
+told it was good to +-0.3 m/s, it collapsed its speed spread and did worse
+(21% over budget on G1) than when told +-2 m/s (6.5%).
+
+### Where the speed can come from
+
+- **Not from the reference match.** Reading speed off the slope of the clip's
+  path through the reference is a finite difference of per-frame positions, so
+  it cannot beat per-frame precision divided by the clip span: 11% error on
+  trained tracks and 33% on Silverstone even with every frame supervised, and
+  it makes the filter worse. A line search over candidate slopes (SeqSLAM's
+  velocity search on learned rows) is immune to look-alike frames — 0.03 against
+  1-2 bins per step for a per-frame fit on synthetic rows — but cannot beat that
+  bound either. Measured, and removed.
+- **Frame-to-frame visual motion.** Ego-motion measured between consecutive live
+  frames, independent of the reference: the motion vectors of video
+  compression. The road plane and the known camera height give it metric scale.
+  Unbuilt.
+- **The phone IMU**, already planned as a filter input. Integrated acceleration
+  drifts, so the filter needs a speed-bias state; vision supplies the fixes that
+  make the bias observable. Unbuilt.
+
+### Confidence
+
+On an earlier model, filter confidence flagged catastrophic errors with AUC 0.77
+but ordinary misses not at all (0.49 on G1): it reads 1.0 while locked onto the
+wrong place. Hiding the least confident 30% of Silverstone ticks cut those more
+than 10 m out from 16% to 9%. An "unavailable" readout needs a sharper signal,
+most likely the disagreement between the filter's prediction and the incoming
+belief.
 
 ## Head movement
 
@@ -389,31 +533,20 @@ one of them.
 
 ## Not built yet
 
-### Estimator — the missing half
+### An independent speed signal
 
-Classical recursive Bayesian estimation over `(s, v)`. No learning.
+The largest measured lever on the unseen track, and unbuilt. It must be unbiased
+or have its bias estimated. See *Estimator*.
 
-- **Particle filter, not Kalman.** The belief is genuinely multi-modal during
-  acquisition and after an excursion, which is exactly what the measured
-  aliasing tail looks like.
-- **Widen, don't drift.** Where the observation is uncertain, the belief must
-  grow rather than become confidently wrong.
-- **Emits `s` with covariance**, and the display suppresses or greys out above
-  a threshold. This is the mechanism that implements the abstain decision
-  above. Showing nothing beats showing a wrong delta.
+### An abstain signal
 
-The measured tail is the case for this: the network usually *has* the right
-answer as a secondary peak and merely picks the wrong one. A filter carrying
-"I was at 190 m a moment ago at 27 m/s" discards the impostor instantly. Every
-number in this document is the network judged with this entire half missing.
-
-It has no ML in it and can be built and tested today against synthetic `s`
-trajectories.
+Filter confidence does not yet separate ordinary misses from good ticks. See
+*Estimator*.
 
 ### Lateral line offset
 
 A product output in the goal table with no current source. The head predicts
-progress only. Revisit once the estimator exists.
+progress only.
 
 For *training* line invariance on real footage, the camera rig in
 `capture/ac_rig` re-renders a replay from known sideways offsets, which gives AC
@@ -516,7 +649,9 @@ to appearance.
 | Both negative controls, every time | a good score without them may be leakage |
 
 Gates are implemented in `train/train.py` (`--gate g0|g1|g2`) and
-`train/eval.py` (`gates`, `lines --axis line|yaw`, `leakage`).
+`train/eval.py` (`gates`, `lines --axis line|yaw`, `leakage`). `stream` runs whole
+laps through the estimator at 15 Hz, the way the product does, and with
+`--speed-sigma` measures what an independent speed signal would be worth.
 
 ### Negative controls
 
@@ -567,7 +702,8 @@ Recorded so they are not relitigated.
 | Risk | Mitigation |
 |------|------------|
 | **Sim2real gap** — measured and total: synthetic checkpoints score at chance on real footage | closed as a strategy. Train on real footage directly; synthetic is for plumbing and architecture only |
-| **Perceptual aliasing** — measured, ~1–2% of ticks, unfixed by data | particle filter; same-circuit hard negatives; cap scene-side augmentation; keep the aliasing metric |
+| **Perceptual aliasing** — the estimator removes the catastrophic tail, but 1-3 s sticky locks survive on unseen tracks | an independent speed signal (it takes those locks from 16% of ticks to under 1%); more circuits; cap scene-side augmentation |
+| **Biased speed signal** — a 5% drift is worse than no speed at all | only fuse an unbiased source, or carry its bias as a filter state |
 | **Capacity on real footage** — unknown; real scenes carry far more texture than the renderer | do not size the model on synthetic; measure on real |
 | **Field of view / aspect mismatch** across glasses, AC, and shared maps | canonical-FOV crop at pack time; store intrinsics per session |
 | **HUD leakage** on real captures | HUD off; crop the timecode band; leakage control on every real dataset |
@@ -581,21 +717,14 @@ Recorded so they are not relitigated.
 
 ## Build order
 
-1. **AC capture — validation first.** One track, two or three laps, pushed all
-   the way through `decode` before driving a real session. The failure to avoid
-   is 30 minutes of undecodable footage.
-2. **Full AC session**, then pack, then `train.preview pair` on real frames
-   before any training. If a human cannot tell which reference frame matches,
-   the labels are misaligned and no training will fix it.
-3. **Re-run every gate on real footage**, both negative controls included. This
-   is the actual feasibility answer.
-4. **Particle filter** against synthetic `s` trajectories. No ML, testable
-   today, and the only thing that addresses the aliasing tail.
-5. **Capture-side augmentation**, measured as a sim→real drop.
-6. Core ML port, on-device latency and thermals.
-
-Steps 1–3 need a Windows box and a person; step 4 does not. They are
-independent and should run in parallel.
+1. **An independent speed signal**, with its bias estimated in the filter. The
+   largest measured lever on the unseen track. Frame-to-frame visual motion or
+   the phone IMU; capture could log AC's own acceleration so a drifting IMU can
+   be simulated with ground truth before hardware exists.
+2. **More circuits.** Track generalisation costs 2.7x and nothing else has moved
+   it.
+3. **An abstain signal** sharp enough to grey out a wrong delta.
+4. Core ML port, on-device latency and thermals.
 
 ---
 
@@ -608,8 +737,8 @@ docs/
   img/                synthetic-data previews
 
 capture/              AC + OBS + timecode overlay (Windows-only)
-train/                encoder, correlation head, gates, synthetic renderer
-tests/                overlay wire format, fake-recording e2e, sampler invariants
+train/                encoder, correlation head, reference grid, estimator, gates, synthetic renderer
+tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator
 ```
 
 Everything from packing onward is portable; only capture is Windows-only.

@@ -40,8 +40,8 @@ cannot memorize a circuit.
 ## Where the project stands
 
 Trained on **real Assetto Corsa footage**, six tracks with one held out:
-G1 reaches **1.72 m / 54.4 ms** and G2 — a circuit the model has never seen —
-reaches **3.85 m / 99.1 ms**, with both negative controls passing.
+G1 reaches **1.45 m / 46 ms** and G2 — a circuit the model has never seen —
+reaches **3.58 m / 96 ms**, with both negative controls passing.
 
 Synthetic pretraining turned out **not to transfer at all** (a synthetic
 checkpoint scores at chance on real footage), so synthetic data is now for
@@ -49,20 +49,23 @@ plumbing and architecture only. The architecture itself was never the problem.
 
 Two things that result does *not* settle, and they are the next work:
 
-- **Track generalisation is the binding constraint.** Held-out *laps* cost
-  1.12x; a held-out *track* costs 2.5x. More circuits, not more laps and not a
-  bigger model.
-- **The aliasing tail is unfixed and now blocks the product.** G2's median
-  meets the 100 ms budget; its p90 is 2945 ms and 22.5% of ticks land outside
-  five bins. No amount of data has moved this, on synthetic or real. The
-  particle filter is the answer and it does not exist yet.
+- **Speed is the missing input.** A particle filter now removes the
+  catastrophic tail, but cannot improve the median or hold through 1-3 s sticky
+  wrong locks without knowing the speed. Given an unbiased speed, the unseen
+  track goes from 57% of ticks over the 100 ms budget to 12-17%, with
+  catastrophic errors under 1%. A *drifting* speed is worse than none. Speed read
+  off the reference match is capped by per-frame precision and does not work;
+  it has to come from frame-to-frame visual motion or the phone IMU.
+- **Track generalisation is the other constraint.** Held-out *laps* cost 1.09x;
+  a held-out *track* costs 2.7x. More circuits, not more laps and not a bigger
+  model.
 
 Against classical SeqSLAM on the same data and the same measurement path,
 PRIMAL holds about 1.1 m where SeqSLAM sits near chance at 120–175 m.
 
-Real capture now works end to end: four usable Brands Hatch sessions across
-time of day, weather and car, packed in `data/packed_ac`, with labels that
-describe the camera rather than the car. None of it has been evaluated yet.
+Real capture works end to end: 19 sessions over six tracks in
+`data/packed_ac_v2`, across time of day, weather and car, with labels that
+describe the camera rather than the car.
 
 Numbers, method, and the full gate table are in [`ml-pivot.md`](ml-pivot.md).
 
