@@ -287,6 +287,71 @@ The sim-to-real gap is entirely unmeasured and is the largest open risk.
 
 ---
 
+## Measured, on real footage
+
+19 Assetto Corsa sessions over six tracks, 143 laps, 148x80 square pixels, 2 m
+bins, Silverstone National held out entirely. Trained from scratch on this data;
+the synthetic checkpoints were not used as initialisation.
+
+| gate | median | p90 | within 5 | entropy |
+|---|---|---|---|---|
+| seen laps, seen tracks | 1.54 m / 44.9 ms | 4.74 m | 98.1% | 2.296 |
+| **G1** held-out laps | **1.72 m / 54.4 ms** | 5.01 m | 99.7% | 2.300 |
+| **G2** unseen track | **3.85 m / 99.1 ms** | 100.5 m / 2945 ms | 77.5% | 2.983 |
+| wrong-reference control | 1.44 m -> 575.65 m | | | PASS |
+| leakage control | seen 4.15 bins, holdout 58.47 (chance 64) | | | PASS |
+
+### What this established
+
+**Synthetic pretraining does not transfer, and the architecture was never the
+problem.** Evaluated zero-shot on real footage, a synthetic checkpoint read
+464 m against a 479 m chance level — indistinguishable from guessing. The same
+architecture trained on real footage reaches 1.72 m on held-out laps. G0 on a
+single real lap pair reaches 0.17 m. Nothing was wrong with the model, the
+packing or the labels; the sim-to-real gap is simply total.
+
+**The binding constraint is number of tracks.** Lap generalisation costs 1.12x
+(1.54 -> 1.72 m). Track generalisation costs 2.5x (1.54 -> 3.85 m). Six
+circuits is what limits G2, not laps per circuit and not capacity.
+
+**The leakage control is now a working instrument.** On synthetic it scored at
+chance on seen tracks as well as held-out ones, so a null result could not
+distinguish "no leak" from "broken detector". On real footage it clearly
+succeeds where memorisation is possible (4.15 bins against chance 64) and fails
+where it must (58.47 bins). Its PASS now carries evidential weight.
+
+**The aliasing tail survived the move to real data, and it is what blocks the
+product.** G2's median meets the 100 ms budget at 99.1 ms; its p90 is 2945 ms,
+roughly 30x over, and 22.5% of ticks land outside five bins against 0.3% on G1.
+On an unseen circuit the model is usually right and occasionally catastrophically
+wrong. No amount of data has moved this, on synthetic or real. Closing it is the
+estimator's entire job.
+
+### Where the model looks
+
+Masking thirds of the frame, equal area, measured on the trained model:
+
+| masked | holdout | train |
+|---|---|---|
+| top third (sky) | 2.26x | 4.95x |
+| bottom third (tarmac) | 1.10x | 1.50x |
+| **middle third (horizon)** | **187x** | **341x** |
+
+Localisation happens in the horizon band — barriers, trackside furniture,
+distant track geometry. Tarmac contributes almost nothing. Two things follow:
+the model has a single narrow dependency with no redundancy, which matters when
+framing changes; and sky reliance is twice as strong on seen tracks as unseen,
+which looks like a session-specific memorisation shortcut rather than genuine
+signal, and is an argument for random sky masking during training.
+
+### Robustness already present
+
+Degrading only the live clip, since the reference is a stored map: held frames
+1.08x, irregular arrival 1.05x, blur 1.01x, all combined 1.06x on the held-out
+track. The existing sampler already covers this — `p_static` is a wireless
+stall and the stride ladder is irregular timing. The blur figure is optimistic;
+a box filter is not low-bitrate H.264.
+
 ## Head movement
 
 **Product decision: tolerate normal hot-lapping head movement; abstain beyond
@@ -501,7 +566,7 @@ Recorded so they are not relitigated.
 
 | Risk | Mitigation |
 |------|------------|
-| **Sim2real gap** — the largest open risk, entirely unmeasured | capture-side randomization first; real footage next; track the drop as a standing metric |
+| **Sim2real gap** — measured and total: synthetic checkpoints score at chance on real footage | closed as a strategy. Train on real footage directly; synthetic is for plumbing and architecture only |
 | **Perceptual aliasing** — measured, ~1–2% of ticks, unfixed by data | particle filter; same-circuit hard negatives; cap scene-side augmentation; keep the aliasing metric |
 | **Capacity on real footage** — unknown; real scenes carry far more texture than the renderer | do not size the model on synthetic; measure on real |
 | **Field of view / aspect mismatch** across glasses, AC, and shared maps | canonical-FOV crop at pack time; store intrinsics per session |

@@ -39,19 +39,23 @@ cannot memorize a circuit.
 
 ## Where the project stands
 
-The synthetic feasibility loop is **closed and passing**. On 18 procedural
-tracks, G2 — a track the model has never seen — reaches **1.41 m / 57 ms**,
-under the 1.5 m product target, with both negative controls passing and error
-flat against both racing-line and camera-yaw separation.
+Trained on **real Assetto Corsa footage**, six tracks with one held out:
+G1 reaches **1.72 m / 54.4 ms** and G2 — a circuit the model has never seen —
+reaches **3.85 m / 99.1 ms**, with both negative controls passing.
+
+Synthetic pretraining turned out **not to transfer at all** (a synthetic
+checkpoint scores at chance on real footage), so synthetic data is now for
+plumbing and architecture only. The architecture itself was never the problem.
 
 Two things that result does *not* settle, and they are the next work:
 
-- **Sim-to-real is entirely unmeasured.** The renderer is flat-shaded polygons.
-  The architecture is sound and data-hungry; whether it survives real footage
-  is unknown and is the largest open risk.
-- **The aliasing tail is unfixed.** ~1–2% of ticks land 175–300 m out, and no
-  amount of data changed it. The particle filter is the answer and it does not
-  exist yet.
+- **Track generalisation is the binding constraint.** Held-out *laps* cost
+  1.12x; a held-out *track* costs 2.5x. More circuits, not more laps and not a
+  bigger model.
+- **The aliasing tail is unfixed and now blocks the product.** G2's median
+  meets the 100 ms budget; its p90 is 2945 ms and 22.5% of ticks land outside
+  five bins. No amount of data has moved this, on synthetic or real. The
+  particle filter is the answer and it does not exist yet.
 
 Against classical SeqSLAM on the same data and the same measurement path,
 PRIMAL holds about 1.1 m where SeqSLAM sits near chance at 120–175 m.

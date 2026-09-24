@@ -414,3 +414,144 @@ Every track except Brands has the same three drives: Abarth at 12:00, Abarth at
    irregular timing, and compression blur.
 
 Numbers even if they are bad, please.
+
+---
+
+## 2026-09-24 — Mac → Windows
+
+`data/packed_ac_v2` arrived complete: 143 laps, index and lap directories agree.
+All five items ran. **Training on real footage works.** Chance levels differ per
+track here, so each number says which it is measured against.
+
+### 1. Preview pair — PASS
+
+Rendered three sessions at matched bins on Vallelunga (train) and Silverstone
+(holdout). Every bin shows the same place in all three despite overcast, dusk
+and blue-sky lighting — the SIMULAZIONI banner at Silverstone bin 325 lands
+identically in each. Wander is visible as small lateral shifts between sessions,
+which is what it should look like. Labels and crop are sound.
+
+### 2. Training on real footage, G1 and G2, both controls
+
+3000 steps, 0.67M parameters unchanged, 0.74 s/step, ~37 min on the M4 Pro.
+
+| gate | median | p90 | within 1 | within 5 | entropy |
+|---|---|---|---|---|---|
+| seen laps, seen tracks | 1.54 m / 44.9 ms | 4.74 m | 59.1% | 98.1% | 2.296 |
+| **G1** held-out laps | **1.72 m / 54.4 ms** | 5.01 m | 55.6% | 99.7% | 2.300 |
+| **G2** Silverstone, unseen | **3.85 m / 99.1 ms** | **100.5 m / 2945 ms** | 28.7% | **77.5%** | 2.983 |
+
+Per-track G1: Black Cat 1.98, Brands 1.55, Red Bull Ring 1.74, Vallelunga 1.84,
+Magione 1.76 m. Tight spread; no track is propping up the average.
+
+**Against the zero-shot baseline this is a different machine.** `g1_scale`
+evaluated on `packed_ac` read 464 m against a 479 m chance level. Trained on
+real footage, G1 is 1.72 m. The architecture was never the problem; synthetic
+pretraining simply does not transfer.
+
+**Controls, both mandatory per AGENTS.md, both PASS:**
+
+- **Wrong-reference:** 1.44 m matched, **575.65 m** with another track's map.
+  The model genuinely reads the reference.
+- **Leakage:** seen tracks **4.15 bins** (chance 64), held-out tracks **58.47
+  bins**, within-5 7.0%. Worth noting this control is now a *working
+  instrument*: on synthetic it scored at chance on seen tracks too, so a null
+  result proved nothing. Here it demonstrably succeeds where memorisation is
+  possible and fails where it must, so the PASS carries weight.
+
+**What G2 actually says.** The median scrapes the budget at 99.1 ms, but p90 is
+2945 ms and 22.5% of ticks land outside five bins against 0.3% on G1. On an
+unseen circuit the model is usually right and occasionally catastrophically
+wrong. Single-shot G2 is not shippable, and this is the clearest evidence yet
+for the particle filter.
+
+Lap generalisation costs 1.12x (1.54 -> 1.72 m); track generalisation costs 2.5x
+(1.54 -> 3.85 m). The gap is entirely about unseen circuits, which argues for
+more tracks rather than more laps per track.
+
+### 3. Black Cat ablation — the aliasing worry was unfounded
+
+Retrained on the same data minus Black Cat (124 laps, 4 train tracks), compared
+on the same Silverstone holdout.
+
+| | G2 median | G2 p90 | within 5 |
+|---|---|---|---|
+| with Black Cat | **3.85 m / 99.1 ms** | 100.5 m / 2945 ms | 77.5% |
+| without Black Cat | 4.05 m / 102.7 ms | **62.7 m / 1266 ms** | 77.8% |
+
+Black Cat **helps** the median slightly (3.85 against 4.05 m) and **hurts** the
+tail substantially (p90 2945 against 1266 ms). On its own tracks it was among
+the best, not the worst: 1.45-1.98 m on G1, better than Vallelunga or Red Bull
+Ring. Its long desert stretches did not produce the aliasing you expected —
+plausibly because a 6.4 km reference gives more distinct places per unit of
+confusion, not fewer.
+
+Keeping it is the right call for the median, but it is where some of the G2 tail
+comes from. Also worth noting the ablation's wrong-reference control is a
+textbook pass: 483.96 m against a chance level of 478.9 m, dead on, because
+without Black Cat the longest reference is Brands' 958 bins.
+
+### 4. Sky test — real, but not what it looked like
+
+Masking the top third costs 2.26x on holdout. Run alone that looks alarming, so
+I added regional controls of equal area:
+
+| masked | holdout | train |
+|---|---|---|
+| unmasked | 3.75 m | 1.41 m |
+| top third (sky) | 8.45 m — **2.26x** | 6.98 m — **4.95x** |
+| bottom third (tarmac) | 4.13 m — 1.10x | 2.12 m — 1.50x |
+| **middle third (horizon)** | **700.5 m — 187x** | **481.1 m — 341x** |
+
+**The model localises from the horizon band**, not the sky. Removing it is
+catastrophic; removing sky costs a few times; removing tarmac costs almost
+nothing. So it is not cloud-dependent in general.
+
+**But the asymmetry supports your hypothesis.** Sky masking hurts *training*
+tracks (4.95x) more than twice as much as the *holdout* track (2.26x). If the
+upper third carried only legitimate content — grandstands, treelines, tall
+structure — the penalty should be similar on both. That it is far worse on seen
+tracks is consistent with a session-specific upper-frame cue that does not
+transfer. **Random sky masking during training looks worth doing**, not because
+the model reads clouds generally, but because the reliance it does have looks
+like a memorisation shortcut, and G2 is exactly where help is needed.
+
+Secondary finding: the model has a single narrow dependency with no redundancy.
+A 187x collapse from masking one third of the frame is fragile in a way worth
+knowing before glasses footage with different framing arrives.
+
+### 5. Frame-drop robustness — already there
+
+Measured before changing anything, degrading only the live clip since the
+reference is a stored map:
+
+| degradation | holdout | train |
+|---|---|---|
+| clean | 3.75 m | 1.41 m |
+| dropped/held frames | 4.05 m — 1.08x | 1.60 m — 1.13x |
+| irregular arrival order | 3.92 m — 1.05x | 1.45 m — 1.03x |
+| blur | 3.77 m — 1.01x | 1.45 m — 1.03x |
+| all combined | 3.96 m — 1.06x | 1.86 m — 1.32x |
+
+**No augmentation needed yet.** Worst case is 1.32x. The existing sampler
+already covers most of this: `p_static` holds a frame, which is exactly a
+wireless stall, and the stride ladder covers irregular timing.
+
+One caveat: my blur is a 3x3 box filter, not real low-bitrate H.264. Real
+compression brings blocking, ringing and temporal smearing that a box blur does
+not reproduce, so treat the blur row as optimistic. Blur also inflated the
+holdout p90 from 116 m to 334 m while leaving the median flat, so it hurts the
+tail even where it does not move the centre.
+
+### What I would do next, for your call
+
+1. **More tracks.** Track generalisation costs 2.5x while lap generalisation
+   costs 1.12x. Six circuits is the binding constraint, not laps or capacity.
+2. **Random sky masking during training** — cheap, and item 4 gives a specific
+   reason to expect it helps G2.
+3. **The particle filter.** G2's median meets the budget and its p90 is 30x
+   over. That gap is the filter's entire job and nothing else will close it.
+
+Artifacts: `runs/ac2_g1/` (best.pt, gates.json, leakage.json) and
+`runs/ac2_g1_noblackcat/`. Gitignored, as is
+`data/packed_ac_v2_noblackcat` (symlinks only, no frames copied).
