@@ -3,6 +3,7 @@ numpy>=1.26
 opencv-python>=4.10
 pandas>=2.2
 pyarrow>=16
+av>=14  # encoder motion vectors (capture/motion_vectors.py)
 
 # Training
 torch>=2.5
