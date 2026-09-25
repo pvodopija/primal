@@ -927,3 +927,85 @@ the barcode.
 - Logging AC's `accG` and `speedKmh` per frame alongside the timecode: not
   started. It belongs in the capture tools before the next recordings.
 - Keeping frames across the wrap in the lap splitter: not looked at.
+
+---
+
+## 2026-09-25 (later) — Mac → Windows
+
+### Received
+
+All 42 files from `Transfer/primal/motion/` (416 MB) are in `data/motion/`,
+sizes checked. The share went away for about ten minutes mid-copy, probably the
+box sleeping; a retrying copier finished once it came back.
+
+### Encoder motion vectors do not carry speed, as recorded
+
+Your falling "px per (m/s)" was real, and the cause is visible before any
+fitting. The encoder stops tracking the road near the car as speed rises and
+codes those blocks from scratch (inter-coded share, lower half of the image):
+
+| Session | 10-20 m/s | 20-30 m/s | 30-40 m/s | 40-50 m/s |
+|---|---|---|---|---|
+| Black Cat, 720p | 0.82 | 0.57 | 0.33 | 0.25 |
+| Vallelunga Abarth, 720p | 0.69 | 0.34 | 0.25 | 0.16 |
+| Magione, 720p | 0.43 | 0.30 | 0.23 | 0.17 |
+| Silverstone MX-5, 720p | - | 0.29 | 0.23 | 0.21 |
+| Silverstone MX-5, 360p | - | 0.34 | 0.25 | 0.22 |
+
+360p barely helps although it halves the motion in pixels, so the ±16 px
+search is not the whole story. Near the car the road zooms rather than slides
+(about 17% per frame 3 m ahead at 30 m/s), and a block that can only shift
+cannot follow that. On Black Cat at low speed, where tracking holds, the flow
+fits a flat road with the horizon at the image centre, as it should.
+
+A per-frame fit (forward speed, sideways drift, yaw, pitch, roll over the road
+cells the encoder did track), at 15 Hz:
+
+| Session | median error | estimate / true, slow -> fast | correlation |
+|---|---|---|---|
+| Black Cat | 32% | 0.85 -> 0.33 | 0.16 |
+| Vallelunga Abarth | 27% | 0.90 -> 0.23 | -0.01 |
+| Magione | 52% | 0.72 -> 0.05 | -0.36 |
+| Brands Hatch | 31% | 1.32 -> 0.17 | -0.22 |
+| Red Bull Ring | 54% | 0.66 -> 0.08 | -0.50 |
+| Vallelunga MX-5 | 71% | 0.76 -> 0.10 | -0.27 |
+| Silverstone MX-5 | 79% | 0.33 -> 0.23 | 0.08 |
+| Silverstone Abarth | 78% | 0.32 -> 0.21 | 0.03 |
+| Silverstone MX-5, 360p | 80% | 0.42 -> 0.22 | 0.06 |
+
+Fed to the particle filter on the six Silverstone streams, with its bias state:
+
+| | median | >100 ms | >6 m |
+|---|---|---|---|
+| no speed | 4.3 m / 117 ms | 57% | 37% |
+| encoder motion vectors | 14.5 m / 390 ms | 90% | 80% |
+| true speed | 2.0 m / 55 ms | 13% | 2.3% |
+
+An error that grows with speed is the one kind the bias state cannot follow.
+
+### Agreed, and now in `ml-pivot.md`
+
+- **The labels agree; the offset is the model.** Your model-free check replaced
+  the "label consistency" risk with a lighting-dependent model bias (dusk
+  against noon: about 1 m unseen, 0.5 m trained), and label accuracy at
+  0.10-0.18 m, inside the 0.3 m target.
+- **The glasses encode, the phone decodes.** Recorded next to the motion-vector
+  result: even a working signal would depend on an encoder we do not control
+  and on decoding the phone's hardware does not normally expose.
+
+### Worth doing next on Windows
+
+1. **One thorough-search run**, to close the question for good.
+   `capture/motion_vectors.py` now takes `--x264-params`. On the Silverstone
+   MX-5 session:
+   `python -m capture.motion_vectors extract data/sessions/ks_silverstone__national__20260924T104658Z/video.mp4 --x264-params me=umh:merange=64:subme=7 --out data/motion/ks_silverstone__national__20260924T104658Z/motion_720p_umh.npz`.
+   Expect it to run several times slower. If its check still shows radial flow
+   falling with speed, encoder vectors are closed as a speed source whatever
+   encoder the glasses use.
+2. **Log AC's `accG` and `speedKmh` per frame** (still open from before). With
+   motion vectors out, a simulated IMU against the bias-state filter is the
+   cheapest next speed test.
+3. Small, optional: `pack.py` could write each lap's video frame indices
+   (`frame_idx.npy`). Joining per-frame data such as these vectors to packed
+   laps currently means replaying the lap splitter; that replay reproduces the
+   packed Silverstone laps exactly, so nothing is wrong, it is just indirect.

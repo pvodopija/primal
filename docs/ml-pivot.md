@@ -584,10 +584,30 @@ told it was good to +-0.3 m/s, it collapsed its speed spread and did worse
     and a slowly varying 13% (28.5%). What it cannot use is error that follows
     the speed itself, which is what the network's hedge is.
 
-  Next is the **video encoder's own motion vectors at full resolution**, which
-  every phone and camera already computes in hardware. `capture/motion_vectors.py`
-  re-encodes a recording P-frames-only and pools the vectors per frame. The
-  1280x720 recordings are on the Windows box, so it is measured there first.
+- **The video encoder's own motion vectors**, at full resolution. Measured on
+  eight sessions at 720p and one at 360p (`capture/motion_vectors.py`: x264
+  `veryfast`, P-frames only, 60 fps) and fitted per frame to a ground plane
+  with sideways drift and three rotations. **Not usable as recorded:**
+  - The encoder stops tracking the road near the car as speed rises. It codes
+    those blocks from scratch instead: on Black Cat the lower half is 82%
+    tracked at 10-20 m/s and 25% at 40-50 m/s; on Silverstone 21-29% at every
+    speed, and barely better at 360p (22-34%), where the motion in pixels
+    halves. Near the
+    car the road zooms (about 17% per frame 3 m ahead at 30 m/s), which a
+    block that can only shift cannot follow.
+  - What remains is the far road, where motion is sub-pixel. Fitted speed
+    divided by true speed falls from 0.85 at low speed to 0.33 above 45 m/s on
+    Black Cat, and sits at 0.1-0.35 on Silverstone; correlation with true
+    speed is -0.50 to +0.16.
+  - Fed to the filter with the bias state on the Silverstone streams it is
+    much worse than no speed: 14.5 m median and 90% of ticks over budget,
+    against 4.3 m and 57%. An error that grows with speed is the one kind
+    the bias state cannot follow.
+
+  Open: whether a thorough search (`--x264-params me=umh:merange=64:subme=7`)
+  recovers the middle distance. Even then, in the product the vectors would
+  come from the glasses' encoder, whose settings are not ours, and phones
+  decode with hardware that does not normally expose them.
 - **The phone IMU**, already planned as a filter input. Integrated acceleration
   drifts; the filter's bias state and the vision fixes make the drift
   observable. Unbuilt.
@@ -816,7 +836,8 @@ Recorded so they are not relitigated.
 | **Glasses ↔ phone clock offset** | delta accuracy is bounded by timestamp accuracy; calibrate explicitly, target ≤ 10 ms |
 | **Kart vibration** (no suspension) → blur | capture-side augmentation must include it; measure on real footage early |
 | **Stale map after a model update** | store a weight hash with the map; refuse to load a mismatch |
-| **Label consistency caps what can be proven** — sessions disagree by 0.6-1.3 m on some tracks, and 0.3 m is 20 ms at kart speed | resolve the inter-session offsets (the hand-imported Silverstone pair first) before claiming GPS-class accuracy |
+| **Lighting-dependent model bias** — the same car at dusk against noon reads about 1 m apart on the unseen track and 0.5 m on a trained one; a model-free match (ORB + RANSAC) shows the labels themselves agree within 0.2 m | more lighting variety in capture and augmentation; re-measure the dusk/noon asymmetry after each change |
+| **Label accuracy** — 0.3 m is 20 ms at kart speed | measured model-free at 0.10-0.18 m between sessions, inside that; recheck when capture changes |
 | **Patents on matching or localisation methods** — the matcher's parts are published and standard, but no search has been done | a freedom-to-operate check by a patent attorney before any commercial launch |
 | **Thermals** over a 25 min session | 15 Hz, small encoder, fp16 |
 
@@ -826,9 +847,10 @@ Recorded so they are not relitigated.
 
 1. **An independent speed signal.** The largest measured lever on the unseen
    track. The filter side, estimating its bias, is built. Encoder motion vectors
-   are being measured first; then the phone IMU, for which capture could log
-   AC's own acceleration so a drifting IMU can be simulated with ground truth
-   before hardware exists.
+   failed as recorded (one thorough-search check remains). Next candidates: the
+   IMU, for which capture should log AC's own acceleration so a drifting IMU
+   can be simulated with ground truth before hardware exists; and learned
+   motion on a higher-resolution crop of the road.
 2. **More circuits.** Track generalisation costs 2.7x and nothing else has moved
    it.
 3. **An abstain signal** sharp enough to grey out a wrong delta.
