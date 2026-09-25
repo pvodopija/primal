@@ -82,9 +82,11 @@ def _belief_plot(
     single_frame: np.ndarray,
     true_bin: float,
     predicted_bin: float,
+    filtered_bin: float | None = None,
 ) -> None:
     """
-    The model's distribution over reference bins, truth and prediction marked.
+    The model's distribution over reference bins, truth and prediction marked,
+    plus the particle filter's estimate when one is given.
 
     Both curves are scaled to their own maximum, so this shows shape rather than
     absolute confidence: one sharp peak means the place is resolved, two peaks
@@ -110,16 +112,26 @@ def _belief_plot(
     cv2.line(canvas, (x_of(true_bin), top), (x_of(true_bin), bottom), (90, 230, 90), 2)
     cv2.line(canvas, (x_of(predicted_bin), top), (x_of(predicted_bin), bottom), (230, 90, 230), 1)
 
+    def marker(bin_index: float, colour: tuple[int, int, int], y: int) -> None:
+        # A tick above the plot, so an answer stays visible when its line
+        # sits on top of another.
+        x = x_of(bin_index)
+        cv2.fillPoly(canvas, [np.array([[x - 6, y - 9], [x + 6, y - 9], [x, y]], np.int32)], colour)
+
+    marker(predicted_bin, (230, 90, 230), top - 2)
+    if filtered_bin is not None:
+        cv2.line(canvas, (x_of(filtered_bin), top), (x_of(filtered_bin), bottom), (245, 245, 245), 1)
+        marker(filtered_bin, (245, 245, 245), top + 12)
+
     _label(canvas, ["belief over the reference lap"], x=8, y=20)
-    for i, (text, colour) in enumerate(
-        [
-            ("12-frame belief", (60, 210, 255)),
-            ("newest frame alone", (110, 105, 100)),
-            ("true", (90, 230, 90)),
-            ("predicted", (230, 90, 230)),
-        ]
-    ):
-        x = width - 560 + i * 140
+    legend = [
+        ("12-frame belief", (60, 210, 255)),
+        ("newest frame alone", (110, 105, 100)),
+        ("true", (90, 230, 90)),
+        ("single-shot", (230, 90, 230)),
+    ] + ([("filter", (245, 245, 245))] if filtered_bin is not None else [])
+    for i, (text, colour) in enumerate(legend):
+        x = width - 140 * len(legend) + i * 140
         cv2.line(canvas, (x, 15), (x + 18, 15), colour, 2)
         cv2.putText(canvas, text, (x + 24, 19), FONT, 0.38, (200, 200, 200), 1, cv2.LINE_AA)
 
@@ -361,6 +373,7 @@ def cmd_infer(args: argparse.Namespace) -> None:
     """
     import torch
 
+    from train.estimator import ProgressEstimator
     from train.eval import load_model, reference_axis_of
     from train.model import compute_metrics, soft_argmax_circular
 
@@ -378,6 +391,12 @@ def cmd_infer(args: argparse.Namespace) -> None:
     spacing = reference_lap.ref_spacing_m
     grid_pos = torch.from_numpy(grid.pos_m.astype(np.float32))
     grid_time = torch.from_numpy(grid.time_s.astype(np.float32))
+    # The tracker the phone would run on top of the aligner, fed the same ticks.
+    estimator = ProgressEstimator(grid.pos_m, grid.track_length_m)
+    live_t = live_lap.t()
+    previous_t: float | None = None
+    filter_m: list[float] = []
+    filter_ms: list[float] = []
     reference_frames, reference_s = reference_lap.frames(), reference_lap.s()
     live_raw = np.asarray(live_lap.frames())
     live_s = live_lap.s()
@@ -418,6 +437,15 @@ def cmd_infer(args: argparse.Namespace) -> None:
                 grid_pos, grid_time, grid.track_length_m, grid.lap_time_s,
             )
             error_m, error_ms = float(m[0]), float(ms[0])
+            dt = 1.0 / 15.0 if previous_t is None else float(live_t[i]) - previous_t
+            previous_t = float(live_t[i])
+            tracked = float(estimator.bin_of(estimator.step(belief.astype(np.float64), dt).position_m))
+            fm, fms = compute_metrics(
+                torch.tensor([tracked]), torch.tensor([true_bin]),
+                grid_pos, grid_time, grid.track_length_m, grid.lap_time_s,
+            )
+            filter_m.append(float(fm[0]))
+            filter_ms.append(float(fms[0]))
             errors_m.append(error_m)
             errors_ms.append(error_ms)
 
@@ -441,9 +469,10 @@ def cmd_infer(args: argparse.Namespace) -> None:
             _label(
                 picked,
                 [
-                    "MODEL PICKED",
+                    "SINGLE-SHOT PICK",
                     f"bin {int(round(predicted)) % n_bins}/{n_bins}",
                     f"err {error_m:5.2f} m / {error_ms:5.0f} ms",
+                    f"filter err {filter_m[-1]:5.2f} m / {filter_ms[-1]:5.0f} ms",
                 ],
                 font_scale=0.6,
                 line_height=24,
@@ -465,7 +494,7 @@ def cmd_infer(args: argparse.Namespace) -> None:
                 x = column * (tile_w + gap)
                 canvas[:tile_h, x : x + tile_w] = tile
             _belief_plot(
-                canvas[tile_h + gap :], belief, single, true_bin, predicted
+                canvas[tile_h + gap :], belief, single, true_bin, predicted, tracked
             )
             writer.write(canvas)
     finally:
@@ -479,6 +508,13 @@ def cmd_infer(args: argparse.Namespace) -> None:
         f"  error     median {np.median(metres):.2f} m / {np.median(errors_ms):.0f} ms   "
         f"p90 {np.percentile(metres, 90):.2f} m   worst {metres.max():.2f} m   "
         f"within 1 bin {float((metres <= spacing).mean()) * 100:.1f}%"
+    )
+    tracked = np.array(filter_m)
+    print(
+        f"  filter    median {np.median(tracked):.2f} m / {np.median(filter_ms):.0f} ms   "
+        f"p90 {np.percentile(tracked, 90):.2f} m   worst {tracked.max():.2f} m   "
+        f"over 100 ms {np.mean(np.array(filter_ms) > 100) * 100:.1f}%  (single-shot "
+        f"{np.mean(np.array(errors_ms) > 100) * 100:.1f}%)"
     )
 
 

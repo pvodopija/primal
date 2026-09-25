@@ -45,6 +45,15 @@ class EstimatorConfig:
     speed_range: tuple[float, float] = (2.0, 90.0)
     # Particles within this distance of the densest place form the estimate.
     cluster_m: float = 15.0
+    # How fast a speed sensor's scale error may drift, per sqrt(s). Zero trusts
+    # the sensor as unbiased. Above zero every particle also carries a guess at
+    # the sensor's current scale, and the vision fixes decide which guesses
+    # survive: a sensor that reads 10% low on a straight is then followed, not
+    # believed. A drifting inertial sensor needs this, and so does a learned
+    # motion signal that hedges toward the average speed.
+    speed_scale_walk: float = 0.0
+    speed_scale_prior: float = 0.15
+    speed_scale_range: tuple[float, float] = (0.5, 2.0)
 
 
 @dataclass
@@ -55,6 +64,8 @@ class Estimate:
     # is split between places and the readout should abstain.
     confidence: float
     spread_m: float
+    # The speed sensor's scale the filter currently believes; 1.0 when unused.
+    speed_scale: float = 1.0
 
 
 class ProgressEstimator:
@@ -75,6 +86,7 @@ class ProgressEstimator:
         self.rng = np.random.default_rng(seed)
         self.position: np.ndarray | None = None
         self.speed: np.ndarray | None = None
+        self.scale: np.ndarray | None = None
         self.weight: np.ndarray | None = None
 
     def bin_of(self, position: np.ndarray) -> np.ndarray:
@@ -113,6 +125,11 @@ class ProgressEstimator:
             # Acquisition: every place the aligner considers possible, any speed.
             self.position = self._sample_from(belief, c.particles)
             self.speed = self.rng.uniform(lo, hi, c.particles)
+            self.scale = (
+                1.0 + self.rng.normal(0.0, c.speed_scale_prior, c.particles)
+                if c.speed_scale_walk > 0.0
+                else np.ones(c.particles)
+            )
             self.weight = np.full(c.particles, 1.0 / c.particles)
         else:
             dt = max(float(dt), 1e-3)
@@ -124,17 +141,25 @@ class ProgressEstimator:
                 + self.speed * dt
                 + self.rng.normal(0.0, c.position_noise * np.sqrt(dt), c.particles)
             ) % self.length
+            if c.speed_scale_walk > 0.0:
+                self.scale = np.clip(
+                    self.scale + self.rng.normal(0.0, c.speed_scale_walk * np.sqrt(dt), c.particles),
+                    *c.speed_scale_range,
+                )
             count = int(round(c.reinject * c.particles))
             if count:
                 slot = self.rng.choice(c.particles, size=count, replace=False)
                 self.position[slot] = self._sample_from(belief, count)
                 mean_v = float(np.average(self.speed, weights=self.weight))
                 self.speed[slot] = np.clip(self.rng.normal(mean_v, 8.0, count), lo, hi)
+                self.scale[slot] = float(np.average(self.scale, weights=self.weight))
                 self.weight[slot] = self.weight.mean() * c.reinject_weight
 
         self.weight = self.weight * self._likelihood(belief, self.position)
         if speed_obs is not None and speed_sigma:
-            self.weight = self.weight * np.exp(-0.5 * ((self.speed - speed_obs) / speed_sigma) ** 2)
+            # The sensor reads true speed times its own scale.
+            predicted = self.speed * self.scale
+            self.weight = self.weight * np.exp(-0.5 * ((predicted - speed_obs) / speed_sigma) ** 2)
         total = self.weight.sum()
         if not np.isfinite(total) or total <= 0.0:
             self.weight = np.full(c.particles, 1.0 / c.particles)
@@ -169,6 +194,7 @@ class ProgressEstimator:
             speed_mps=float(np.sum(w * self.speed) / share),
             confidence=share,
             spread_m=spread,
+            speed_scale=float(np.sum(w * self.scale) / share),
         )
 
     def _resample(self) -> None:
@@ -178,4 +204,5 @@ class ProgressEstimator:
         picks = np.searchsorted(edges, (self.rng.random() + np.arange(n)) / n)
         self.position = self.position[picks]
         self.speed = self.speed[picks]
+        self.scale = self.scale[picks]
         self.weight = np.full(n, 1.0 / n)
