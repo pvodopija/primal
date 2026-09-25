@@ -16,8 +16,10 @@ each side reads it when its user starts it, and appends what it found.
 - **Append; never rewrite the other side's entries.** Date each one.
 - **Branch `resolution-agnostic-encoder`.** `git pull --rebase` before pushing,
   never force-push, never merge to `main`.
-- **Big data never goes in git** — `data/` and `runs/` are ignored. Move it
-  through OneDrive or USB, and name the path in the entry.
+- **Big data never goes in git** — `data/` and `runs/` are ignored. **No cloud,
+  including OneDrive:** datasets go by USB, which the user plugs in on request;
+  small files go through the SMB share `Transfer` hosted on the Windows box
+  (`D:\Documents\Transfer`). Name the path in the entry.
 - **Report numbers even when they are bad.** A bad sim-to-real number is a
   result.
 
@@ -726,3 +728,202 @@ out where that offset comes from, after the motion-vector run.
 On Silverstone the tracker is more than 6 m off on 37% of ticks (4% on trained
 tracks). Nothing to do on Windows beyond what is above. More circuits remain
 the most direct lever for that, whenever capture time allows.
+
+---
+
+## 2026-09-25 — Windows → Mac
+
+### Where the files are
+
+**Not in OneDrive: the user does not use cloud storage for this project** (the
+rules above now say so). Everything is on the SMB share `Transfer` hosted on the
+Windows box, at `primal/motion/<session>/`: `motion_720p.npz` (plus
+`motion_360p.npz` for the Silverstone MX-5 session), `labels.parquet`,
+`run.json`, `overlay.json` and the extract log. 416 MB in total.
+
+On Windows the outputs were written with `--out` to `data/motion/<session>/`
+rather than next to each video, so `data/sessions/` is unchanged.
+
+### Speed check
+
+Trial on the Silverstone MX-5 session, `--limit-frames 3000`, exactly as
+printed: `3000 frames in 0.8 min`. Its check read `Pearson r = 0.084`.
+
+| Session | Height | Frames | Minutes | frames/s printed | MB | inter-coded share | Pearson r |
+|---|---|---|---|---|---|---|---|
+| Silverstone, MX-5 (holdout) | 720p | 28896 | 8.9 | 57-65 | 50 | 0.62 | -0.031 |
+| Silverstone, Abarth (holdout) | 720p | 33147 | 9.5 | 60-61 | 41 | 0.61 | -0.069 |
+| Vallelunga, MX-5 | 720p | 27736 | 7.7 | 55-60 | 54 | 0.63 | -0.138 |
+| Vallelunga, Abarth | 720p | 21134 | 5.6 | 65-66 | 45 | 0.64 | -0.387 |
+| Brands Hatch, Abarth (no wander, teal sky) | 720p | 16742 | 3.9 | 72-74 | 22 | 0.57 | -0.207 |
+| Red Bull Ring, MX-5 | 720p | 45239 | 10.4 | 73-74 | 67 | 0.62 | 0.252 |
+| Magione, MX-5 | 720p | 31107 | 7.2 | 75-75 | 61 | 0.63 | -0.277 |
+| Black Cat County, MX-5 | 720p | 37041 | 10.4 | 56-61 | 79 | 0.68 | -0.334 |
+| Silverstone, MX-5, `--height 360` | 360p | 28896 | 3.5 | 135-140 | 13 | 0.70 | 0.025 |
+
+All nine runs exited 0. Nothing broke, and no warnings were printed; the macOS
+objc warning does not appear on Windows. Nothing was tuned.
+
+### Check output, verbatim
+
+**Silverstone, MX-5 (holdout)** (`ks_silverstone__national__20260924T104658Z`, 720p)
+
+```
+28896 frames in 8.9 min -> data\motion\ks_silverstone__national__20260924T104658Z\motion_720p.npz (50 MB)
+inter-coded share: median 0.62
+check over 28357 labelled frames: radial flow vs speed, Pearson r = -0.031
+   15-25  m/s    1870 frames  radial px/frame median  4.407  px per (m/s) median 0.1831  spread p10-p90 0.0828-0.2626
+   25-35  m/s    7306 frames  radial px/frame median  3.134  px per (m/s) median 0.1065  spread p10-p90 0.0448-0.1910
+   35-45  m/s   11367 frames  radial px/frame median  2.281  px per (m/s) median 0.0572  spread p10-p90 0.0277-0.1004
+   45-120 m/s    7814 frames  radial px/frame median  3.270  px per (m/s) median 0.0689  spread p10-p90 0.0338-0.1132
+```
+
+**Silverstone, Abarth (holdout)** (`ks_silverstone__national__20260924T105441Z`, 720p)
+
+```
+33147 frames in 9.5 min -> data\motion\ks_silverstone__national__20260924T105441Z\motion_720p.npz (41 MB)
+inter-coded share: median 0.61
+check over 31082 labelled frames: radial flow vs speed, Pearson r = -0.069
+   15-25  m/s    3107 frames  radial px/frame median  3.482  px per (m/s) median 0.1462  spread p10-p90 0.0634-0.2609
+   25-35  m/s    7983 frames  radial px/frame median  2.706  px per (m/s) median 0.0926  spread p10-p90 0.0387-0.1871
+   35-45  m/s   11866 frames  radial px/frame median  2.020  px per (m/s) median 0.0507  spread p10-p90 0.0238-0.0971
+   45-120 m/s    8126 frames  radial px/frame median  2.800  px per (m/s) median 0.0578  spread p10-p90 0.0272-0.1050
+```
+
+**Vallelunga, MX-5** (`ks_vallelunga__club_circuit__20260922T223945Z`, 720p)
+
+```
+27736 frames in 7.7 min -> data\motion\ks_vallelunga__club_circuit__20260922T223945Z\motion_720p.npz (54 MB)
+inter-coded share: median 0.63
+check over 27367 labelled frames: radial flow vs speed, Pearson r = -0.138
+    0-15  m/s    1372 frames  radial px/frame median  3.617  px per (m/s) median 0.2907  spread p10-p90 0.1411-0.5349
+   15-25  m/s    5555 frames  radial px/frame median  3.410  px per (m/s) median 0.1603  spread p10-p90 0.0712-0.3355
+   25-35  m/s   13362 frames  radial px/frame median  3.456  px per (m/s) median 0.1173  spread p10-p90 0.0634-0.2030
+   35-45  m/s    6023 frames  radial px/frame median  3.665  px per (m/s) median 0.0952  spread p10-p90 0.0468-0.1478
+   45-120 m/s    1055 frames  radial px/frame median  2.171  px per (m/s) median 0.0470  spread p10-p90 0.0191-0.0792
+```
+
+**Vallelunga, Abarth** (`ks_vallelunga__club_circuit__20260922T220345Z`, 720p)
+
+```
+21134 frames in 5.6 min -> data\motion\ks_vallelunga__club_circuit__20260922T220345Z\motion_720p.npz (45 MB)
+inter-coded share: median 0.64
+check over 20592 labelled frames: radial flow vs speed, Pearson r = -0.387
+    0-15  m/s    1130 frames  radial px/frame median  6.799  px per (m/s) median 0.5459  spread p10-p90 0.2996-0.7250
+   15-25  m/s    4266 frames  radial px/frame median  6.396  px per (m/s) median 0.2975  spread p10-p90 0.1187-0.4967
+   25-35  m/s   10622 frames  radial px/frame median  5.130  px per (m/s) median 0.1738  spread p10-p90 0.0814-0.3044
+   35-45  m/s    3779 frames  radial px/frame median  4.171  px per (m/s) median 0.1059  spread p10-p90 0.0505-0.1677
+   45-120 m/s     795 frames  radial px/frame median  2.689  px per (m/s) median 0.0576  spread p10-p90 0.0267-0.0930
+```
+
+**Brands Hatch, Abarth (no wander, teal sky)** (`ks_brands_hatch__indy__20260921T171903Z`, 720p)
+
+```
+16742 frames in 3.9 min -> data\motion\ks_brands_hatch__indy__20260921T171903Z\motion_720p.npz (22 MB)
+inter-coded share: median 0.57
+check over 15119 labelled frames: radial flow vs speed, Pearson r = -0.207
+   15-25  m/s    1717 frames  radial px/frame median  6.731  px per (m/s) median 0.2981  spread p10-p90 0.1599-0.4590
+   25-35  m/s    5715 frames  radial px/frame median  4.906  px per (m/s) median 0.1676  spread p10-p90 0.0869-0.2683
+   35-45  m/s    6440 frames  radial px/frame median  3.864  px per (m/s) median 0.1010  spread p10-p90 0.0615-0.2238
+   45-120 m/s    1247 frames  radial px/frame median  4.678  px per (m/s) median 0.0998  spread p10-p90 0.0471-0.1697
+```
+
+**Red Bull Ring, MX-5** (`ks_red_bull_ring__layout_national__20260923T174436Z`, 720p)
+
+```
+45239 frames in 10.4 min -> data\motion\ks_red_bull_ring__layout_national__20260923T174436Z\motion_720p.npz (67 MB)
+inter-coded share: median 0.62
+check over 42647 labelled frames: radial flow vs speed, Pearson r = 0.252
+   15-25  m/s     882 frames  radial px/frame median  3.854  px per (m/s) median 0.1568  spread p10-p90 0.0953-0.2758
+   25-35  m/s   16008 frames  radial px/frame median  3.431  px per (m/s) median 0.1126  spread p10-p90 0.0525-0.2031
+   35-45  m/s   18521 frames  radial px/frame median  3.718  px per (m/s) median 0.0947  spread p10-p90 0.0609-0.1566
+   45-120 m/s    7236 frames  radial px/frame median  4.779  px per (m/s) median 0.1027  spread p10-p90 0.0528-0.1758
+```
+
+**Magione, MX-5** (`magione__default__20260922T225059Z`, 720p)
+
+```
+31107 frames in 7.2 min -> data\motion\magione__default__20260922T225059Z\motion_720p.npz (61 MB)
+inter-coded share: median 0.63
+check over 30353 labelled frames: radial flow vs speed, Pearson r = -0.277
+    0-15  m/s     393 frames  radial px/frame median  4.665  px per (m/s) median 0.3309  spread p10-p90 0.1747-0.5409
+   15-25  m/s   12465 frames  radial px/frame median  4.471  px per (m/s) median 0.2144  spread p10-p90 0.1036-0.3772
+   25-35  m/s   10150 frames  radial px/frame median  3.199  px per (m/s) median 0.1067  spread p10-p90 0.0551-0.1976
+   35-45  m/s    5463 frames  radial px/frame median  3.397  px per (m/s) median 0.0865  spread p10-p90 0.0397-0.1367
+   45-120 m/s    1882 frames  radial px/frame median  2.845  px per (m/s) median 0.0606  spread p10-p90 0.0266-0.1259
+```
+
+**Black Cat County, MX-5** (`ks_black_cat_county__layout_short__20260923T180056Z`, 720p)
+
+```
+37041 frames in 10.4 min -> data\motion\ks_black_cat_county__layout_short__20260923T180056Z\motion_720p.npz (79 MB)
+inter-coded share: median 0.68
+check over 34555 labelled frames: radial flow vs speed, Pearson r = -0.334
+    0-15  m/s     370 frames  radial px/frame median  8.079  px per (m/s) median 0.5680  spread p10-p90 0.3001-0.7112
+   15-25  m/s    5677 frames  radial px/frame median  8.920  px per (m/s) median 0.4092  spread p10-p90 0.1737-0.5617
+   25-35  m/s   12836 frames  radial px/frame median  7.177  px per (m/s) median 0.2363  spread p10-p90 0.1210-0.4209
+   35-45  m/s   11589 frames  radial px/frame median  5.387  px per (m/s) median 0.1401  spread p10-p90 0.0634-0.2747
+   45-120 m/s    4083 frames  radial px/frame median  3.638  px per (m/s) median 0.0723  spread p10-p90 0.0462-0.2177
+```
+
+**Silverstone, MX-5, `--height 360`** (`ks_silverstone__national__20260924T104658Z`, 360p)
+
+```
+28896 frames in 3.5 min -> data\motion\ks_silverstone__national__20260924T104658Z\motion_360p.npz (13 MB)
+inter-coded share: median 0.70
+check over 28357 labelled frames: radial flow vs speed, Pearson r = 0.025
+   15-25  m/s    1870 frames  radial px/frame median  2.884  px per (m/s) median 0.1197  spread p10-p90 0.0670-0.1538
+   25-35  m/s    7306 frames  radial px/frame median  1.689  px per (m/s) median 0.0572  spread p10-p90 0.0183-0.1235
+   35-45  m/s   11367 frames  radial px/frame median  1.168  px per (m/s) median 0.0290  spread p10-p90 0.0135-0.0647
+   45-120 m/s    7814 frames  radial px/frame median  2.073  px per (m/s) median 0.0438  spread p10-p90 0.0186-0.0856
+```
+
+One observation, offered without tuning anything: radial flow per frame falls
+as speed rises on most sessions, so "px per (m/s)" is far from flat and r runs
+from -0.39 to +0.25. Two things in the check could produce that. Slow bands are
+mostly corners, where rotation and sideways flow dominate the average. And at
+speed, near-field motion may outrun x264's default motion search (+-16 px, hex),
+so those blocks go intra-coded or their vectors saturate; the inter-coded share
+sits around 0.6 throughout. The proper fit on the Mac should tell which.
+
+Every session here except the Brands one has the rig's wander on: the camera
+also drifts sideways at up to about 3 m/s, smoothly, as in the capture log.
+
+### A correction to the model: the glasses encode, the phone decodes
+
+The glasses compress the video to stream it; the phone receives and decodes it.
+So the motion vectors would come from **the glasses' encoder**, with settings
+this project does not control (resolution, bitrate, motion search, GOP
+structure). And phones decode with hardware decoders (MediaCodec,
+VideoToolbox), which do not normally expose motion vectors. Reading them may
+need a software decoder or a partial parse of the stream. Whether the phone can
+get at them from the stream a given pair of glasses produces is an open
+feasibility question, separate from whether they carry speed.
+
+### Inter-session label offsets: the labels agree
+
+Measured without the model. For 30 positions per direction, a frame from
+session A at labelled position s is matched (ORB + RANSAC inliers) against
+session B's frames at s + d for d in -6..+6 m, and the inlier peak is refined
+parabolically. A label offset shows with opposite signs in the two directions; a
+matcher bias with the same sign.
+
+| Pair | Through the model (previous entry) | Label offset, model-free | Symmetric part |
+|---|---|---|---|
+| Silverstone `105441Z` vs `105442Z`, Abarth, dusk vs noon | 1.0-1.3 m | **+0.10 m** | -0.00 m |
+| Vallelunga `222513Z` vs `220345Z`, Abarth, dusk vs noon | 0.67 m | **-0.18 m** | +0.00 m |
+| Control, same light: Silverstone `105442Z` Abarth vs `104658Z` MX-5 | - | **+0.11 m** | +0.08 m |
+
+All three are within 0.2 m, inside the 0.3 m target. No confidence interval was
+computed, but the gap to 1.0-1.3 m is large. **Both offsets the model reported
+are the same car at dusk against noon**, so they look like a lighting-dependent
+bias in the model rather than a label error: about 1 m on the unseen track and
+0.5 m on a trained one. The hand import of the Silverstone pair could not have
+shifted labels in any case; it writes metadata only, and the labels come from
+the barcode.
+
+### Not done
+
+- Logging AC's `accG` and `speedKmh` per frame alongside the timecode: not
+  started. It belongs in the capture tools before the next recordings.
+- Keeping frames across the wrap in the lap splitter: not looked at.
