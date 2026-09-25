@@ -53,15 +53,20 @@ Two things that result does *not* settle, and they are the next work:
   catastrophic tail, but cannot improve the median or hold through 1-3 s sticky
   wrong locks without knowing the speed. Given an unbiased speed, the unseen
   track goes from 57% of ticks over the 100 ms budget to 12-17%, with
-  catastrophic errors under 1%. A *drifting* speed is worse than none. Speed read
-  off the reference match is capped by per-frame precision and does not work;
-  it has to come from frame-to-frame visual motion or the phone IMU.
+  catastrophic errors under 1%. A *drifting* speed is worse than none, but the
+  filter can now learn a sensor's scale. Speed read off the reference match, and
+  frame-to-frame motion at the packed 148x80, are not good enough. The next test
+  is the video encoder's own motion vectors at full resolution
+  (`capture/motion_vectors.py`, run on the Windows box); the phone IMU after it.
 - **Track generalisation is the other constraint.** Held-out *laps* cost 1.09x;
   a held-out *track* costs 2.7x. More circuits, not more laps and not a bigger
   model.
 
-Against classical SeqSLAM on the same data and the same measurement path,
-PRIMAL holds about 1.1 m where SeqSLAM sits near chance at 120–175 m.
+Against classical SeqSLAM on identical real clips, PRIMAL is 29x more accurate
+on trained tracks (1.59 m against 46.6 m) and 9x on the unseen one (3.56 m
+against 31.1 m); SeqSLAM only holds up when light, car and weather are
+unchanged. How this compares with GPS lap timers, and the prior art the matcher
+builds on, is under *Landscape* in [`ml-pivot.md`](ml-pivot.md).
 
 Real capture works end to end: 19 sessions over six tracks in
 `data/packed_ac_v2`, across time of day, weather and car, with labels that

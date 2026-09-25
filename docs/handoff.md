@@ -649,3 +649,80 @@ about 45 ms of systematic delta error.
 `python -m train.eval stream` reproduces the estimator and speed results; its
 reports for the current model are in `runs/ac2_time_allframes/stream_seed*.json`
 (gitignored).
+
+---
+
+## 2026-09-25 — Mac → Windows
+
+### Ready
+
+- **`capture/motion_vectors.py`**: speed candidate from the video encoder's own
+  motion vectors. It needs `av` (PyAV), now in `requirements.txt`. It
+  re-encodes a recording with x264 the way a live phone encoder runs (P-frames
+  only, one reference, so every vector spans exactly one frame), decodes it
+  with FFmpeg's motion-vector export, and writes a pooled grid per frame to
+  `motion_<height>p.npz` next to the video. If `labels.parquet` and `run.json`
+  are present, it also prints a first check against the labelled speed.
+- Tested on the Mac: known camera translations come back within 0.25 px with
+  the right sign, and output frame indices line up with `labels.parquet`.
+  **It has not seen a real OBS recording.** The Mac only has 148x80 packed
+  frames, and at that size there is no speed signal (r = 0.07, the same wall
+  classical flow hit). Your run is the first real measurement.
+- The particle filter now carries a speed-sensor scale state, so a biased
+  speed source can still be used. Nothing to do on Windows; see
+  [`ml-pivot.md`](ml-pivot.md) under *Estimator*.
+
+### Worth measuring: does full-resolution encoder motion carry speed?
+
+Speed is the largest lever measured (Silverstone 57% of ticks over budget ->
+12-17% with true speed). A network learning motion from 148x80 pairs reaches
+7-13% error but reads fast stretches low and slow ones high, and the filter
+cannot use that. The question is whether 1280x720 encoder motion is free of
+that bias. A suggested run:
+
+1. `pip install -r requirements.txt`, then a trial:
+   `python -m capture.motion_vectors extract data/sessions/<session>/video.mp4 --limit-frames 3000`.
+   Note the frames/s it prints.
+2. Whole sessions at the recorded 720p, one or two per track, both cars on
+   Silverstone and Vallelunga:
+   - `ks_silverstone__national__20260924T104658Z` (MX-5) and `...105441Z` (Abarth)
+   - `ks_vallelunga__club_circuit__20260922T223945Z` (MX-5) and `...220345Z` (Abarth)
+   - `ks_brands_hatch__indy__20260921T171903Z`,
+     `ks_red_bull_ring__layout_national__20260923T174436Z`,
+     `magione__default__20260922T225059Z`,
+     `ks_black_cat_county__layout_short__20260923T180056Z`
+3. The Silverstone MX-5 session again with `--height 360`; a phone may encode
+   at lower resolution.
+4. Copy `motion_*.npz`, `labels.parquet`, `run.json` and `overlay.json` for
+   each into `OneDrive/primal/motion/<session>/`. The estimate is about
+   4 MB per minute of video, extrapolated from the small-frame test.
+5. In your entry: each session's check output, frames/s, and anything that
+   broke.
+
+**Reading the check.** It averages the outward flow from the image centre,
+which grows with speed and mostly cancels head or car rotation. Its "px per
+(m/s)" column should be roughly flat across speed bands if the motion is
+unbiased, and Pearson r near 1 is promising. A low r is not a verdict: the
+average ignores depth and the road plane, and the Mac will fit it properly.
+There's no need to tune it on Windows.
+
+**Things that can look wrong but aren't.** Frames where OBS repeated a render
+read as zero motion; the check drops them by the label counter. The timecode
+band's vectors are meaningless; the check leaves out the rows `pack.py`
+crops. On macOS, importing PyAV next to OpenCV prints an objc warning about
+two copies of FFmpeg's device library. That warning is specific to macOS.
+
+### Label consistency moved up
+
+To show delta accuracy that competes with a GPS timer in good conditions
+(about 10-45 ms at kart speed, estimated in [`ml-pivot.md`](ml-pivot.md) under
+*Landscape*), labels have to agree to about 0.3 m across sessions. Some do not
+yet: the inter-session offsets in the previous entry reach 1.0-1.3 m on the
+hand-imported Silverstone pair (`105441Z`, `105442Z`). It is now worth finding
+out where that offset comes from, after the motion-vector run.
+
+### Where the unseen track stands
+
+On Silverstone the tracker is more than 6 m off on 37% of ticks (4% on trained
+tracks). Nothing to do on Windows beyond what is above. More circuits remain
+the most direct lever for that, whenever capture time allows.

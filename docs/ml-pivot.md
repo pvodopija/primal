@@ -54,6 +54,66 @@ single most important fact about the problem.
 
 ---
 
+## Landscape
+
+### What drivers use today
+
+GPS lap timers are the comparison a driver will make. Their accuracy claims
+mix best cases with specifications:
+
+- The 25 Hz consumer GNSS modules this class of timer is built on are specified
+  at **1.5 m CEP**: half of all fixes within 1.5 m (u-blox M10). Racelogic's
+  VBOX Sport states **±2 m at 95%**. RaceBox advertises "precision as fine as
+  10cm" and gives no accuracy figure in its technical specifications.
+- **Phones are worse:** about 4.9 m typical under open sky (GPS.gov), usually at
+  1 Hz, and smoothed or snapped for navigation. Fixes off the track and sudden
+  jumps are normal on a phone.
+- **Centimetres need RTK**: a base station sending live corrections.
+
+A live delta needs consistency more than accuracy. Most GNSS error drifts over
+tens of minutes, so two laps a few minutes apart share it. What remains is
+jitter. Against a reference lap from another day, the whole drift remains, and
+because it is a shift in space, its effect along the track changes sign with
+the track's heading. Lap *times* cancel constant errors at the line and are far
+better than any live delta.
+
+Estimated, not measured — live delta error at kart speed (11-22 m/s):
+
+| Situation | Along-track error | Delta error |
+|---|---|---|
+| Dedicated 25 Hz timer, open sky, reference from the same session | 0.2-0.5 m | ~10-45 ms |
+| Dedicated timer near trees, grandstands, buildings | 0.5-2 m | ~25-180 ms |
+| Dedicated timer, reference from another day | 1-3 m | ~45-270 ms, varying through the lap |
+| Phone GPS | ~5 m, with jumps | several hundred ms |
+
+Measured by Racelogic: aligning two laps at Silverstone National by distance
+instead of position gave 0.3 s of error. Timers that predict from wheel speed or
+distance drift like that through a lap.
+
+Against the precision budget's 1.5 m, PRIMAL holds 1.6 m median on trained
+tracks and 4.3 m on an unseen one (*Estimator*). Its millisecond figures are
+measured at AC car speeds, faster than a kart, so metres are the fair
+comparison. A video reference does not drift between days, the one row where
+GPS is structurally weak.
+
+Garmin Catalyst (about $1000, dash-mounted, for cars) combines a camera with
+10-25 Hz GNSS and inertial sensors, marketed as "True Track Positioning". How
+much the camera contributes to position is not published.
+
+### Prior art for the matcher
+
+The matcher is built from standard parts: a shared (Siamese) encoder and an
+all-pairs similarity grid, as in SiamFC tracking and FlowNet/RAFT optical flow;
+a map given as input rather than memorised, as in OrienterNet; and SeqSLAM's
+sequence matching, which it beats on real footage by 9x on an unseen track and
+29x on trained ones, and by 40-150x across a change of car and weather
+(*Against a classical baseline*). The code and weights here are written and trained from
+scratch. What is specific is the combination: progress against the driver's own
+reference lap, time-spaced bins that read out as delta, no GNSS, a glasses
+camera, and a phone. No literature or patent search has been done.
+
+---
+
 ## Core principle
 
 **The map is context, not parameters.**
@@ -235,6 +295,20 @@ itself to about 1.1 m, and a different lap of the same track under 0.5 m away at
 120 m. The cliff comes before the first band; the rise across bands after it is
 drift toward chance. Whole-image pixel difference does not survive a second lap,
 which is the case a learned descriptor exists for.
+
+**On real footage** the same holds. Measured with the current model
+(`ac2_time_allframes`) against SeqSLAM on identical forward-only clips, 960 per
+gate, median error:
+
+| pair type | G1 PRIMAL | G1 SeqSLAM | G2 PRIMAL | G2 SeqSLAM |
+|---|---|---|---|---|
+| same session | 1.68 m | 3.89 m | 2.14 m | 4.86 m |
+| cross time of day | 1.47 m | 579 m | 4.36 m | 43.9 m |
+| cross car and weather | 1.58 m | 233 m | 4.29 m | 189 m |
+| **all** | **1.59 m / 52 ms** | 46.6 m / 1139 ms | **3.56 m / 94 ms** | 31.1 m / 783 ms |
+
+SeqSLAM is competitive only when nothing changes between the two laps; any
+change in light, car or weather sends it toward chance.
 
 ### Multi-peak reference probe
 
@@ -428,6 +502,17 @@ sessions, and every Silverstone live lap is an MX-5 against Abarth references.
 **It removes the tail and leaves the median alone.** The worst case on trained
 tracks falls from 110 m to 37 m, and the unseen track's p90 from 1.6 s to 0.3 s.
 
+What a driver would see, as the share of filter ticks off by more than a
+distance:
+
+| | > 2 m | > 4 m | > 6 m | > 10 m |
+|---|---|---|---|---|
+| G1, trained tracks | 42% | 14% | 4% | 0.7% |
+| G2, Silverstone | 75% | 53% | 37% | 16% |
+
+The demo videos show the same: on Silverstone, misses of several metres are
+routine, not occasional.
+
 ### Why the median does not move
 
 Per-tick errors are correlated noise rather than a fixed bias. Consecutive
@@ -463,7 +548,12 @@ dead-reckon between fixes.
 **A slowly drifting speed is worse than none.** The filter believes it and
 dead-reckons away from the truth. A speed source must be unbiased, or the filter
 must carry its bias as a state — the standard way to fuse a drifting inertial
-sensor with position fixes, which vision would provide here.
+sensor with position fixes, which vision provides here.
+
+The filter now carries it (`speed_scale_walk`): each particle also guesses the
+sensor's current scale, and the vision fixes decide which guesses survive. On a
+synthetic stream whose sensor reads 0.85x true speed and later 1.10x, position
+error falls from 16 m to 1.3 m, and the learned scale follows to 0.84 and 1.09.
 
 The filter must also be told a realistic uncertainty. Given the exact speed but
 told it was good to +-0.3 m/s, it collapsed its speed spread and did worse
@@ -479,13 +569,28 @@ told it was good to +-0.3 m/s, it collapsed its speed spread and did worse
   velocity search on learned rows) is immune to look-alike frames — 0.03 against
   1-2 bins per step for a per-frame fit on synthetic rows — but cannot beat that
   bound either. Measured, and removed.
-- **Frame-to-frame visual motion.** Ego-motion measured between consecutive live
-  frames, independent of the reference: the motion vectors of video
-  compression. The road plane and the known camera height give it metric scale.
-  Unbuilt.
+- **Frame-to-frame visual motion**, independent of the reference. At the packed
+  148x80 resolution it is not good enough:
+  - Classical flow (DIS, Lucas-Kanade) fitted to the road plane reads near zero.
+    Tarmac that small has no texture to track, and rotation dominates what does
+    move.
+  - A small network trained on frame pairs (reversed pairs must read negative;
+    random gaps; static pairs) reaches 7% median error on trained tracks and 13%
+    on Silverstone, but hedges toward the average: it reads fast stretches low
+    and slow ones high. With the bias state it helps trained tracks (26.5% ->
+    22.2% of ticks over budget, worst 37 m -> 11 m) and not Silverstone (56.6%
+    -> 55.9%).
+  - The filter tolerates 15% random speed error (Silverstone 21% over budget)
+    and a slowly varying 13% (28.5%). What it cannot use is error that follows
+    the speed itself, which is what the network's hedge is.
+
+  Next is the **video encoder's own motion vectors at full resolution**, which
+  every phone and camera already computes in hardware. `capture/motion_vectors.py`
+  re-encodes a recording P-frames-only and pools the vectors per frame. The
+  1280x720 recordings are on the Windows box, so it is measured there first.
 - **The phone IMU**, already planned as a filter input. Integrated acceleration
-  drifts, so the filter needs a speed-bias state; vision supplies the fixes that
-  make the bias observable. Unbuilt.
+  drifts; the filter's bias state and the vision fixes make the drift
+  observable. Unbuilt.
 
 ### Confidence
 
@@ -536,7 +641,7 @@ one of them.
 ### An independent speed signal
 
 The largest measured lever on the unseen track, and unbuilt. It must be unbiased
-or have its bias estimated. See *Estimator*.
+or have its bias estimated; the filter can now estimate it. See *Estimator*.
 
 ### An abstain signal
 
@@ -711,16 +816,19 @@ Recorded so they are not relitigated.
 | **Glasses ↔ phone clock offset** | delta accuracy is bounded by timestamp accuracy; calibrate explicitly, target ≤ 10 ms |
 | **Kart vibration** (no suspension) → blur | capture-side augmentation must include it; measure on real footage early |
 | **Stale map after a model update** | store a weight hash with the map; refuse to load a mismatch |
+| **Label consistency caps what can be proven** — sessions disagree by 0.6-1.3 m on some tracks, and 0.3 m is 20 ms at kart speed | resolve the inter-session offsets (the hand-imported Silverstone pair first) before claiming GPS-class accuracy |
+| **Patents on matching or localisation methods** — the matcher's parts are published and standard, but no search has been done | a freedom-to-operate check by a patent attorney before any commercial launch |
 | **Thermals** over a 25 min session | 15 Hz, small encoder, fp16 |
 
 ---
 
 ## Build order
 
-1. **An independent speed signal**, with its bias estimated in the filter. The
-   largest measured lever on the unseen track. Frame-to-frame visual motion or
-   the phone IMU; capture could log AC's own acceleration so a drifting IMU can
-   be simulated with ground truth before hardware exists.
+1. **An independent speed signal.** The largest measured lever on the unseen
+   track. The filter side, estimating its bias, is built. Encoder motion vectors
+   are being measured first; then the phone IMU, for which capture could log
+   AC's own acceleration so a drifting IMU can be simulated with ground truth
+   before hardware exists.
 2. **More circuits.** Track generalisation costs 2.7x and nothing else has moved
    it.
 3. **An abstain signal** sharp enough to grey out a wrong delta.
@@ -736,9 +844,9 @@ docs/
   ml-pivot.md         this document — active design
   img/                synthetic-data previews
 
-capture/              AC + OBS + timecode overlay (Windows-only)
+capture/              AC + OBS + timecode overlay (Windows-only), encoder motion vectors
 train/                encoder, correlation head, reference grid, estimator, gates, synthetic renderer
-tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator
+tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, motion vectors
 ```
 
 Everything from packing onward is portable; only capture is Windows-only.
