@@ -88,6 +88,7 @@ def encoder_motion(
     cell: int,
     preset: str = "veryfast",
     crf: int = 18,
+    x264_extra: str = "",
 ) -> Iterator[tuple[int, np.ndarray, np.ndarray]]:
     """
     Re-encode `frames` (av.VideoFrame, any size and format) P-frames-only and
@@ -106,7 +107,7 @@ def encoder_motion(
     encoder.options = {
         "preset": preset,
         "crf": str(crf),
-        "x264-params": "bframes=0:ref=1:keyint=infinite:scenecut=0",
+        "x264-params": ":".join(filter(None, ["bframes=0:ref=1:keyint=infinite:scenecut=0", x264_extra])),
     }
     decoder = av.CodecContext.create("h264", "r")
     decoder.options = {"flags2": "+export_mvs"}
@@ -217,7 +218,7 @@ def cmd_extract(args: argparse.Namespace) -> None:
         frames, flows, covers = [], [], []
         started = time.monotonic()
         for index, flow, cover in encoder_motion(
-            source_frames(), width, height, fps, args.cell, args.preset, args.crf
+            source_frames(), width, height, fps, args.cell, args.preset, args.crf, args.x264_params
         ):
             frames.append(index)
             flows.append(flow.astype(np.float16))
@@ -239,7 +240,7 @@ def cmd_extract(args: argparse.Namespace) -> None:
         fps=fps,
         source_size=np.array([src_w, src_h]),
         encoded_size=np.array([width, height]),
-        encoder=f"libx264 {args.preset} crf {args.crf} bframes=0 ref=1",
+        encoder=f"libx264 {args.preset} crf {args.crf} bframes=0 ref=1 {args.x264_params}".strip(),
     )
     elapsed = time.monotonic() - started
     print(f"{frame_arr.size} frames in {elapsed / 60:.1f} min -> {out} ({out.stat().st_size / 1e6:.0f} MB)")
@@ -266,6 +267,11 @@ def main() -> None:
     ext.add_argument("--cell", type=int, default=32, help="grid cell size in encoded pixels")
     ext.add_argument("--preset", default="veryfast")
     ext.add_argument("--crf", type=int, default=18)
+    ext.add_argument(
+        "--x264-params",
+        default="",
+        help="extra x264 options, e.g. me=umh:merange=64:subme=7 for a thorough motion search",
+    )
     ext.add_argument("--limit-frames", type=int, default=0, help="stop after this many frames (a quick trial)")
     ext.add_argument("--out", default=None)
     ext.set_defaults(func=cmd_extract)
