@@ -114,6 +114,199 @@ camera, and a phone. No literature or patent search has been done.
 
 ---
 
+## Hardware target
+
+### Decided
+
+**The delta is shown on the glasses.** No phone mount: the phone is compute and
+storage, the glasses are camera and display. Where the network runs is open:
+on the phone, split between glasses and phone, or entirely on the glasses.
+
+### What the network costs
+
+Counted on `runs/ac2_time_allframes` (667 k parameters, 1.3 MB at fp16). Only
+the newest frame is encoded each tick; the other clip frames are cached.
+
+| Reference length | Encoder (per frame) | Head over all bins | Correlation | Per tick | At 15 Hz |
+|---|---|---|---|---|---|
+| Vallelunga, 860 bins | 34.7 M MACs | 73.8 M | 1.3 M | 110 M | 1.65 G MAC/s |
+| Silverstone, 1300 bins | 34.7 M | 111.6 M | 2.0 M | 148 M | 2.22 G MAC/s |
+| Black Cat, 3227 bins | 34.7 M | 277.0 M | 5.0 M | 317 M | 4.75 G MAC/s |
+
+One tick takes 2.3 ms on a single Mac CPU core in fp32, against a 67 ms budget.
+On a phone's neural engine (tens of TOPS) the arithmetic is negligible; the
+power is waking the accelerator, estimated at tens of mW and not measured. The
+head scans every bin, so it grows with track length; restricting it to a window
+around the tracker's position would cut it if that ever matters.
+
+The encoder accepts any resolution. Its cost at other inputs, as a share of a
+46 GOPS Ethos-U55 at theoretical peak (real utilisation is typically 30-50%, so
+busy time is 2-3x these):
+
+| Encoder input | M MACs/frame | 15 fps | 30 fps | 60 fps |
+|---|---|---|---|---|
+| 148x80 (today) | 34.7 | 2% | 5% | 9% |
+| 160x120 (4:3) | 54.9 | 4% | 7% | 14% |
+| 224x168 | 107.5 | 7% | 14% | 28% |
+| 320x240 | 216.6 | 14% | 28% | 57% |
+| 640x480 | 862.9 | 56% | 113% | 225% |
+
+### Meta Ray-Ban glasses, through the Wearables Device Access Toolkit
+
+- Video is **streamed over Bluetooth** to the phone: at most 720p at 30 fps,
+  lowered automatically when bandwidth is short. A third-party SDK guide lists
+  presets 360x640, 504x896 and 720x1280 (portrait) at 2-30 fps. No third-party
+  code runs on the glasses.
+- The display exists only on Ray-Ban Display ($799), with the EMG wrist band
+  for gestures.
+- Ray-Ban Meta Gen 1 has a 154 mAh battery; Meta estimates about 30 minutes of
+  livestreaming, at 5 °C or warmer, cut short by heat. Gen 2 claims twice the
+  battery life for moderate use.
+- **Apps built with the toolkit cannot be published** outside restricted test
+  channels (developer preview, as of 23 September 2026).
+
+With the stream received on the phone, the phone side is estimated, not
+measured, at roughly 0.2-0.6 W with the screen off: Bluetooth receive,
+hardware decode, the network, app overhead. That is 1-2% of an iPhone battery
+per 25-minute session. **The glasses are the constraint**, not the phone.
+
+### Brilliant Labs Halo
+
+- **Camera:** PixArt PAG7982J1, 640x480, **global shutter**, 81.2° horizontal
+  (about 65° vertical, 4:3), 40 mW at full frame rate. Brilliant does not state
+  the rate; a module vendor lists the sensor at **120 fps at VGA** over
+  MIPI/DVP. Whether Halo's microcontroller can take it in is untested: full VGA
+  at 120 fps is about 37 MB/s and 8.3 ms per frame, so a high rate would need a
+  small window or binning on the sensor.
+- **Compute:** Alif Balletto B1, Cortex-M55 at 160 MHz with an **Ethos-U55 NPU**
+  (128 MACs per cycle, about 46 GOPS), 2 MB SRAM, 1.8 MB MRAM.
+- **Radio:** Bluetooth LE 5.3.
+- **Display:** colour micro-OLED, 640x480 panel; the Lua API draws a 256x256
+  round area.
+- **Other:** 300 mAh battery, accelerometer and magnetometer (**no gyroscope**),
+  bone-conduction speakers, about 40 g, $399.
+- **Software:** open firmware (Zephyr RTOS with a Lua runtime, Apache-2.0; the
+  Alif SDK parts are proprietary to Alif silicon), flashed over the air. The
+  stock SDK only takes single JPEG photos: no continuous capture and no NPU
+  API. Both would be our own firmware, in C with TensorFlow Lite Micro and
+  Arm's Vela compiler.
+
+**Two ways to use it.** The encoder on the glasses, sending embeddings to the
+phone, which runs the head and the tracker and returns the delta; or everything
+on the glasses, with the phone only storing reference laps and, optionally,
+sending a speed reading. By the tables above both fit the NPU: the encoder at
+160x120 and 30 fps is about 7% of peak; encoder plus head for Silverstone at
+30 Hz about 22%. Memory is estimated to fit in 2 MB: weights about 0.7 MB at
+8 bits, one reference lap 170-410 KB, activations a few hundred KB.
+
+**Embeddings instead of video** remove the link as a bottleneck. One embedding is
+128 numbers, about 136 bytes at 8 bits with a timestamp:
+
+| Over Bluetooth, 30 fps | Per second | Fits in Bluetooth LE (est. 50-150 KB/s to a phone)? |
+|---|---|---|
+| 480p JPEG video | ~0.75-1.2 MB (est.) | no |
+| 160x120 JPEG video | ~90-180 KB (est.) | borderline |
+| **embeddings** | **~4 KB** (8 KB at 60 fps) | **a few % of it** |
+
+What that buys: no video stream, which is the power drain Meta limits to
+about 30 minutes; frames timestamped at capture, so link delay changes when
+the number appears (est. 40-80 ms) but not its accuracy, and camera, tracker
+and display can share one clock; a global shutter against kart vibration; and
+control of exposure against motion blur. The whole pipeline is estimated at
+150-250 mW, several hours on 1.1 Wh. Unmeasured.
+
+Higher frame rates barely help the matcher: consecutive ticks' errors are
+already 84-96% correlated at 15 Hz and decorrelate only over about a second,
+so more frames within that second do not average them out, and between ticks
+the tracker's dead reckoning is accurate once speed is known. They help a lot
+with **measuring motion**. At 120 fps and 30 m/s the car moves 0.25 m per frame,
+so the road 3 m ahead grows about 8% between frames (17% at 60 fps) and shifts
+half as many pixels, with no rolling-shutter distortion. That is the regime
+where frame-to-frame flow is easy, and it is exactly what defeated the
+encoder's motion vectors. The global shutter is not what fixes that: AC renders
+each frame at one instant, so our footage is already global-shutter, and the
+motion vectors failed on it. Frame rate and dense flow are the fix; the global
+shutter keeps it valid on hardware, where a rolling shutter read out over tens
+of milliseconds would turn head turns and kart vibration into shear and
+wobble, an error that grows with motion. Hence a **two-rate design**: the place encoder at
+15-30 fps sending embeddings, and motion measured at up to 120 fps on a small
+road window on the glasses, reduced to one speed per tick for the tracker.
+Speed is the largest measured lever, so this is where a fast camera pays.
+Whether the chip can match or flow a road window at 120 fps is a hardware
+question. The model was trained with frames 1/15 s apart, so other rates mean
+sampling or retraining.
+
+**The speed lane, as planned.** A band of road 3-10 m ahead at full
+resolution, every frame. About 100 textured points tracked frame to frame
+(pyramidal Lucas-Kanade), each also tracked back: a point that does not return
+to where it started is a mismatch, an occlusion or another kart, and is
+dropped. The survivors go through the ground-plane fit above (forward, sideways,
+yaw, pitch, roll), and the 4-8 frames of a tick reduce to one timestamped
+speed with a quality score: the share of points that survived the round trip,
+and how well the frame predicted from that motion matches the next real one.
+The tracker's scale state absorbs the camera height, which is not known per
+driver. No network outputs speed: both learned-speed and block-matching
+attempts produced errors that grow with speed. A small learned flow model is
+the fallback if tracking fails on bland tarmac or in low light, and would
+still leave the metres to the geometry. Estimated cost of sparse tracking at
+120 fps is 5-10% of the M55.
+
+`capture/flow_speed.py` implements it for recordings: frames scaled to Halo's
+focal length, the 3-10 m band, forward-backward tracking, and the ground-plane
+fit with exact translation terms (the first-order ones read 5-10% fast at
+0.25-0.5 m per frame). On a rendered flat road at 30 m/s it is exact at 120 fps
+(87% of points survive the round trip) and within 0.6% at 60 fps (47%), and it
+breaks at 30 fps (9%). That is synthetic, without noise or blur; the first real
+test is the AC 720p/60 recordings, then `--skip 2` for 30 fps, then the tracker
+on the Silverstone streams.
+
+Resolution is not the constraint. The matcher uses 148x80, 1/26 of VGA. For
+motion, one pixel covers about 1.3 cm of road 5 m ahead on Halo (focal length
+about 373 px), against 6.9 cm in the packed frames where classical flow found
+no texture, and 0.8 cm in the AC recordings. So a flow test on the 720p footage
+should first be scaled down to Halo's focal length, or it measures a sharper
+camera than the product will have. Halo's pixels are also read uncompressed on
+the glasses, where Meta's stream is compressed video that smears fine texture.
+Low-light noise, dynamic range and exposure are the camera questions left, and
+need the hardware.
+
+**What the model must change for the Ethos-U55:** GroupNorm and GELU are not
+native operators. GroupNorm was chosen because live and reference frames pass
+through the encoder in very different batch sizes, so replacing it (BatchNorm
+with care over its statistics, or another supported normalisation) needs
+retraining and re-verifying against today's gates, as does 8-bit quantisation.
+The head's dilations up to 8 and its circular padding must compile under Vela.
+The field of view differs from the AC footage (81°x65° against 91°x58°), so AC
+has to be captured or cropped to Halo's (*Cameras and field of view*).
+
+**Unknowns, in order:** whether the camera streams continuously under our own
+firmware, and at what rate for a small window (up to 120 fps would enable
+on-glasses speed); the encoder's real latency and power on
+the NPU; Bluetooth throughput to an iPhone; 25-minute battery and temperature;
+fit inside a full-face helmet. Taps on the frame will not work under a helmet,
+and voice competes with the engine, so starting a reference lap needs another
+input: detecting the start line when the lap closes on itself, setting up on
+the phone, or a hand gesture seen by the camera in the pits.
+
+### Other glasses considered
+
+| Glasses | Why not first |
+|---|---|
+| Rokid Glasses (Snapdragon AR1, 49 g, 210 mAh, micro-LED) | strong compute, small battery for a phone-class chip; unclear whether custom models can run through its SDK |
+| RayNeo X3 Pro (AR1, Android, 76 g) | reviewers report about 30 minutes with the camera on |
+| INMO Air3 (Android, 119 g), Snap Specs (132 g, $2,195) | too heavy for a helmet |
+| Mentra Live (open source, 12 MP, 119°, landscape) | no display |
+| Even Realities G1/G2, Vuzix Z100 | no camera |
+| Meta Ray-Ban, Ray-Ban Display, Oakley Meta | closed; video streamed to the phone; cannot publish yet |
+
+Halo is the only light, open glasses with a camera, a display and an NPU. It is
+also early (firmware at 72 commits when checked) and just shipping. The
+network stays hardware-neutral: the map is context, so the same weights serve
+either platform, and Meta remains the distribution target once its toolkit can
+publish.
+
+---
+
 ## Core principle
 
 **The map is context, not parameters.**
@@ -559,6 +752,37 @@ The filter must also be told a realistic uncertainty. Given the exact speed but
 told it was good to +-0.3 m/s, it collapsed its speed spread and did worse
 (21% over budget on G1) than when told +-2 m/s (6.5%).
 
+### How often, how clean, how late
+
+Measured on the six Silverstone streams with true speed fed at a rate, with
+noise, or late; likelihood power tuned on G1 for each row.
+
+| Speed signal | G2 median | >100 ms | >10 m |
+|---|---|---|---|
+| none | 4.1 m / 109 ms | 54% | 13% |
+| every tick (15 Hz) | 1.9 m / 52 ms | **12%** | 0% |
+| 5 Hz | 2.0 m / 56 ms | 14% | 0% |
+| 2 Hz | 2.2 m / 59 ms | 19% | 0% |
+| **1 Hz** | 2.5 m / 70 ms | **29%** | 0.2% |
+| every 2 s | 3.0 m / 82 ms | 41% | 4% |
+| every 5 s | 3.8 m / 102 ms | 51% | 12% |
+| 15 Hz, +-0.5 m/s noise | 2.0 m / 54 ms | 13% | 0% |
+| 15 Hz, 0.4 s late | 2.5 m / 68 ms | 21% | 0% |
+| 1 Hz, +-0.5 m/s noise | 2.6 m / 71 ms | 30% | 0.3% |
+| 1 Hz, 0.4 s late | 2.8 m / 75 ms | 34% | 0.5% |
+
+**5 Hz is nearly as good as every tick; 1 Hz gives about half the gain and
+removes the catastrophes; every 5 s does almost nothing**, because braking
+changes speed by 10 m/s in a second. **Noise of +-0.5 m/s is harmless; lateness
+is not.** A delay-aware update, comparing a timestamped reading with each
+particle's speed at that time, should recover most of the latency loss. Not
+built.
+
+`python -m train.preview infer ... --speed-sigma 2.0 --speed-every 15` films a
+lap with a second tracker given the labelled speed (`--speed-every` in ticks).
+On the cross-car Silverstone demo lap it goes from 3.87 m / 106 ms median and
+52% over budget without speed to 1.59 m / 42 ms and 6% with speed every tick.
+
 ### Where the speed can come from
 
 - **Not from the reference match.** Reading speed off the slope of the clip's
@@ -610,7 +834,26 @@ told it was good to +-0.3 m/s, it collapsed its speed spread and did worse
   decode with hardware that does not normally expose them.
 - **The phone IMU**, already planned as a filter input. Integrated acceleration
   drifts; the filter's bias state and the vision fixes make the drift
-  observable. Unbuilt.
+  observable. Unbuilt. Halo has no gyroscope, so on that hardware an inertial
+  speed would come from the phone.
+- **GNSS Doppler, as a speedometer only.** Receivers measure velocity from the
+  satellites' Doppler shifts, separately from position and far more cleanly:
+  0.1-0.4 m/s horizontal on Android phones in motion (ISPRS 2022). iPhones
+  report speed about once a second, which is the 1 Hz row above: Silverstone
+  from 54% of ticks over budget to about 29%, more once latency is handled.
+  It costs the phone 15-185 mW and the glasses nothing; an external 10-25 Hz
+  GNSS unit over Bluetooth would be close to the oracle. Positioning stays
+  visual. It would turn the product constraint "no GNSS at runtime" into "no
+  GNSS positioning at runtime", which is undecided.
+- **Pretrained visual odometry** (DPVO, DROID-SLAM, TartanVO, Monodepth2's pose
+  network; the comma.ai speed challenge is the same task on dashcams). One
+  camera gives speed only up to an unknown scale, and the filter's scale state
+  can learn that scale from the vision fixes. Needs sharper frames than 148x80,
+  which costs glasses power if it means sending more pixels. Untested; the
+  cheapest first test is RAFT optical flow with the ground-plane fit above.
+- **Not radio timing between phone and glasses.** They move together, so any
+  Doppler shift between them measures only their relative motion. Ground speed
+  needs a stationary partner: satellites, or a trackside beacon.
 
 ### Confidence
 
@@ -690,6 +933,10 @@ narrowest camera in the system. Store intrinsics per session. This matters at
 two joins — training on AC and deploying on glasses, and sharing reference laps
 between users. It does not arise when reference and live come from the same
 device.
+
+Halo's camera sees about 81°x65° at 4:3 against the AC footage's 91°x58°, so
+targeting it means AC captured or cropped to Halo's field of view. Meta's
+toolkit presets are portrait, which needs the same check.
 
 ---
 
@@ -833,28 +1080,38 @@ Recorded so they are not relitigated.
 | **Field of view / aspect mismatch** across glasses, AC, and shared maps | canonical-FOV crop at pack time; store intrinsics per session |
 | **HUD leakage** on real captures | HUD off; crop the timecode band; leakage control on every real dataset |
 | **Glasses do not fit inside a full-face karting helmet** | non-algorithmic and unresolved; test with hardware before further engineering |
-| **Glasses ↔ phone clock offset** | delta accuracy is bounded by timestamp accuracy; calibrate explicitly, target ≤ 10 ms |
+| **Glasses ↔ phone clock offset** | delta accuracy is bounded by timestamp accuracy; timestamp frames at capture on the glasses; on Halo, camera, tracker and display can share one clock; otherwise calibrate explicitly, target ≤ 10 ms |
+| **Glasses battery and heat** — Meta estimates about 30 minutes of livestreaming, cut short by heat | send as little as possible from the glasses: the lowest video preset, or embeddings instead of video (Halo); measure 25 minutes before building on either |
+| **Halo's continuous capture is unverified** — the stock SDK takes single photos | a hardware test of capture rate at a small size before any port work beyond the model changes |
+| **Input inside a full-face helmet** — frame taps impossible, voice against engine noise | detect the start line when the lap closes on itself; set up on the phone; a hand gesture seen by the camera in the pits; the wrist band on Meta Display |
+| **Meta toolkit apps cannot be published yet** | prototype on Halo; keep the network hardware-neutral |
 | **Kart vibration** (no suspension) → blur | capture-side augmentation must include it; measure on real footage early |
 | **Stale map after a model update** | store a weight hash with the map; refuse to load a mismatch |
 | **Lighting-dependent model bias** — the same car at dusk against noon reads about 1 m apart on the unseen track and 0.5 m on a trained one; a model-free match (ORB + RANSAC) shows the labels themselves agree within 0.2 m | more lighting variety in capture and augmentation; re-measure the dusk/noon asymmetry after each change |
 | **Label accuracy** — 0.3 m is 20 ms at kart speed | measured model-free at 0.10-0.18 m between sessions, inside that; recheck when capture changes |
 | **Patents on matching or localisation methods** — the matcher's parts are published and standard, but no search has been done | a freedom-to-operate check by a patent attorney before any commercial launch |
-| **Thermals** over a 25 min session | 15 Hz, small encoder, fp16 |
+| **Thermals** over a 25 min session | 15 Hz, small encoder, 8-bit on an NPU; on the glasses the radio dominates, so embeddings over video |
 
 ---
 
 ## Build order
 
 1. **An independent speed signal.** The largest measured lever on the unseen
-   track. The filter side, estimating its bias, is built. Encoder motion vectors
-   failed as recorded (one thorough-search check remains). Next candidates: the
-   IMU, for which capture should log AC's own acceleration so a drifting IMU
-   can be simulated with ground truth before hardware exists; and learned
-   motion on a higher-resolution crop of the road.
-2. **More circuits.** Track generalisation costs 2.7x and nothing else has moved
+   track. The filter side, estimating its bias, is built; a delay-aware update
+   for timestamped readings is not. Encoder motion vectors failed as recorded
+   (one thorough-search check remains). Candidates: GNSS Doppler speed (1 Hz
+   on a phone; a product decision), the IMU (capture should log AC's own
+   acceleration so a drifting IMU can be simulated with ground truth), and
+   pretrained dense flow or visual odometry on sharper frames.
+2. **Hardware feasibility on Halo.** Chip-friendly layers and 8-bit weights,
+   verified against today's gates; a Vela estimate of cycles and memory; then
+   on hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
+   throughput, 25-minute power and temperature, helmet fit. AC footage at
+   Halo's field of view once it is chosen.
+3. **More circuits.** Track generalisation costs 2.7x and nothing else has moved
    it.
-3. **An abstain signal** sharp enough to grey out a wrong delta.
-4. Core ML port, on-device latency and thermals.
+4. **An abstain signal** sharp enough to grey out a wrong delta.
+5. On-device port: Core ML on the phone and/or the Ethos-U55 on the glasses.
 
 ---
 
@@ -866,9 +1123,9 @@ docs/
   ml-pivot.md         this document — active design
   img/                synthetic-data previews
 
-capture/              AC + OBS + timecode overlay (Windows-only), encoder motion vectors
+capture/              AC + OBS + timecode overlay (Windows-only), encoder motion vectors, flow speed
 train/                encoder, correlation head, reference grid, estimator, gates, synthetic renderer
-tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, motion vectors
+tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, motion vectors, flow speed
 ```
 
 Everything from packing onward is portable; only capture is Windows-only.

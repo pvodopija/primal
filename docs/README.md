@@ -79,10 +79,17 @@ Numbers, method, and the full gate table are in [`ml-pivot.md`](ml-pivot.md).
 
 These bound every design choice. Do not relax them to make training easier.
 
-- **Runtime:** iPhone, Core ML / Apple Neural Engine, ~15 Hz, ~25 min session.
+- **Runtime:** glasses + iPhone, ~15 Hz, ~25 min session. **The delta is shown
+  on the glasses** (decided). Where the network runs, on the phone's Neural
+  Engine or partly or fully on a glasses NPU, is being evaluated; Brilliant Labs
+  Halo is the first prototype target. See *Hardware target* in
+  [`ml-pivot.md`](ml-pivot.md).
 - **Precision:** ≤ 100 ms time delta ≈ 1.5 m at kart speed. Place-recognition
   benchmarks that score "correct within 25 m" are the wrong metric.
 - **No GNSS at runtime.** RTK/GNSS is fine for training and eval labels only.
+  Open question: GNSS Doppler as a speedometer only, with positioning still
+  visual. It is the most promising speed source measured so far; allowing it
+  would change this to "no GNSS positioning at runtime". Undecided.
 - **The map is context, not parameters.** One set of weights for every track.
   A new circuit costs a reference lap, not a GPU day.
 - **Head movement:** tolerate normal hot-lapping head motion — principally

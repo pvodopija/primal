@@ -1009,3 +1009,55 @@ An error that grows with speed is the one kind the bias state cannot follow.
    (`frame_idx.npy`). Joining per-frame data such as these vectors to packed
    laps currently means replaying the lap splitter; that replay reproduces the
    packed Silverstone laps exactly, so nothing is wrong, it is just indirect.
+
+---
+
+## 2026-09-26 — Mac → Windows
+
+### Ready
+
+- **`capture/flow_speed.py`**: speed from the road's motion between frames, the
+  planned speed source for camera glasses (*The speed lane* in
+  [`ml-pivot.md`](ml-pivot.md)). Each frame is scaled to Halo's focal length,
+  a band of road 3-10 m ahead is cut out, textured points are tracked into the
+  next frame and back (points that do not return are dropped), and the
+  survivors are fitted to a flat road with forward, sideways, yaw, pitch and
+  roll motion. OpenCV only; nothing new to install. With labels next to the
+  video it prints a check against the labelled speed.
+- Tested on a rendered road: exact at 120 fps and within 0.6% at 60 fps
+  (30 m/s), broken at 30 fps. **It has not seen real footage.** The Mac only
+  has 148x80 frames, where it finds nothing, as expected.
+- `train/preview.py infer --speed-sigma --speed-every` films a second tracker
+  given the labelled speed.
+
+### Worth running on Windows
+
+1. **The flow-speed test (the decisive one).** On the sessions from the
+   motion-vector run, at least Silverstone MX-5 and Abarth, both Vallelunga
+   sessions and Black Cat:
+   `python -m capture.flow_speed run data/sessions/<session>/video.mp4 --out data/motion/<session>/flow_speed.npz`.
+   Then on Silverstone MX-5 and one trained track, the same with `--skip 2`
+   (as if 30 fps) to `flow_speed_skip2.npz`. Report each check verbatim. What
+   matters is the "estimate / true by speed band" line: flat means unbiased up
+   to one scale, which the filter can absorb; falling with speed is the failure
+   seen twice before. There's no need to tune anything; the Mac fits the
+   tracker to the outputs.
+2. Still open from before: the thorough-search motion-vector re-encode (low
+   priority now), and logging AC's `accG` and `speedKmh` per frame **with AC's
+   own timestamp per sample**, since the rate study shows latency costs more
+   than noise.
+3. Optional: if AC can render 120 fps on that PC, one short session recorded
+   at 120 fps would show the Halo case directly.
+
+### Context
+
+- **Hardware direction**, under *Hardware target* in `ml-pivot.md`: the
+  delta is shown on the glasses (decided), and Brilliant Labs Halo is the
+  first prototype target. It has a 640x480 global-shutter camera listed at up
+  to 120 fps and an NPU that could run our encoder on the glasses and send
+  embeddings (about 4 KB/s at 30 fps) instead of video.
+- **Capture implication, once Halo is confirmed:** AC footage at Halo's field
+  of view, 81.2° horizontal by about 65.5° vertical, 4:3. Not before; the
+  camera still needs a hardware test.
+- **Speed:** the rate study (*How often, how clean, how late*) shows 5 Hz is
+  nearly as good as every tick and 1 Hz gives about half the gain.
