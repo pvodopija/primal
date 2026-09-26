@@ -1061,3 +1061,204 @@ An error that grows with speed is the one kind the bias state cannot follow.
   camera still needs a hardware test.
 - **Speed:** the rate study (*How often, how clean, how late*) shows 5 Hz is
   nearly as good as every tick and 1 Hz gives about half the gain.
+
+---
+
+## 2026-09-26 — Windows → Mac
+
+### Where the files are
+
+On the SMB share `Transfer`, under `primal/motion/<session>/`, next to last
+run's motion-vector files: `flow_speed.npz` and its log for each session,
+`flow_speed_skip2.npz` for the two `--skip 2` runs, and `motion_720p_umh.npz` for
+the thorough-search run. `labels.parquet`, `run.json` and `overlay.json` are
+already there for every session. Also `primal/motion/roadband_vallelunga_10_vs_50mps.png`,
+referred to below. Outputs were written to `data/motion/`, never into
+`data/sessions/`. The PC stays awake until you have copied them.
+
+### 1. Flow speed: falls with speed on every session
+
+All seven runs exited 0, with defaults throughout (camera height 1.15 m, which
+matches the rig). Nothing was tuned.
+
+| Run | Pairs | Minutes | frames/s printed | MB | fitted | tracked back | median abs error | correlation |
+|---|---|---|---|---|---|---|---|---|
+| Silverstone, MX-5 (holdout) | 28895 | 5.7 | 81-84 | 0.8 | 97.4% | 0.17 | 96.0% | -0.281 |
+| Silverstone, Abarth (holdout) | 33146 | 5.9 | 91-95 | 0.9 | 91.2% | 0.15 | 97.0% | -0.193 |
+| Vallelunga, MX-5 | 27735 | 5.0 | 88-92 | 0.8 | 97.8% | 0.23 | 83.3% | -0.206 |
+| Vallelunga, Abarth | 21133 | 3.9 | 88-90 | 0.6 | 96.3% | 0.21 | 85.9% | -0.381 |
+| Black Cat County, MX-5 | 37040 | 7.0 | 88-88 | 1.0 | 91.5% | 0.17 | 89.2% | -0.396 |
+| Silverstone, MX-5, `--skip 2` | 28894 | 5.2 | 90-92 | 0.8 | 89.8% | 0.11 | 98.7% | -0.218 |
+| Vallelunga, Abarth, `--skip 2` | 21132 | 3.9 | 87-89 | 0.6 | 89.1% | 0.12 | 98.5% | -0.261 |
+
+The "estimate / true by speed band" lines, verbatim below, all fall steeply:
+close to 1.0 below 15 m/s where a session has that band (0.95, 0.99, 0.74), and
+0.01-0.05 above 35 m/s. `--skip 2` is lower than the matching 60 fps run in
+every band. This is the failure seen twice before, and more pronounced.
+
+**Silverstone, MX-5 (holdout)** (`ks_silverstone__national__20260924T104658Z`, `flow_speed.npz`)
+
+```
+28895 pairs in 5.7 min -> data\motion\ks_silverstone__national__20260924T104658Z\flow_speed.npz
+  fitted 97.4% of pairs; median points 200, median share tracked back 0.17, median residual 3.46 px
+check against the labelled speed:
+  per frame pair: n 28141, median |error| 96.0%, p90 105.9%, correlation -0.281
+    estimate / true by speed band (flat = unbiased up to one scale): 15-25: 0.426, 25-35: 0.112, 35-45: 0.014, 45-120: 0.023
+  per 15 Hz tick: n 7218, median |error| 96.1%, p90 103.3%, correlation -0.360
+    estimate / true by speed band (flat = unbiased up to one scale): 15-25: 0.447, 25-35: 0.115, 35-45: 0.014, 45-120: 0.025
+```
+
+**Silverstone, Abarth (holdout)** (`ks_silverstone__national__20260924T105441Z`, `flow_speed.npz`)
+
+```
+33146 pairs in 5.9 min -> data\motion\ks_silverstone__national__20260924T105441Z\flow_speed.npz
+  fitted 91.2% of pairs; median points 200, median share tracked back 0.15, median residual 3.47 px
+check against the labelled speed:
+  per frame pair: n 30234, median |error| 97.0%, p90 106.3%, correlation -0.193
+    estimate / true by speed band (flat = unbiased up to one scale): 15-25: 0.155, 25-35: 0.082, 35-45: 0.013, 45-120: 0.014
+  per 15 Hz tick: n 8272, median |error| 97.1%, p90 103.7%, correlation -0.253
+    estimate / true by speed band (flat = unbiased up to one scale): 15-25: 0.169, 25-35: 0.086, 35-45: 0.013, 45-120: 0.014
+```
+
+**Vallelunga, MX-5** (`ks_vallelunga__club_circuit__20260922T223945Z`, `flow_speed.npz`)
+
+```
+27735 pairs in 5.0 min -> data\motion\ks_vallelunga__club_circuit__20260922T223945Z\flow_speed.npz
+  fitted 97.8% of pairs; median points 200, median share tracked back 0.23, median residual 3.06 px
+check against the labelled speed:
+  per frame pair: n 27100, median |error| 83.3%, p90 105.6%, correlation -0.206
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.744, 15-25: 0.409, 25-35: 0.192, 35-45: 0.032, 45-120: 0.026
+  per 15 Hz tick: n 6929, median |error| 82.4%, p90 101.7%, correlation -0.259
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.769, 15-25: 0.432, 25-35: 0.199, 35-45: 0.038, 45-120: 0.025
+```
+
+**Vallelunga, Abarth** (`ks_vallelunga__club_circuit__20260922T220345Z`, `flow_speed.npz`)
+
+```
+21133 pairs in 3.9 min -> data\motion\ks_vallelunga__club_circuit__20260922T220345Z\flow_speed.npz
+  fitted 96.3% of pairs; median points 200, median share tracked back 0.21, median residual 4.25 px
+check against the labelled speed:
+  per frame pair: n 20341, median |error| 85.9%, p90 111.3%, correlation -0.381
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.994, 15-25: 0.547, 25-35: 0.128, 35-45: 0.008, 45-120: 0.042
+  per 15 Hz tick: n 5279, median |error| 85.1%, p90 106.4%, correlation -0.499
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.993, 15-25: 0.609, 25-35: 0.138, 35-45: 0.011, 45-120: 0.037
+```
+
+**Black Cat County, MX-5** (`ks_black_cat_county__layout_short__20260923T180056Z`, `flow_speed.npz`)
+
+```
+37040 pairs in 7.0 min -> data\motion\ks_black_cat_county__layout_short__20260923T180056Z\flow_speed.npz
+  fitted 91.5% of pairs; median points 200, median share tracked back 0.17, median residual 4.34 px
+check against the labelled speed:
+  per frame pair: n 33887, median |error| 89.2%, p90 106.4%, correlation -0.396
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.953, 15-25: 0.574, 25-35: 0.187, 35-45: 0.045, 45-120: 0.014
+  per 15 Hz tick: n 9246, median |error| 88.9%, p90 102.3%, correlation -0.505
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.967, 15-25: 0.614, 25-35: 0.199, 35-45: 0.047, 45-120: 0.016
+```
+
+**Silverstone, MX-5, `--skip 2`** (`ks_silverstone__national__20260924T104658Z`, `flow_speed_skip2.npz`)
+
+```
+28894 pairs in 5.2 min -> data\motion\ks_silverstone__national__20260924T104658Z\flow_speed_skip2.npz
+  fitted 89.8% of pairs; median points 200, median share tracked back 0.11, median residual 4.11 px
+check against the labelled speed:
+  per frame pair: n 25608, median |error| 98.7%, p90 105.7%, correlation -0.218
+    estimate / true by speed band (flat = unbiased up to one scale): 15-25: 0.192, 25-35: 0.037, 35-45: 0.005, 45-120: 0.005
+  per 15 Hz tick: n 7149, median |error| 98.8%, p90 104.0%, correlation -0.258
+    estimate / true by speed band (flat = unbiased up to one scale): 15-25: 0.196, 25-35: 0.036, 35-45: 0.004, 45-120: 0.006
+```
+
+**Vallelunga, Abarth, `--skip 2`** (`ks_vallelunga__club_circuit__20260922T220345Z`, `flow_speed_skip2.npz`)
+
+```
+21132 pairs in 3.9 min -> data\motion\ks_vallelunga__club_circuit__20260922T220345Z\flow_speed_skip2.npz
+  fitted 89.1% of pairs; median points 200, median share tracked back 0.12, median residual 4.33 px
+check against the labelled speed:
+  per frame pair: n 18445, median |error| 98.5%, p90 112.9%, correlation -0.261
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.382, 15-25: 0.056, 25-35: 0.013, 35-45: -0.018, 45-120: 0.035
+  per 15 Hz tick: n 5223, median |error| 98.7%, p90 108.8%, correlation -0.304
+    estimate / true by speed band (flat = unbiased up to one scale): 0-15: 0.456, 15-25: 0.060, 25-35: 0.011, 35-45: -0.019, 45-120: 0.037
+```
+
+### What the footage says about why
+
+Checked on the capture side only; the method was not changed.
+
+- **Not motion blur.** AC's `MOTION_BLUR=0`. The Pure filter's `BLUR=1` is in
+  its `[GLARE]` section (bloom), and `AFTER_IMAGE=0`.
+- **Not compression erasing the road.** On Vallelunga Abarth, the Laplacian
+  variance of the road band (rows 431-598 of 720, the tool's 3-10 m band scaled
+  back) over 400 random frames: 234 below 15 m/s, 348, 389, 379 through 15-45
+  m/s, and 210 above 45 m/s. Detail survives in exactly the bands where the
+  estimate has already collapsed.
+- **What the road looks like** (`roadband_vallelunga_10_vs_50mps.png`): at 10 m/s,
+  in a corner, texture runs in every direction, with kerbs and cracks. At
+  50 m/s, on a straight, the near road is dominated by streaks along the
+  direction of travel, from rubber lines and from the renderer's texture
+  filtering at a grazing angle. Motion along such streaks is unobservable (the
+  aperture problem), which fits an estimate that is right in slow corners,
+  near zero on fast straights, with most points failing the forward-backward
+  check, and worse at larger per-frame displacement (`--skip 2`). A
+  hypothesis: real asphalt has rubber lines too, but not the grazing-angle
+  filtering, so part of this may be specific to AC.
+
+### 2. Thorough-search motion vectors (`me=umh:merange=64:subme=7`)
+
+Silverstone MX-5, start 19:09:24, exit 0 end 19:27:38, 67 MB. Its check, verbatim:
+
+```
+28896 frames in 18.1 min -> data\motion\ks_silverstone__national__20260924T104658Z\motion_720p_umh.npz (67 MB)
+inter-coded share: median 0.73
+check over 28357 labelled frames: radial flow vs speed, Pearson r = 0.207
+   15-25  m/s    1870 frames  radial px/frame median  8.104  px per (m/s) median 0.3369  spread p10-p90 0.2336-0.4448
+   25-35  m/s    7306 frames  radial px/frame median  8.704  px per (m/s) median 0.3039  spread p10-p90 0.1787-0.4206
+   35-45  m/s   11367 frames  radial px/frame median  9.736  px per (m/s) median 0.2405  spread p10-p90 0.1560-0.3553
+   45-120 m/s    7814 frames  radial px/frame median 10.153  px per (m/s) median 0.2147  spread p10-p90 0.1254-0.3329
+```
+
+For comparison, the default search on the same session:
+
+```
+28896 frames in 8.9 min -> data\motion\ks_silverstone__national__20260924T104658Z\motion_720p.npz (50 MB)
+inter-coded share: median 0.62
+check over 28357 labelled frames: radial flow vs speed, Pearson r = -0.031
+   15-25  m/s    1870 frames  radial px/frame median  4.407  px per (m/s) median 0.1831  spread p10-p90 0.0828-0.2626
+   25-35  m/s    7306 frames  radial px/frame median  3.134  px per (m/s) median 0.1065  spread p10-p90 0.0448-0.1910
+   35-45  m/s   11367 frames  radial px/frame median  2.281  px per (m/s) median 0.0572  spread p10-p90 0.0277-0.1004
+   45-120 m/s    7814 frames  radial px/frame median  3.270  px per (m/s) median 0.0689  spread p10-p90 0.0338-0.1132
+```
+
+The thorough search changes the picture rather than confirming it. Radial flow
+now **rises** with speed (8.1 to 10.2 px/frame from the lowest to the highest
+band; the default search fell from 4.4 to 3.3), r goes from -0.031 to +0.207,
+and the inter-coded share from 0.62 to 0.73. By the criterion in the earlier
+entry, that does not close encoder vectors as a speed source. It is still not
+proportional: px per (m/s) falls from 0.34 to 0.21, about 36% across the bands,
+against 0.18 to 0.07 (a factor 2.6) with the default search. So the default
+search was missing much of the motion, and a wider one recovers part of it.
+The product caveat stands: the glasses' encoder settings are not ours to choose.
+
+### 3. AC telemetry per frame: done, not yet recorded
+
+The timecode app now logs, for every rendered frame, `speedKmh`, G-forces
+(`car.acceleration`, X sideways, Z forward), local velocity, local angular
+velocity (what a phone gyroscope would measure), and AC's own times: `sim_ms`
+for the frame and `phys_ms` for the physics state it shows. Rows carry the
+barcode's counter, so they join onto exactly the frames a capture kept.
+`session import` attaches the log; `python -m capture.frame_log check <session>`
+reports coverage, verifies the join against the barcode to within one
+quantisation step, and prints the physics-state age. Details in
+`docs/capture-log.md` under *Per-frame telemetry*.
+
+Verified under LuaJIT with a stub AC before installing: the barcode matches
+the previous version's on every frame, and a telemetry failure mid-run leaves
+it drawing. **No session has telemetry yet**; the next recording will be the
+first.
+
+### 4. 120 fps: needs the user's decision
+
+AC would need to render above 120 fps and OBS to record at 120. The GTX 970
+probably manages 720p, but x264 at 60 fps already overloads briefly on this
+4-core i5, so 120 fps would likely skip many frames. The user can try one
+minute and I will measure what lands in the file; not attempted yet.
+
