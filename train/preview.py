@@ -82,11 +82,11 @@ def _belief_plot(
     single_frame: np.ndarray,
     true_bin: float,
     predicted_bin: float,
-    filtered_bin: float | None = None,
+    tracks: list[tuple[str, float, tuple[int, int, int]]] = (),
 ) -> None:
     """
     The model's distribution over reference bins, truth and prediction marked,
-    plus the particle filter's estimate when one is given.
+    plus each tracker's estimate as (name, bin, colour).
 
     Both curves are scaled to their own maximum, so this shows shape rather than
     absolute confidence: one sharp peak means the place is resolved, two peaks
@@ -119,9 +119,9 @@ def _belief_plot(
         cv2.fillPoly(canvas, [np.array([[x - 6, y - 9], [x + 6, y - 9], [x, y]], np.int32)], colour)
 
     marker(predicted_bin, (230, 90, 230), top - 2)
-    if filtered_bin is not None:
-        cv2.line(canvas, (x_of(filtered_bin), top), (x_of(filtered_bin), bottom), (245, 245, 245), 1)
-        marker(filtered_bin, (245, 245, 245), top + 12)
+    for row, (_, tracked_bin, colour) in enumerate(tracks):
+        cv2.line(canvas, (x_of(tracked_bin), top), (x_of(tracked_bin), bottom), colour, 1)
+        marker(tracked_bin, colour, top + 12 + 14 * row)
 
     _label(canvas, ["belief over the reference lap"], x=8, y=20)
     legend = [
@@ -129,7 +129,7 @@ def _belief_plot(
         ("newest frame alone", (110, 105, 100)),
         ("true", (90, 230, 90)),
         ("single-shot", (230, 90, 230)),
-    ] + ([("filter", (245, 245, 245))] if filtered_bin is not None else [])
+    ] + [(name, colour) for name, _, colour in tracks]
     for i, (text, colour) in enumerate(legend):
         x = width - 140 * len(legend) + i * 140
         cv2.line(canvas, (x, 15), (x + 18, 15), colour, 2)
@@ -373,8 +373,8 @@ def cmd_infer(args: argparse.Namespace) -> None:
     """
     import torch
 
-    from train.estimator import ProgressEstimator
-    from train.eval import load_model, reference_axis_of
+    from train.estimator import EstimatorConfig, ProgressEstimator
+    from train.eval import SPEED_FED, _instantaneous_speed, load_model, reference_axis_of
     from train.model import compute_metrics, soft_argmax_circular
 
     index = _load_index(args.data, None)
@@ -393,14 +393,27 @@ def cmd_infer(args: argparse.Namespace) -> None:
     grid_time = torch.from_numpy(grid.time_s.astype(np.float32))
     # The tracker the phone would run on top of the aligner, fed the same ticks.
     estimator = ProgressEstimator(grid.pos_m, grid.track_length_m)
+    # Optionally a second tracker given the labelled speed, as `eval stream` prices
+    # a speed sensor: what the same lap looks like once speed is known.
+    speed_estimator = (
+        ProgressEstimator(grid.pos_m, grid.track_length_m, EstimatorConfig(**SPEED_FED))
+        if args.speed_sigma
+        else None
+    )
     live_t = live_lap.t()
     previous_t: float | None = None
     filter_m: list[float] = []
     filter_ms: list[float] = []
+    fed_m: list[float] = []
+    fed_ms: list[float] = []
+    tick = 0
     reference_frames, reference_s = reference_lap.frames(), reference_lap.s()
     live_raw = np.asarray(live_lap.frames())
     live_s = live_lap.s()
     speed = live_lap.speed_mps()
+    true_speed = _instantaneous_speed(
+        live_s, live_t, np.arange(live_lap.n_frames), live_lap.track_length_m
+    )
 
     with torch.no_grad():
         reference_descriptors = model.encode_reference(
@@ -446,6 +459,22 @@ def cmd_infer(args: argparse.Namespace) -> None:
             )
             filter_m.append(float(fm[0]))
             filter_ms.append(float(fms[0]))
+            tracks = [("filter", tracked, (245, 245, 245))]
+            if speed_estimator is not None:
+                fed = tick % args.speed_every == 0
+                fed_bin = float(speed_estimator.bin_of(speed_estimator.step(
+                    belief.astype(np.float64), dt,
+                    speed_obs=float(true_speed[i]) if fed else None,
+                    speed_sigma=args.speed_sigma if fed else None,
+                ).position_m))
+                sm, sms = compute_metrics(
+                    torch.tensor([fed_bin]), torch.tensor([true_bin]),
+                    grid_pos, grid_time, grid.track_length_m, grid.lap_time_s,
+                )
+                fed_m.append(float(sm[0]))
+                fed_ms.append(float(sms[0]))
+                tracks.append(("filter + speed", fed_bin, (40, 170, 255)))
+            tick += 1
             errors_m.append(error_m)
             errors_ms.append(error_ms)
 
@@ -473,7 +502,7 @@ def cmd_infer(args: argparse.Namespace) -> None:
                     f"bin {int(round(predicted)) % n_bins}/{n_bins}",
                     f"err {error_m:5.2f} m / {error_ms:5.0f} ms",
                     f"filter err {filter_m[-1]:5.2f} m / {filter_ms[-1]:5.0f} ms",
-                ],
+                ] + ([f"+ speed err {fed_m[-1]:5.2f} m / {fed_ms[-1]:5.0f} ms"] if fed_m else []),
                 font_scale=0.6,
                 line_height=24,
             )
@@ -494,7 +523,7 @@ def cmd_infer(args: argparse.Namespace) -> None:
                 x = column * (tile_w + gap)
                 canvas[:tile_h, x : x + tile_w] = tile
             _belief_plot(
-                canvas[tile_h + gap :], belief, single, true_bin, predicted, tracked
+                canvas[tile_h + gap :], belief, single, true_bin, predicted, tracks
             )
             writer.write(canvas)
     finally:
@@ -516,6 +545,14 @@ def cmd_infer(args: argparse.Namespace) -> None:
         f"over 100 ms {np.mean(np.array(filter_ms) > 100) * 100:.1f}%  (single-shot "
         f"{np.mean(np.array(errors_ms) > 100) * 100:.1f}%)"
     )
+    if fed_m:
+        fed = np.array(fed_m)
+        print(
+            f"  + speed   median {np.median(fed):.2f} m / {np.median(fed_ms):.0f} ms   "
+            f"p90 {np.percentile(fed, 90):.2f} m   worst {fed.max():.2f} m   "
+            f"over 100 ms {np.mean(np.array(fed_ms) > 100) * 100:.1f}%  "
+            f"(labelled speed every {args.speed_every} ticks, stated +-{args.speed_sigma} m/s)"
+        )
 
 
 def main() -> None:
@@ -572,6 +609,13 @@ def main() -> None:
     infer.add_argument("--plot-height", type=int, default=240)
     infer.add_argument("--fps", type=float, default=30.0)
     infer.add_argument("--device", default=None)
+    infer.add_argument(
+        "--speed-sigma",
+        type=float,
+        default=None,
+        help="also run a tracker given the labelled speed, stated to this many m/s",
+    )
+    infer.add_argument("--speed-every", type=int, default=1, help="ticks between speed readings")
     infer.set_defaults(func=cmd_infer)
 
     args = parser.parse_args()
