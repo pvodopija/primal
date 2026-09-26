@@ -1262,3 +1262,49 @@ probably manages 720p, but x264 at 60 fps already overloads briefly on this
 4-core i5, so 120 fps would likely skip many frames. The user can try one
 minute and I will measure what lands in the file; not attempted yet.
 
+
+---
+
+## 2026-09-26 (later) — Mac → Windows
+
+### Received
+
+All flow-speed outputs, the log files and the road-band picture from
+`Transfer/primal/motion/`. The thorough-search `motion_720p_umh.npz` was still
+copying when this was written; your check output is enough for it.
+
+### What decides the flow speed is metres moved per frame
+
+Pooled over your seven runs by the true distance moved between the two frames
+of a pair (the `--skip 2` runs put the same scenes at double the distance):
+
+| Metres per frame | 0.10-0.15 | 0.15-0.20 | 0.20-0.25 | 0.25-0.30 | 0.30-0.35 | 0.35-0.40 | 0.40-0.50 | 0.50-0.60 | >0.6 |
+|---|---|---|---|---|---|---|---|---|---|
+| measured / true, median | 0.94 | 0.93 | 0.91 | 0.87 | 0.44 | 0.29 | 0.17 | 0.04 | ~0 |
+
+At the same distance per frame, speed matters much less: 0.94 in slow corners
+against 0.88 at 15-25 m/s for 0.2-0.3 m. Your streak explanation fits the
+remaining gap on fast straights. So the test failed because AC's cars at 30-50
+m/s and 60 fps move 0.5-0.83 m per frame. A kart at 11-22 m/s moves 0.09-0.18 m
+at 120 fps, inside the working region; at 60 fps it straddles the cliff and at
+30 fps it is past it. Details under *The speed lane* in
+[`ml-pivot.md`](ml-pivot.md).
+
+The thorough-search vectors are recorded there too, and encoder vectors are
+closed as a product path (the glasses' encoder is not ours, and Halo has none in
+the loop).
+
+### Worth running on Windows
+
+1. **Slow-motion replays: fast straights at small distance per frame.** This
+   replaces the 120 fps question (item 4 of your entry): no need to render at
+   120. Record a fast lap's replay at 0.5x and 0.25x playback with the overlay
+   running, on Silverstone or Black Cat, as its own session, and run
+   `python -m capture.flow_speed run <video> --out data/motion/<session>/flow_speed.npz`.
+   Game time slows but the render counter does not, and both the flow speed and
+   the labelled speed are measured per render frame, so their ratio stays valid.
+   0.25x at 60 fps is 240 fps of game time. Worth confirming first that the
+   overlay encodes the camera's position during replay, as the rig's replays do,
+   and noting that replays interpolate a ~33 Hz recording.
+2. **The next recordings with the telemetry logger**, so a phone IMU can be
+   simulated with its timing.

@@ -256,9 +256,35 @@ focal length, the 3-10 m band, forward-backward tracking, and the ground-plane
 fit with exact translation terms (the first-order ones read 5-10% fast at
 0.25-0.5 m per frame). On a rendered flat road at 30 m/s it is exact at 120 fps
 (87% of points survive the round trip) and within 0.6% at 60 fps (47%), and it
-breaks at 30 fps (9%). That is synthetic, without noise or blur; the first real
-test is the AC 720p/60 recordings, then `--skip 2` for 30 fps, then the tracker
-on the Silverstone streams.
+breaks at 30 fps (9%). That is synthetic, without noise or blur.
+
+**Measured on AC footage, what decides it is metres moved per frame.** Seven
+runs (five sessions at 60 fps, two also at 30 fps) pooled by the true distance
+moved between the two frames of a pair:
+
+| Metres per frame | 0.10-0.15 | 0.15-0.20 | 0.20-0.25 | 0.25-0.30 | 0.30-0.35 | 0.35-0.40 | 0.40-0.50 | 0.50-0.60 | >0.6 |
+|---|---|---|---|---|---|---|---|---|---|
+| measured / true speed, median | 0.94 | 0.93 | 0.91 | 0.87 | 0.44 | 0.29 | 0.17 | 0.04 | ~0 |
+| share of points tracked back | 0.61 | 0.49 | 0.45 | 0.44 | 0.32 | 0.25 | 0.20 | 0.17 | 0.13 |
+
+At the same metres per frame, speed matters much less: at 0.2-0.3 m the ratio
+is 0.94 in slow corners and 0.88 at 15-25 m/s; at 0.3-0.4 m, 0.35, 0.41 and 0.27
+from slow to 25-35 m/s. On fast straights AC's road also turns into streaks
+along the direction of travel (rubber lines, and texture filtering at a
+grazing angle), and motion along a streak is invisible to point tracking; that
+lowers the fast bands somewhat on top of the displacement. Not motion blur
+(`MOTION_BLUR=0`) and not compression (the band's detail survives at every
+speed).
+
+So the AC test failed for a reason the product can avoid: its cars at 30-50
+m/s and 60 fps move 0.5-0.83 m per frame, past the cliff. **A kart at 11-22 m/s
+moves 0.09-0.18 m per frame at 120 fps, inside the working region; 0.18-0.37 m
+at 60 fps, straddling the cliff; 0.37-0.73 m at 30 fps, past it.** Keeping
+under about 0.25 m per frame at a kart's top speed takes about 90 fps. Within
+the working region the median is 0.87-0.94x true, a scale the filter's scale
+state absorbs, but single pairs scatter widely (middle half 0.5-1.0 at
+0.15-0.2 m), so the per-tick median over 8 frames matters. Not yet shown: fast
+straights at small displacement. Slow-motion replays would give exactly that.
 
 Resolution is not the constraint. The matcher uses 148x80, 1/26 of VGA. For
 motion, one pixel covers about 1.3 cm of road 5 m ahead on Halo (focal length
@@ -857,10 +883,13 @@ On the cross-car Silverstone demo lap it goes from 3.87 m / 106 ms median and
     against 4.3 m and 57%. An error that grows with speed is the one kind
     the bias state cannot follow.
 
-  Open: whether a thorough search (`--x264-params me=umh:merange=64:subme=7`)
-  recovers the middle distance. Even then, in the product the vectors would
-  come from the glasses' encoder, whose settings are not ours, and phones
-  decode with hardware that does not normally expose them.
+  A thorough search (`--x264-params me=umh:merange=64:subme=7`) on Silverstone
+  MX-5 recovers part of the motion: radial flow now rises with speed (8.1 to
+  10.2 px per frame across the bands, r = 0.21, inter-coded share 0.73) but
+  stays far from proportional (px per m/s falls from 0.34 to 0.21). Closed as a
+  product path regardless: the vectors would come from the glasses' encoder,
+  whose settings are not ours, phones decode with hardware that does not
+  normally expose them, and on Halo there is no video encoder in the loop.
 - **The phone IMU**, already planned as a filter input. Integrated acceleration
   drifts; the filter's bias state and the vision fixes make the drift
   observable. Unbuilt. Halo has no gyroscope, so on that hardware an inertial
@@ -1128,10 +1157,11 @@ Recorded so they are not relitigated.
 1. **An independent speed signal.** The largest measured lever on the unseen
    track. The filter side, estimating its bias, is built; a delay-aware update
    for timestamped readings is not. Encoder motion vectors failed as recorded
-   (one thorough-search check remains). Candidates: GNSS Doppler speed (1 Hz
-   on a phone; a product decision), the IMU (capture should log AC's own
-   acceleration so a drifting IMU can be simulated with ground truth), and
-   pretrained dense flow or visual odometry on sharper frames.
+   and are closed. Candidates: road flow on the glasses, which works on AC below
+   about 0.28 m moved per frame (about 90 fps at a kart's top speed; slow-motion
+   replays to confirm fast straights); GNSS Doppler speed (1 Hz on a phone; a
+   product decision); the IMU, now that capture logs AC's acceleration, angular
+   velocity and times per frame.
 2. **Hardware feasibility on Halo.** Chip-friendly layers and 8-bit weights,
    verified against today's gates; a Vela estimate of cycles and memory; then
    on hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
