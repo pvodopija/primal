@@ -279,6 +279,35 @@ The head's dilations up to 8 and its circular padding must compile under Vela.
 The field of view differs from the AC footage (81°x65° against 91°x58°), so AC
 has to be captured or cropped to Halo's (*Cameras and field of view*).
 
+**How frames arrive** (from the firmware source, `drivers/video/pag7982.c` and
+the board files): the sensor sends raw Bayer (BGGR8) 640x480 over an 8-bit
+parallel camera interface into memory by DMA, configured at 30 fps from a
+24 MHz pixel clock. The stock photo API then debayers, white-balances and
+JPEG-encodes on the CPU and hands Lua the JPEG, which suits a photo every few
+seconds and not a sensor. Our firmware would take the raw buffer as each frame
+arrives: the road strip from every frame (one green channel or a 2x2 average is
+enough for tracking), a 160x120 image for the encoder every few frames. At one
+byte per pixel the interface caps VGA at about 78 fps at 24 MHz and about 156 at
+48 MHz, whose register set is in the driver but commented out, as are 320x240
+and 160x120 formats. So 120 fps means VGA at 48 MHz or a 320x240 window, whose
+pixels cover twice the road (about 2.7 cm at 5 m). `capture/flow_speed.py
+--focal 186.7` measures that case on the AC recordings.
+
+**Frames are not kept on the glasses.** Halo has no storage for video (2 MB SRAM,
+1.8 MB MRAM), so in the embeddings design each frame is gone once encoded. Two
+things need frames anyway. Reference laps must be re-encodable: embeddings are
+tied to the weights, so without frames every model update would force every
+reference lap to be re-recorded. And reviewing where time was lost wants
+pictures. Embeddings use about 4 KB/s of the link, so a best-effort preview
+stream fits beside them, the embeddings always first (estimates): the reference
+lap at matcher size, 160x120 greyscale at 15 fps, about 30-45 KB/s while
+recording it; a review stream, 160x120 at 10 fps (30-60 KB/s) or one 640x480
+photo per second (25-40 KB/s). The phone stores these with the delta timeline.
+Full-quality review video can also come from any onboard camera (a GoPro, a
+phone on the kart): aligning footage to a reference lap is what the matcher
+does, so it can place that video on the lap timeline after the session, after
+cropping to a matching field of view.
+
 **Unknowns, in order:** whether the camera streams continuously under our own
 firmware, and at what rate for a small window (up to 120 fps would enable
 on-glasses speed); the encoder's real latency and power on
@@ -1086,7 +1115,7 @@ Recorded so they are not relitigated.
 | **Input inside a full-face helmet** — frame taps impossible, voice against engine noise | detect the start line when the lap closes on itself; set up on the phone; a hand gesture seen by the camera in the pits; the wrist band on Meta Display |
 | **Meta toolkit apps cannot be published yet** | prototype on Halo; keep the network hardware-neutral |
 | **Kart vibration** (no suspension) → blur | capture-side augmentation must include it; measure on real footage early |
-| **Stale map after a model update** | store a weight hash with the map; refuse to load a mismatch |
+| **Stale map after a model update** | store a weight hash with the map; refuse to load a mismatch; keep the reference lap's frames (at matcher size) on the phone so it can be re-encoded, which on Halo means streaming them while the reference lap is recorded |
 | **Lighting-dependent model bias** — the same car at dusk against noon reads about 1 m apart on the unseen track and 0.5 m on a trained one; a model-free match (ORB + RANSAC) shows the labels themselves agree within 0.2 m | more lighting variety in capture and augmentation; re-measure the dusk/noon asymmetry after each change |
 | **Label accuracy** — 0.3 m is 20 ms at kart speed | measured model-free at 0.10-0.18 m between sessions, inside that; recheck when capture changes |
 | **Patents on matching or localisation methods** — the matcher's parts are published and standard, but no search has been done | a freedom-to-operate check by a patent attorney before any commercial launch |
