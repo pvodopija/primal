@@ -66,6 +66,24 @@ Verified on the MX-5 session: packed labels sit exactly 1.738 m from the decoded
 ones at identical frames. The track coordinate agrees with `splinePosition` to
 within 0.13–0.18 m, so the change does not alter how `s` is parametrised.
 
+## Per-frame telemetry
+
+The timecode app also logs, for every rendered frame, AC's speed, G-forces
+(`car.acceleration`), local velocity and local angular velocity (what a phone
+gyroscope would measure), with two of AC's own times: `sim_ms` for the frame and
+`phys_ms` for the physics state it shows, so sensor latency can be simulated
+from ground truth. Rows carry the barcode's counter; `capture/frame_log.py`
+joins them onto the decoded labels, and its `check` command verifies the join by
+requiring the logged camera position to match the barcode to within one
+quantisation step. The app writes one folder per launch under its own
+`frame_log/`; `session import` copies the newest into the session.
+
+Logging runs after the barcode is drawn and inside `pcall`: a failure switches
+logging off without touching the label. Verified under LuaJIT with a stub AC
+before installing: the barcode is identical to the previous version's on every
+frame, and a mid-run telemetry failure leaves it drawing. Sessions recorded
+before this have no telemetry.
+
 ## Two clocks, and why duplicates are normal
 
 AC renders at ~60 Hz and OBS samples at exactly 60 Hz, on independent clocks. As

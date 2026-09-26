@@ -46,6 +46,39 @@ local counter = 0
 local bits = {}
 for i = 1, DATA_BITS do bits[i] = 0 end
 
+-- Per-frame telemetry keyed by the same counter the barcode carries, so it joins
+-- onto exactly the frames a capture kept with no clock involved. Each row also
+-- carries AC's own times: sim_ms for the frame and phys_ms for the physics state
+-- it shows, so sensor latency can be simulated from ground truth. One folder per
+-- launch, written in small chunks; nothing is ever overwritten.
+local LOG_FRAMES = true
+local LOG_FLUSH_FRAMES = 120
+local LOG_HEADER = 'counter,sim_ms,phys_ms,cam_s,speed_kmh,acc_x_g,acc_y_g,acc_z_g,'
+  .. 'vel_x,vel_y,vel_z,gyro_x,gyro_y,gyro_z,replay\n'
+local logDir, logRows, logChunk, logError = nil, {}, 0, nil
+
+local function flushLog()
+  if #logRows == 0 then return end
+  logChunk = logChunk + 1
+  io.save(string.format('%s/%06d.csv', logDir, logChunk), LOG_HEADER .. table.concat(logRows, '\n') .. '\n')
+  logRows = {}
+end
+
+local function logFrame(spline)
+  local sim = ac.getSim()
+  local car = ac.getCar(0)
+  if not logDir then
+    -- systemTime is a 64-bit cdata integer; string and math functions need a number.
+    logDir = ac.getFolder(ac.FolderID.ScriptOrigin) .. '/frame_log/' .. tostring(tonumber(sim.systemTime))
+    io.createDir(logDir)
+  end
+  local a, v, w = car.acceleration, car.localVelocity, car.localAngularVelocity
+  logRows[#logRows + 1] = string.format('%d,%.3f,%.3f,%.7f,%.3f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%d',
+    counter, tonumber(sim.time), tonumber(car.timestamp), spline, car.speedKmh,
+    a.x, a.y, a.z, v.x, v.y, v.z, w.x, w.y, w.z, sim.isReplayActive and 1 or 0)
+  if #logRows >= LOG_FLUSH_FRAMES then flushLog() end
+end
+
 --- Writes `count` bits of `value` into `bits` at 1-based `at`, LSB first.
 local function writeBits(value, at, count)
   local v = value
@@ -101,6 +134,13 @@ function script.windowMain(dt)
   end
 
   ui.dummy(vec2(COLS * CELL, ROWS * CELL))
+
+  -- After the barcode is drawn, and isolated: a logging failure switches logging
+  -- off for the session rather than touching the label.
+  if LOG_FRAMES and not logError then
+    local ok, err = pcall(logFrame, spline)
+    if not ok then logError = tostring(err) end
+  end
 
   if SHOW_TEXT then
     ui.text(string.format('%d  s=%.6f', counter, spline))

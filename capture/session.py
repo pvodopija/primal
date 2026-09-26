@@ -97,6 +97,27 @@ def attach_rig_log(session: Path) -> str:
     return logs[-1].name
 
 
+def attach_frame_log(session: Path) -> str | None:
+    """
+    Copy the timecode app's per-frame telemetry for the current AC launch into the
+    session. The app writes one folder per launch and the import runs with AC
+    still open, so the newest folder holds this recording; rows are matched to
+    frames later by the barcode counter, so extra rows from the same launch are
+    harmless. Returns None when no log exists, as with recordings made before the
+    app logged anything.
+    """
+    root = find_ac_root()
+    base = root / "apps" / "lua" / "locamotif_timecode" / "frame_log" if root else None
+    launches = sorted((p for p in base.iterdir() if p.is_dir()), key=lambda p: p.stat().st_mtime) if base and base.exists() else []
+    if not launches:
+        return None
+    if time.time() - launches[-1].stat().st_mtime > 15 * 60:
+        print(f"note: newest frame log {launches[-1].name} is over 15 minutes old; not attached")
+        return None
+    shutil.copytree(launches[-1], session / "frame_log")
+    return launches[-1].name
+
+
 def cmd_import(args: argparse.Namespace) -> None:
     video = Path(args.video)
     if not video.exists():
@@ -146,6 +167,9 @@ def cmd_import(args: argparse.Namespace) -> None:
     }
     if args.rig:
         meta["rig_log"] = attach_rig_log(session)
+    frame_log = attach_frame_log(session)
+    if frame_log:
+        meta["frame_log"] = frame_log
     (session / "run.json").write_text(json.dumps(meta, indent=2))
 
     print(f"created {session}")
