@@ -1308,3 +1308,90 @@ the loop).
    and noting that replays interpolate a ~33 Hz recording.
 2. **The next recordings with the telemetry logger**, so a phone IMU can be
    simulated with its timing.
+
+---
+
+## 2026-09-27 — Mac → Windows: the recording session
+
+The user is about to record new tracks, and wants to do it once. This entry is
+the spec. Nothing below needs the Mac.
+
+### Why
+
+The Mac's evidence says the model's weakness is track variety: held-out laps
+cost 1.09x, an unseen track 2.7x, and on synthetic data 3 -> 15 tracks with the
+model unchanged closed most of that gap (*What this established* in
+[`ml-pivot.md`](ml-pivot.md)). A track-count learning curve is training on the
+Mac now and will say how many tracks are worth it; more help in every case.
+How the data is used is in [`training.md`](training.md).
+
+### The rule: live things cannot be redone, visual things can
+
+`primal_rig.lua` re-renders a saved replay from any camera height, field of
+view, sideways offset or weather. So anything about the *picture* can be
+produced again later from a replay. What cannot be redone is what only exists
+live: the physics telemetry at full rate (replays are ~33 Hz and interpolated)
+and the driving itself. That decides what is essential.
+
+### Must, or we record again
+
+1. **Save the AC replay of every session**, at the highest replay recording
+   quality AC offers and a length limit long enough for a whole session, and keep
+   it with the session. This is what makes every visual choice below reversible.
+2. **Keep the raw OBS videos, `labels.parquet`, `run.json`, rig logs and frame
+   logs** permanently, ideally on an external drive. Repacking at another
+   resolution or field of view needs them.
+3. **Telemetry logger on in every live session.** Worth adding to its columns
+   before recording, since each is cheap now and impossible later:
+   - the rendering camera's world position and orientation (a full pose), and
+     the car's;
+   - the camera's lateral track position, `worldCoordinateToTrack(...).x`, which
+     is the label for the "lateral line offset" product output nobody has yet;
+   - driver inputs (steering, throttle, brake), gear, rpm;
+   - AC's lap count and current lap time.
+   Keep what is already logged (counter, sim_ms, phys_ms, speed, three-axis
+   G-forces, local velocity, local angular velocity, replay flag).
+4. **Two of the new tracks as `holdout`**, never trained on, one a kart track if
+   possible. With Silverstone that gives three unseen tracks instead of one.
+5. **Pre-flight on every new track, before a full session:** 30 s of driving,
+   then `overlay_decode` at 100%, `frame_log check` passing, and `s` running
+   smoothly from 0 to 1 and wrapping at the finish line. Mod tracks especially:
+   a missing or broken AI spline corrupts every label, and the bot needs one.
+
+### Should: variety within each track
+
+6. **5-10 new circuits**, different from our six. Short layouts are better.
+   **Kart tracks via AC mods are worth the most**, with a kart car mod where one
+   exists.
+7. **Per track, 2-3 sessions of 8-10 laps**, varying car and time of day (noon,
+   low sun, overcast). More light and weather can also come later from replays.
+8. **Different pace.** The product measures pace differences, and a bot at one
+   level drives near-identical laps. Vary the AI strength between sessions, and
+   if the user can, add one human-driven session per track with ordinary
+   mistakes (early braking, running wide).
+9. **Rig wander on** (as before, ~2.5 m) for training sessions.
+10. Record live with the camera as now (60° vertical, 1.15 m) so the new data
+    packs compatibly with `packed_ac_v2`.
+
+### Later, from the saved replays (no driving)
+
+- **Halo's camera:** 81.2° by about 65.5° at 4:3. Rendering the rig at
+  `fov_deg=75` leaves room to crop both that and today's 91.5° x 57.8° from one
+  render. `pack.py` would need a crop-to-field-of-view step first.
+- **A kart driver's eye height**, `height_m` around 0.9-1.0.
+- **Head motion:** the rig turns the camera with the wander (`wander_yaw`) but
+  has no look-into-the-corner yaw. Adding that option to the rig would give the
+  hot-lapping head motion the product must tolerate.
+- **Weather and rain** via the rig's `weather` and `rain`.
+- **Slow-motion renders** (0.5x, 0.25x) for the speed test from the previous
+  entry.
+- **Traffic:** one session with AI opponents would add real occlusion. This one
+  needs live driving, so do it if convenient.
+
+### After recording
+
+Pack the new sessions at the same settings as `packed_ac_v2` (148x80, 2 m
+bins) into a new set with the old laps included, check the index, and move it
+by **USB drive** rather than the SMB share, which has stalled twice on large
+files. In your entry: tracks, layouts, sessions per track, which are holdout,
+lap counts, anything that failed a pre-flight, and the telemetry columns added.

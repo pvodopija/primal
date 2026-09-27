@@ -319,6 +319,25 @@ and 160x120 formats. So 120 fps means VGA at 48 MHz or a 320x240 window, whose
 pixels cover twice the road (about 2.7 cm at 5 m). `capture/flow_speed.py
 --focal 186.7` measures that case on the AC recordings.
 
+**Reaching 90-120 fps is plausible, not certain.** Full VGA at 24 MHz caps at
+about 78 fps before blanking, so 60-70 in practice. VGA at 48 MHz depends on
+the camera port's maximum pixel clock, which Alif does not publish, and on
+signal integrity over the frame's flex; the driver ships with it commented
+out. A 320x240 window, or full width with only the ~240 rows around the road
+and horizon, needs the sensor to read out faster when windowed, which holds if
+it skips rows and not if it scales after a full readout. Memory bandwidth is
+not the limit (9-37 MB/s into on-chip SRAM); capacity is tight at VGA (614 KB
+double-buffered of 2 MB) and easy at 320x240. The CPU is not the limit either:
+PX4FLOW computes optical flow at 250 fps on a 168 MHz Cortex-M4 with 192 KB of
+RAM (64x64 pixels, block matching), and tracking ~100 points at 120 fps is
+estimated at 1.5-3 ms of an 8.3 ms frame on the M55. The fallback still pays:
+under the measured limit of about 0.28 m per frame, 60 fps covers speeds to
+about 17 m/s and 70 fps to about 20 m/s, most of a kart lap, and the filter
+coasts through faster stretches on a flagged reading. Fewer pixels do not move
+that limit, which comes from zoom, but they coarsen texture (2.7 cm of road per
+pixel at 5 m) and worsen the streak problem; `--focal 186.7` on the existing
+sessions measures that in the working range.
+
 **Frames are not kept on the glasses.** Halo has no storage for video (2 MB SRAM,
 1.8 MB MRAM), so in the embeddings design each frame is gone once encoded. Two
 things need frames anyway. Reference laps must be re-encodable: embeddings are
@@ -665,8 +684,14 @@ packing or the labels; the sim-to-real gap is simply total.
 
 **The binding constraint is number of tracks.** Lap generalisation costs 1.09x
 (1.33 -> 1.45 m). Track generalisation costs 2.7x (1.33 -> 3.58 m). Six
-circuits is what limits G2, not laps per circuit and not capacity. Nothing that
-has improved held-out laps has moved the unseen track.
+circuits is what limits G2, not laps per circuit. Capacity and input resolution
+have not been tested on real footage; the case for tracks over capacity rests on
+synthetic data, where 3 -> 15 tracks with the model unchanged took G2 from 2.09 m
+to 1.41 m. Nothing that has improved held-out laps has moved the unseen track.
+Condition changes show the same thing: on trained tracks a different car or
+light barely matters (1.5-1.7 m), on Silverstone it doubles the error (2.1 m
+same session, 4.3 m across car or time of day), so the robustness learned so
+far is partly track-specific.
 
 **The leakage control is now a working instrument.** On synthetic it scored at
 chance on seen tracks as well as held-out ones, so a null result could not
@@ -1167,8 +1192,16 @@ Recorded so they are not relitigated.
    on hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
    throughput, 25-minute power and temperature, helmet fit. AC footage at
    Halo's field of view once it is chosen.
-3. **More circuits.** Track generalisation costs 2.7x and nothing else has moved
-   it.
+3. **More and more varied data.** Track generalisation costs 2.7x and nothing
+   else has moved it. First a track-count learning curve on real footage (train
+   on 2, 3, 4, 5 tracks, test on Silverstone) to size the collection, with a
+   2x wider encoder and a ~1.5 s clip as cheap probes; if the curve flattens,
+   architecture becomes the suspect (pretrained encoder, capacity, resolution).
+   Collection in order: more circuits, preferring kart tracks with the camera at
+   a kart driver's eye height; lighting variety; a kart driver's view with the
+   nose, steering wheel, hands and visor edges in frame, which the model has
+   never seen and which can also be approximated by pasting occluders. New
+   training should use the NPU-friendly layers from then on.
 4. **An abstain signal** sharp enough to grey out a wrong delta.
 5. On-device port: Core ML on the phone and/or the Ethos-U55 on the glasses.
 
@@ -1180,6 +1213,7 @@ Recorded so they are not relitigated.
 docs/
   README.md           scope, closed paths, reading order
   ml-pivot.md         this document — active design
+  training.md         how training works, step by step
   img/                synthetic-data previews
 
 capture/              AC + OBS + timecode overlay (Windows-only), encoder motion vectors, flow speed

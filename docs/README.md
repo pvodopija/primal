@@ -14,6 +14,8 @@ The parent checkout is `hotlapp`. This folder is a **submodule** at
 1. **This file** — scope, closed paths, product constraints.
 2. [`ml-pivot.md`](ml-pivot.md) — the design: what is built, what it measures,
    what is not built yet, and what has been ruled out.
+   [`training.md`](training.md) — how a training step is built: data, sampling,
+   augmentation, loss, gates and controls, and what is not done yet.
 3. [`../README.md`](../README.md) — how to capture, pack, train, and run gates.
    [`capture-log.md`](capture-log.md) holds the measurements behind the capture
    setup and the inventory of recorded sessions.
