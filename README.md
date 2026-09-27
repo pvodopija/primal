@@ -150,6 +150,23 @@ lap takes, which does not happen. `pack` drops the repeats and keeps gaps up to
 `MAX_COUNTER_GAP`, matching the widest stride `train.dataset` samples, so
 neither ends a lap. A larger gap does.
 
+### New track: pre-flight first
+
+A mod track's AI spline defines every label. Before a full session on a track
+not recorded before, record one lap and a bit with the same setup, then:
+
+```powershell
+.\.venv\Scripts\python.exe -m capture.session import C:\obs\out.mp4 --preflight
+.\.venv\Scripts\python.exe -m capture.overlay_decode calibrate data\preflight\<id>\video.mp4 --roi 458,692,378,28
+.\.venv\Scripts\python.exe -m capture.overlay_decode decode data\preflight\<id>\video.mp4
+.\.venv\Scripts\python.exe -m capture.preflight check data\preflight\<id>
+```
+
+`--preflight` imports into `data/preflight/`, which is never packed. The check
+compares the labels with physics: no jumps or backward steps in `s`, every 2 m
+bin covered, label speed matching AC's speed, `s` wrapping where AC counts the
+lap, the camera on the tarmac, and the telemetry joined.
+
 ## 5. Session protocol, roughly 30 minutes
 
 Four short tracks, five laps each. **Three tracks train, one held out entirely**

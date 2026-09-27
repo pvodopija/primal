@@ -51,10 +51,21 @@ for i = 1, DATA_BITS do bits[i] = 0 end
 -- carries AC's own times: sim_ms for the frame and phys_ms for the physics state
 -- it shows, so sensor latency can be simulated from ground truth. One folder per
 -- launch, written in small chunks; nothing is ever overwritten.
+--
+-- Poses are world coordinates (metres, Y up) with unit forward and up vectors.
+-- cam_trk_x is the camera's track x (-1 left edge, +1 right edge) and side_l_m /
+-- side_r_m the distances from the AI spline to each edge at the camera, so the
+-- camera's lateral position in metres is cam_trk_x * (side_l_m + side_r_m) / 2.
+-- cam_yaw_deg is the camera's heading relative to the car's, positive to the
+-- right: what a rig's wander or head turn actually applied, frame by frame.
 local LOG_FRAMES = true
 local LOG_FLUSH_FRAMES = 120
 local LOG_HEADER = 'counter,sim_ms,phys_ms,cam_s,speed_kmh,acc_x_g,acc_y_g,acc_z_g,'
-  .. 'vel_x,vel_y,vel_z,gyro_x,gyro_y,gyro_z,replay\n'
+  .. 'vel_x,vel_y,vel_z,gyro_x,gyro_y,gyro_z,replay,'
+  .. 'cam_x,cam_y,cam_z,cam_fwd_x,cam_fwd_y,cam_fwd_z,cam_up_x,cam_up_y,cam_up_z,cam_fov_deg,'
+  .. 'cam_trk_x,cam_trk_h,cam_yaw_deg,side_l_m,side_r_m,'
+  .. 'car_x,car_y,car_z,car_fwd_x,car_fwd_y,car_fwd_z,car_up_x,car_up_y,car_up_z,car_s,car_trk_x,'
+  .. 'steer_deg,gas,brake,gear,rpm,lap_count,lap_ms,game_time_s\n'
 local logDir, logRows, logChunk, logError = nil, {}, 0, nil
 
 local function flushLog()
@@ -73,9 +84,26 @@ local function logFrame(spline)
     io.createDir(logDir)
   end
   local a, v, w = car.acceleration, car.localVelocity, car.localAngularVelocity
-  logRows[#logRows + 1] = string.format('%d,%.3f,%.3f,%.7f,%.3f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%d',
+  local cp, cl, cu = sim.cameraPosition, sim.cameraLook, sim.cameraUp
+  local trk = ac.worldCoordinateToTrack(cp)
+  local trkX, trkH = trk.x, trk.y
+  local sides = ac.getTrackAISplineSides(spline)
+  local p, fwd, up = car.position, car.look, car.up
+  local carX = ac.worldCoordinateToTrack(p).x
+  -- The car's side vector points left, so a camera turned right looks against it.
+  local yaw = math.deg(math.atan2(-cl:dot(car.side), cl:dot(fwd)))
+  logRows[#logRows + 1] = string.format('%d,%.3f,%.3f,%.7f,%.3f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%d,'
+    .. '%.3f,%.3f,%.3f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.2f,'
+    .. '%.4f,%.3f,%.3f,%.3f,%.3f,'
+    .. '%.3f,%.3f,%.3f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.7f,%.4f,'
+    .. '%.2f,%.3f,%.3f,%d,%.0f,%d,%.0f,%.0f',
     counter, tonumber(sim.time), tonumber(car.timestamp), spline, car.speedKmh,
-    a.x, a.y, a.z, v.x, v.y, v.z, w.x, w.y, w.z, sim.isReplayActive and 1 or 0)
+    a.x, a.y, a.z, v.x, v.y, v.z, w.x, w.y, w.z, sim.isReplayActive and 1 or 0,
+    cp.x, cp.y, cp.z, cl.x, cl.y, cl.z, cu.x, cu.y, cu.z, sim.cameraFOV,
+    trkX, trkH, yaw, sides.x, sides.y,
+    p.x, p.y, p.z, fwd.x, fwd.y, fwd.z, up.x, up.y, up.z, car.splinePosition, carX,
+    car.steer, car.gas, car.brake, tonumber(car.gear), car.rpm, tonumber(car.lapCount), tonumber(car.lapTimeMs),
+    tonumber(sim.timestamp) % 86400)
   if #logRows >= LOG_FLUSH_FRAMES then flushLog() end
 end
 
@@ -139,7 +167,11 @@ function script.windowMain(dt)
   -- off for the session rather than touching the label.
   if LOG_FRAMES and not logError then
     local ok, err = pcall(logFrame, spline)
-    if not ok then logError = tostring(err) end
+    if not ok then
+      logError = tostring(err)
+      -- The window has no room to show it; the pre-flight check reads this file.
+      pcall(io.save, ac.getFolder(ac.FolderID.ScriptOrigin) .. '/frame_log_error.txt', logError .. '\n')
+    end
   end
 
   if SHOW_TEXT then

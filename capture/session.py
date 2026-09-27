@@ -26,6 +26,8 @@ from capture.ac_shm import AcSharedMemory
 from capture.install_overlay import find_ac_root
 
 SESSIONS_DIR = Path(__file__).resolve().parents[1] / "data" / "sessions"
+# Short test drives on a new track, checked by `capture.preflight` and never packed.
+PREFLIGHT_DIR = SESSIONS_DIR.parent / "preflight"
 SCHEMA = 1
 
 
@@ -139,7 +141,7 @@ def cmd_import(args: argparse.Namespace) -> None:
     fps, width, height, count = _probe_video(video)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = f"{track}__{config or 'default'}__{stamp}"
-    session = SESSIONS_DIR / name
+    session = (PREFLIGHT_DIR if args.preflight else SESSIONS_DIR) / name
     session.mkdir(parents=True, exist_ok=False)
 
     destination = session / "video.mp4"
@@ -199,6 +201,8 @@ def main() -> None:
     imp.add_argument("--car", help="override AC shared memory")
     imp.add_argument("--copy", action="store_true", help="copy instead of moving the video")
     imp.add_argument("--rig", action="store_true", help="recording is a camera-rig render; attach its log")
+    imp.add_argument("--preflight", action="store_true",
+                     help="a test drive on a new track: import into data/preflight, never packed")
     imp.set_defaults(func=cmd_import)
 
     args = parser.parse_args()

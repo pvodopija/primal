@@ -43,7 +43,12 @@ materialise.
   bright, which is *below* the 0.75 gain floor of `photometric_jitter`, so real
   cross-time footage covers something the augmentation does not.
 - **Save the replay after every session.** The camera rig re-renders it from new
-  viewpoints later, with exact labels.
+  viewpoints later, with exact labels. `cfg/replay.ini` now records at
+  `LEVEL=4` (~60 Hz; it was 3, ~33 Hz, which every earlier replay has) with
+  `MAX_SIZE_MB=500` (it was 26). The size cap is a ring buffer: at 26 MB,
+  multi-car replays had already wrapped and kept only their last minutes, and a
+  single car at 60 Hz would have hit it within a session. The original is kept
+  as `replay.ini.before-primal`.
 
 ## Labels
 
@@ -77,6 +82,21 @@ joins them onto the decoded labels, and its `check` command verifies the join by
 requiring the logged camera position to match the barcode to within one
 quantisation step. The app writes one folder per launch under its own
 `frame_log/`; `session import` copies the newest into the session.
+
+Since the 2026-09-27 recording session each row also has:
+
+| Columns | What |
+|---|---|
+| `cam_x/y/z`, `cam_fwd_*`, `cam_up_*`, `cam_fov_deg` | the rendering camera's full pose in world coordinates (metres, Y up) and vertical FOV |
+| `cam_trk_x`, `cam_trk_h` | the camera's track x (−1 left edge, +1 right edge) and height above the track |
+| `side_l_m`, `side_r_m` | AI spline to each track edge at the camera; lateral metres = `cam_trk_x * (side_l_m + side_r_m) / 2` |
+| `cam_yaw_deg` | the camera's heading relative to the car's, positive right: the wander's and the head's turn as applied |
+| `car_x/y/z`, `car_fwd_*`, `car_up_*`, `car_s`, `car_trk_x` | the car's pose, spline position and track x |
+| `steer_deg`, `gas`, `brake`, `gear`, `rpm` | driver inputs |
+| `lap_count`, `lap_ms`, `game_time_s` | AC's completed laps, current lap time, and in-game time of day in seconds |
+
+If logging fails, the error goes to `frame_log_error.txt` next to the app and
+`capture.preflight` reports it.
 
 Logging runs after the barcode is drawn and inside `pcall`: a failure switches
 logging off without touching the label. Verified under LuaJIT with a stub AC
@@ -146,8 +166,25 @@ Settings live in `rig.txt` next to the script, re-read twice a second:
 `wander_len_m`, `wander_yaw`, `wander_seed`, `forward_m`, `height_m`, `fov_deg`,
 `edge_limit`, and `weather` / `rain` to override the
 recorded conditions (`-1` keeps them; values are `ac.WeatherType`, e.g. 15 clear,
-17 scattered clouds, 19 overcast, 7 rain). Offsets that would leave the tarmac
-are shrunk by bisection in track coordinates.
+17 scattered clouds, 19 overcast, 7 rain), and the `look*` / `glance*` keys
+below. Offsets that would leave the tarmac are shrunk by bisection in track
+coordinates.
+
+**Looking into corners.** With `look = 1` the camera also turns about the car's
+up axis toward the point `look_ahead_*_m` (15-20 m) further along the track on
+the camera's own line, by a share `look_gain_*` (0.3-0.8) of that angle, capped
+at `look_max_deg` (35°) and smoothed with a 0.25 s time constant. Distance and
+gain are drawn afresh for every render, so each re-render of a replay gets a
+different head. On a straight the point lies dead ahead wherever the camera
+sits, so the head only turns where the road does. On top come occasional short
+glances aside, `glance_deg` (8°) at most, 0.6-1.4 s out and back, every
+`glance_every_s` (10 s) on average. The rig log's `yaw_deg` is now the whole turn
+and `head_yaw_deg` the head's part; the timecode log's `cam_yaw_deg` has the
+applied turn for every frame. Verified with a stub AC: on a 40 m circle the head
+turns gain × the geometric angle to within 0.01°, on a straight 0.000° with the
+camera 2 m off the line, and with the option off the camera matches the previous
+rig exactly from the first second on (the render now starts before the first
+placement, which removes a one-frame smoothing reset).
 
 Each render logs to its own `rig_<settings>_<n>.csv` — a new file whenever the
 settings change or the replay is rewound, never overwriting — with the car's and

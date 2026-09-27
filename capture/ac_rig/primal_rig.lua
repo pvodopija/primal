@@ -31,11 +31,22 @@ local cfg = {
   edge_limit = 0.85,     -- max |track x|, where +-1 are the track edges
   weather = -1,          -- ac.WeatherType to force during replays; -1 keeps the recorded weather
   rain = 0.0,            -- 0..1, applied to rain intensity, wetness and puddles when weather is forced
+  look = 0,              -- turn the camera into corners, as a driver's head does
+  look_ahead_min_m = 15, -- how far along the track the head aims, drawn per render from this range
+  look_ahead_max_m = 20,
+  look_gain_min = 0.3,   -- fraction of the angle to that point the head turns, drawn per render
+  look_gain_max = 0.8,
+  look_max_deg = 35,     -- the head never turns further than this into a corner
+  glance_deg = 8,        -- peak of the occasional short glance aside while looking; 0 switches glances off
+  glance_every_s = 10,   -- mean time between glances
 }
 
+-- yaw_deg is the camera's whole turn relative to the car, positive right; head_yaw_deg
+-- is the part from looking into corners, including glance_deg, so the wander's
+-- part is yaw_deg - head_yaw_deg.
 local HEADER = 'clock_s,replay_frame,car_spline,cam_trk_s,car_trk_x,cam_trk_x,cam_trk_h,side_left,side_right,'
   .. 'car_lat_m,cam_lat_m,requested_lateral_m,applied_lateral_m,clamped,weather,rain,'
-  .. 'distance_m,wander_m,yaw_deg\n'
+  .. 'distance_m,wander_m,yaw_deg,head_yaw_deg,glance_deg,look_gain,look_ahead_m\n'
 local LOG_EVERY_S = 1 / 30
 
 local camera
@@ -52,6 +63,10 @@ local distance = 0
 local smoothLat, smoothSlope
 local waves, wavesSeed
 local lastWander = 2.5
+local renders, launchSeed = 0, nil
+local lookGain, lookAhead = 0, 0
+local headSmooth, headNow, glanceNow = nil, 0, 0
+local glanceStart, glanceLen, glanceAmp, glanceNext, glances = 0, 0, 0, nil, 0
 
 local function loadConfig()
   local text = io.load(cfgPath)
@@ -142,8 +157,62 @@ local function metresFromMiddle(trk)
   return trk.x * (sides.x + sides.y) / 2, sides
 end
 
+local HEAD_TAU_S = 0.25  -- how quickly the head follows the corner, as a time constant
+
+--- wander_seed when set, otherwise one seed per launch.
+local function seed()
+  if cfg.wander_seed ~= 0 then return cfg.wander_seed end
+  launchSeed = launchSeed or tonumber(ac.getSim().systemTime) % 100000
+  return launchSeed
+end
+
+--- Heading, relative to the car and positive right, of the point `lookAhead` metres
+--- further along the track on the camera's own line. On a straight it is zero
+--- wherever the camera sits; in a corner it points to where the road goes.
+local function cornerDeg(car, position)
+  local length = ac.getSim().trackLengthM
+  if not (length and length > 0) then return 0 end
+  local trk = ac.worldCoordinateToTrack(position)
+  local s = trk.z + lookAhead / length
+  local dir = ac.trackCoordinateToWorld(vec3(trk.x, trk.y, s - math.floor(s))) - position
+  local deg = math.deg(math.atan2(-dir:dot(car.side), dir:dot(car.look)))
+  if deg ~= deg then return 0 end
+  return deg
+end
+
+--- An occasional short glance aside, out and back, at a random time, size and side.
+local function glance(t)
+  if cfg.glance_deg <= 0 or cfg.glance_every_s <= 0 then return 0 end
+  -- Draws for glance n use hash indices 1000 + 4n .. 1000 + 4n + 3, apart from the wander's and the renders'.
+  local function draw(k) return hash01(seed(), 1000 + 4 * glances + k) end
+  if not glanceNext then glanceNext = t + cfg.glance_every_s * (0.5 + draw(3)) end
+  if t >= glanceNext then
+    glances = glances + 1
+    glanceStart = t
+    glanceLen = 0.6 + 0.8 * draw(0)
+    glanceAmp = cfg.glance_deg * (0.4 + 0.6 * draw(1))
+    if draw(2) < 0.5 then glanceAmp = -glanceAmp end
+    glanceNext = t + glanceLen + cfg.glance_every_s * (0.5 + draw(3))
+  end
+  local u = (t - glanceStart) / glanceLen
+  if glanceLen <= 0 or u >= 1 then return 0 end
+  return glanceAmp * math.sin(math.pi * u) ^ 2
+end
+
+--- The head's turn this frame: a share of the corner angle, capped and smoothed
+--- in time, plus any glance on top.
+local function headYaw(car, position, dt)
+  local target = lookGain * cornerDeg(car, position)
+  target = math.max(-cfg.look_max_deg, math.min(cfg.look_max_deg, target))
+  if headSmooth == nil then headSmooth = target end
+  headSmooth = headSmooth + (1 - math.exp(-dt / HEAD_TAU_S)) * (target - headSmooth)
+  glanceNow = glance(clock)
+  return headSmooth + glanceNow
+end
+
 local function renderKey()
-  return string.format('lat%+.2f_wan%.1f_w%d_r%.2f', cfg.lateral_m, cfg.wander_m, cfg.weather, cfg.rain)
+  return string.format('lat%+.2f_wan%.1f_w%d_r%.2f%s', cfg.lateral_m, cfg.wander_m, cfg.weather, cfg.rain,
+    cfg.look == 1 and '_look' or '')
 end
 
 --- One file per render: a render starts whenever settings change or the replay
@@ -158,6 +227,12 @@ local function startLog(key)
   rows = {}
   clampFrames, heldFrames = 0, 0
   smoothLat = nil
+  -- A new head for every render, so re-rendering one replay gives different ones.
+  -- Render n draws hash indices 10 + 2n and 11 + 2n, below the glances'.
+  renders = renders + 1
+  lookGain = cfg.look_gain_min + (cfg.look_gain_max - cfg.look_gain_min) * hash01(seed(), 10 + 2 * renders)
+  lookAhead = cfg.look_ahead_min_m + (cfg.look_ahead_max_m - cfg.look_ahead_min_m) * hash01(seed(), 11 + 2 * renders)
+  headSmooth = nil
 end
 
 local function applyConditions(active)
@@ -199,6 +274,11 @@ local function step(dt)
   if not camera then return end
 
   local car = ac.getCar(0)
+  local key = renderKey()
+  local frame = tonumber(sim.replayCurrentFrame) or -1
+  if key ~= logKey or frame < lastFrame - 60 then startLog(key) end
+  lastFrame = frame
+
   -- Distance driven, not track position, drives the wander, so each lap takes a
   -- different line through the same corner instead of repeating one.
   local ds = math.abs(car.speedKmh) / 3.6 * dt
@@ -217,12 +297,13 @@ local function step(dt)
   local position = place(car, lateral)
   local x = ac.worldCoordinateToTrack(position).x
 
-  local look = car.look
-  local yaw = 0
-  if cfg.wander_yaw == 1 then
-    look = car.look - car.side * smoothSlope
-    yaw = math.deg(math.atan(smoothSlope))
-  end
+  -- Turn about the car's up axis: along the wander's heading, then the head on top.
+  local head = cfg.look == 1 and headYaw(car, position, dt) or 0
+  if cfg.look ~= 1 then glanceNow = 0 end
+  local yaw = head
+  if cfg.wander_yaw == 1 then yaw = yaw + math.deg(math.atan(smoothSlope)) end
+  local turn = math.rad(yaw)
+  local look = car.look * math.cos(turn) - car.side * math.sin(turn)
   camera.transform.position:set(position)
   camera.transform.look:set(look)
   camera.transform.up:set(car.up)
@@ -234,12 +315,8 @@ local function step(dt)
   camera.dofFactor = camera.dofFactorOriginal
   camera.dofDistance = camera.dofDistanceOriginal
   camera.ownShare = 1
-  applied, trackX, clamped, wanderNow, yawNow = lateral, x, wasClamped, offset, yaw
+  applied, trackX, clamped, wanderNow, yawNow, headNow = lateral, x, wasClamped, offset, yaw, head
 
-  local key = renderKey()
-  local frame = tonumber(sim.replayCurrentFrame) or -1
-  if key ~= logKey or frame < lastFrame - 60 then startLog(key) end
-  lastFrame = frame
   heldFrames = heldFrames + 1
   if wasClamped then clampFrames = clampFrames + 1 end
   sinceLog = sinceLog + dt
@@ -251,10 +328,10 @@ local function step(dt)
     local camLat, sides = metresFromMiddle(camTrk)
     local carLat = metresFromMiddle(carTrk)
     rows[#rows + 1] = string.format(
-      '%.3f,%s,%.6f,%.6f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%s,%d,%.2f,%.1f,%.3f,%.2f',
+      '%.3f,%s,%.6f,%.6f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%s,%d,%.2f,%.1f,%.3f,%.2f,%.2f,%.2f,%.3f,%.1f',
       clock, tostring(frame), car.splinePosition, camTrk.z, carTrk.x, camTrk.x, camTrk.y, sides.x, sides.y,
       carLat, camLat, cfg.lateral_m + offset, lateral, wasClamped and '1' or '0', cfg.weather, cfg.rain,
-      distance, offset, yaw)
+      distance, offset, yaw, head, glanceNow, cfg.look == 1 and lookGain or 0, cfg.look == 1 and lookAhead or 0)
   end
   if sinceSave >= 2.0 then
     sinceSave = 0
@@ -290,7 +367,8 @@ function script.update(dt)
 end
 
 local CFG_KEYS = { 'enabled', 'replay_only', 'lateral_m', 'wander_m', 'wander_len_m', 'wander_yaw', 'wander_seed',
-  'forward_m', 'height_m', 'fov_deg', 'edge_limit', 'weather', 'rain' }
+  'forward_m', 'height_m', 'fov_deg', 'edge_limit', 'weather', 'rain', 'look', 'look_ahead_min_m', 'look_ahead_max_m',
+  'look_gain_min', 'look_gain_max', 'look_max_deg', 'glance_deg', 'glance_every_s' }
 
 --- The toggles write rig.txt, so the file stays the one source of settings and the
 --- next re-read does not undo a click.
@@ -314,6 +392,10 @@ function script.windowMain(dt)
     cfg.wander_m = cfg.wander_m > 0 and 0 or lastWander
     saveConfig()
   end
+  if ui.checkbox('Look into corners', cfg.look == 1) then
+    cfg.look = 1 - cfg.look
+    saveConfig()
+  end
   ui.text('Close this window before recording: it would be in the footage.')
   ui.separator()
   ui.text(string.format('enabled %d   replay only %d   holding camera %s', cfg.enabled, cfg.replay_only,
@@ -322,6 +404,10 @@ function script.windowMain(dt)
     cfg.lateral_m, wanderNow, applied, yawNow, trackX, clamped and 'CLAMPED' or ''))
   ui.text(string.format('forward %.2f m   height %.2f m   fov %.1f   weather %d   rain %.2f', cfg.forward_m,
     cfg.height_m, cfg.fov_deg, cfg.weather, cfg.rain))
+  if cfg.look == 1 then
+    ui.text(string.format('head %+.1f deg (glance %+.1f)   gain %.2f   aiming %.1f m ahead', headNow, glanceNow,
+      lookGain, lookAhead))
+  end
   ui.text(string.format('clamped %d of %d frames   log rows %d   saved %s', clampFrames, heldFrames, #rows,
     lastSaveOk and 'ok' or 'FAILED'))
   if lastError then ui.textWrapped('ERROR ' .. lastError) end
