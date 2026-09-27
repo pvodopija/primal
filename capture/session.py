@@ -182,6 +182,26 @@ def cmd_import(args: argparse.Namespace) -> None:
     print(f"  python -m capture.overlay_decode decode {destination}")
 
 
+def cmd_trim(args: argparse.Namespace) -> None:
+    session = Path(args.session)
+    meta_path = session / "run.json"
+    meta = json.loads(meta_path.read_text())
+    labels = pd.read_parquet(session / "labels.parquet")
+    if args.last_lap:
+        good = labels[labels.valid].sort_values("frame_idx")
+        s = good.spline_pos.to_numpy()
+        wraps = (s[:-1] > 0.9) & (s[1:] < 0.1)
+        if not wraps.any():
+            raise SystemExit("no finish-line crossing in the decoded labels")
+        end_frame = int(good.frame_idx.to_numpy()[1:][wraps][-1])
+    else:
+        end_frame = args.end_frame
+    meta["end_frame"] = end_frame
+    meta_path.write_text(json.dumps(meta, indent=2))
+    dropped = int((labels.frame_idx >= end_frame).sum())
+    print(f"end_frame {end_frame}: packing drops the last {dropped} frames ({dropped / meta['fps']:.1f} s)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -204,6 +224,14 @@ def main() -> None:
     imp.add_argument("--preflight", action="store_true",
                      help="a test drive on a new track: import into data/preflight, never packed")
     imp.set_defaults(func=cmd_import)
+
+    trim = sub.add_parser("trim", help="cut footage off the end of a decoded session before packing")
+    trim.add_argument("session")
+    end = trim.add_mutually_exclusive_group(required=True)
+    end.add_argument("--end-frame", type=int, help="first video frame to drop")
+    end.add_argument("--last-lap", action="store_true",
+                     help="drop everything after the last finish-line crossing: the partial lap and any pause menu")
+    trim.set_defaults(func=cmd_trim)
 
     args = parser.parse_args()
     args.func(args)

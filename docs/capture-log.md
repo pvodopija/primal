@@ -44,7 +44,8 @@ materialise.
   cross-time footage covers something the augmentation does not.
 - **Save the replay after every session.** The camera rig re-renders it from new
   viewpoints later, with exact labels. `cfg/replay.ini` now records at
-  `LEVEL=4` (~60 Hz; it was 3, ~33 Hz, which every earlier replay has) with
+  `LEVEL=4` (15 ms, ~67 Hz, measured in the header of the first replay saved
+  with it; it was 3, 30 ms, ~33 Hz, which every earlier replay has) with
   `MAX_SIZE_MB=500` (it was 26). The size cap is a ring buffer: at 26 MB,
   multi-car replays had already wrapped and kept only their last minutes, and a
   single car at 60 Hz would have hit it within a session. The original is kept
@@ -245,6 +246,33 @@ comes from *across* sessions.
 
 `data/packed_ac` holds the four usable sessions at 128x80 with 2 m bins, the
 resolution and spacing the synthetic checkpoints were trained at.
+
+### The 2026-09-27 recording session
+
+The first sessions with the full telemetry log, recorded unattended: Claude
+drives Content Manager, AC and OBS, and `capture.autostop` ends each recording.
+
+**Highlands Short, MX-5 Cup, 11:57, scattered clouds, AI 100, rig wander 2.5 m**
+(`ks_highlands__layout_short__20260927T212549Z`). 20 laps of ~51 s, 98.04%
+checksum-valid: the invalid 2% is one 22 s run at the end, the pause menu,
+which hides the barcode. `trim --last-lap` cuts that and the partial lap before
+it. Pre-flight and full-session checks: label speed / car speed 1.002, every
+lap's `s` wrap within 4.4 m of AC's lap counter, telemetry joined on 99.9%.
+
+- **Render hitches.** 478 render intervals over 50 ms in 1106 s, the longest
+  1.2 s; the camera moves as far as the label across each one, so labels stay
+  exact and only the picture skips (up to 44 m in one frame). About 15 a minute
+  is the baseline on this track; the worst minutes are the ones where analysis
+  or a second program started during the recording. Nothing heavy runs on this
+  PC while recording.
+- **AI spline kink** about 38 m past the line (`s` 0.021-0.024): the label runs
+  up to 1.5 m ahead of the camera for a few metres and then agrees again (over
+  50 frames, label 55.66 m against camera path 55.62 m).
+- **Camera at the edge.** `|track x|` over 1.02 on 0.11% of frames, at most
+  1.078, in five corners where the AI spline puts the edge only 1.4 m out. The
+  frames show road beside the barrier, not the inside of a wall.
+- **`phys_ms` equals `sim_ms`** on every frame so far: AC reports the physics
+  state as of the frame, so the log gives no sensor latency to simulate.
 
 ## Open items
 

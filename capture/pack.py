@@ -160,6 +160,10 @@ def pack_session(
     offset_m = float(meta.get("label_offset_m", 0.0))
     if offset_m:
         labels["spline_pos"] = (labels["spline_pos"] + offset_m / float(meta["track_length_m"])) % 1.0
+    # `session trim` sets end_frame to cut footage off the end, e.g. a pause menu and
+    # the partial lap before it.
+    if "end_frame" in meta:
+        labels = labels[labels.frame_idx < int(meta["end_frame"])]
 
     geometry = None
     overlay_path = session / "overlay.json"

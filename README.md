@@ -150,6 +150,23 @@ lap takes, which does not happen. `pack` drops the repeats and keeps gaps up to
 `MAX_COUNTER_GAP`, matching the widest stride `train.dataset` samples, so
 neither ends a lap. A larger gap does.
 
+### Unattended recording, and trimming the end
+
+OBS has two hotkeys for this (Settings > Hotkeys): Start Recording
+`Ctrl+Alt+Shift+F9`, Stop Recording `Ctrl+Alt+Shift+F10`. Hold them for a
+moment; OBS polls its hotkeys and misses a tap while AC has focus.
+
+```powershell
+# with the bot driving and AC in front: start now, stop after 10 completed laps
+.\.venv\Scripts\python.exe -m capture.autostop --start --laps 10
+# after decoding: drop the partial lap and anything after it (a pause menu) from packing
+.\.venv\Scripts\python.exe -m capture.session trim data\sessions\<id> --last-lap
+```
+
+`autostop` counts laps from the timecode app's log and only sends keys while
+AC or OBS has focus. If AC stops logging for 30 s it stops the recording too.
+`trim` writes `end_frame` into `run.json`; the video and labels are untouched.
+
 ### New track: pre-flight first
 
 A mod track's AI spline defines every label. Before a full session on a track

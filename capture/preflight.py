@@ -22,9 +22,11 @@ import pandas as pd
 from capture import frame_log
 from capture.install_overlay import find_ac_root
 
-JUMP_M = 3.0         # a larger step between consecutive rendered frames is a spline discontinuity
+JUMP_M = 3.0         # a larger step between consecutive rendered frames needs explaining
+SLACK_M = 1.0        # ...and is a spline discontinuity if s moved this much more than the camera did
 BACKWARD_M = 0.3     # a step back further than this is the label running backwards
-EDGE_X = 0.9         # |track x| beyond this means the camera is off the tarmac
+EDGE_X = 1.02        # |track x| beyond this puts the camera past the AI spline's track edge
+HITCH_MS = 50        # a render interval longer than this is a hitch: the picture skips, the label stays exact
 
 
 def _wrap(ds: np.ndarray) -> np.ndarray:
@@ -35,6 +37,7 @@ def check(session: Path) -> bool:
     meta = json.loads((session / "run.json").read_text())
     length = float(meta["track_length_m"])
     results: list[tuple[str, bool, str]] = []
+    notes: list[str] = []
 
     labels = pd.read_parquet(session / "labels.parquet")
     ok = labels.valid.mean()
@@ -50,9 +53,21 @@ def check(session: Path) -> bool:
     s = df.spline_pos.to_numpy()
     step = np.diff(df.counter.to_numpy())
     ds = _wrap(np.diff(s)) * length / np.maximum(step, 1)  # metres per rendered frame
-    jumps = int((np.abs(ds) > JUMP_M).sum())
+    big = np.abs(ds) > JUMP_M
+    if has_log:
+        # A render hitch moves the camera as far as the label: the picture skips but the
+        # label is still exact. Only a label that outruns the camera is a broken spline.
+        cam = df[["cam_x", "cam_y", "cam_z"]].to_numpy()
+        moved = np.linalg.norm(np.diff(cam, axis=0), axis=1) / np.maximum(step, 1)
+        breaks = big & (np.abs(ds) > moved + SLACK_M)
+        detail = f"{int(breaks.sum())} label steps over {JUMP_M} m beyond the camera's own movement"
+        if big.any():
+            detail += f"; {int((big & ~breaks).sum())} steps up to {np.abs(ds[big]).max():.1f} m that the camera made too"
+    else:
+        breaks = big
+        detail = f"{int(breaks.sum())} steps over {JUMP_M} m per frame, largest {np.abs(ds).max():.2f} m"
     back = int((ds < -BACKWARD_M).sum())
-    results.append(("no jumps in s", jumps == 0, f"{jumps} steps over {JUMP_M} m per frame, largest {np.abs(ds).max():.2f} m"))
+    results.append(("no jumps in s", not breaks.any(), detail))
     results.append(("s never runs backwards", back == 0, f"{back} steps back over {BACKWARD_M} m"))
 
     wraps = np.flatnonzero((s[:-1] > 0.9) & (s[1:] < 0.1))
@@ -92,6 +107,14 @@ def check(session: Path) -> bool:
                             f"|track x| p99 {x.quantile(.99):.2f}, beyond {EDGE_X}: {100 * (x > EDGE_X).mean():.2f}%, "
                             f"track {width.min():.1f}-{width.median():.1f} m wide (min-median)"))
 
+        # Every rendered frame, captured or not, from the raw log over the recording.
+        raw = pd.concat(pd.read_csv(c, usecols=["counter", "sim_ms"]) for c in sorted((session / "frame_log").glob("*.csv")))
+        raw = raw.drop_duplicates("counter").sort_values("counter")
+        raw = raw[raw.counter.between(df.counter.min(), df.counter.max())]
+        dt = np.diff(raw.sim_ms.to_numpy())
+        notes.append(f"render interval median {np.median(dt):.1f} ms; {int((dt > HITCH_MS).sum())} hitches over "
+                     f"{HITCH_MS} ms in {(raw.sim_ms.iloc[-1] - raw.sim_ms.iloc[0]) / 1000:.0f} s, longest {dt.max():.0f} ms")
+
     coverage = df.sim_ms.notna().mean()
     results.append(("telemetry joins", coverage >= 0.98, f"{100 * coverage:.1f}% of decoded frames"))
     root = find_ac_root()
@@ -102,6 +125,8 @@ def check(session: Path) -> bool:
     width = max(len(r[0]) for r in results)
     for name, passed, detail in results:
         print(f"{'PASS' if passed else 'FAIL'}  {name:<{width}}  {detail}")
+    for note in notes:
+        print(f"NOTE  {note}")
     all_ok = all(r[1] for r in results)
     print(f"\n{meta['track']}/{meta['track_config'] or 'default'}, {length:.1f} m, {meta['car_model']}: "
           f"{'all checks pass' if all_ok else 'FAILED'}")
