@@ -113,8 +113,8 @@ def holdout_live_laps(index: LapIndex, per_track: int) -> frozenset[str]:
     return frozenset(reserved)
 
 
-def build_index(data: Path, gate: GateConfig, split: str) -> LapIndex:
-    index = LapIndex.load(data, split=split)
+def build_index(data: Path, gate: GateConfig, split: str, tracks: list[str] | None = None) -> LapIndex:
+    index = LapIndex.load(data, split=split, tracks=tracks)
     if gate.tracks is not None:
         keep = sorted(index.by_track)[: gate.tracks]
         index = LapIndex.load(data, split=split, tracks=keep)
@@ -171,6 +171,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", required=True)
     parser.add_argument("--gate", default="g1", choices=["g0", "g1", "g2"])
+    parser.add_argument(
+        "--tracks",
+        default=None,
+        help="comma-separated tracks to train on (default: every track in the split); "
+        "the rest of the train split then serves as extra unseen tracks at evaluation",
+    )
     parser.add_argument("--name", default=None)
     parser.add_argument("--steps", type=int, default=None, help="override the gate preset")
     parser.add_argument("--batch-size", type=int, default=8)
@@ -214,8 +220,11 @@ def main() -> None:
     torch.manual_seed(args.seed)
 
     data = Path(args.data)
-    train_index = build_index(data, gate, split="train")
-    eval_index = build_index(data, gate, split=gate.eval_split)
+    tracks = args.tracks.split(",") if args.tracks else None
+    train_index = build_index(data, gate, split="train", tracks=tracks)
+    if tracks and sorted(train_index.by_track) != sorted(tracks):
+        raise SystemExit(f"--tracks names not in the train split: {sorted(set(tracks) - set(train_index.by_track))}")
+    eval_index = build_index(data, gate, split=gate.eval_split, tracks=tracks if gate.eval_split == "train" else None)
 
     # G1 asks about unseen laps of seen tracks, so some laps are live-only. G0
     # deliberately trains and evaluates on the same pair, and G2 evaluates on a
