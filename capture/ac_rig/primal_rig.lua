@@ -39,6 +39,7 @@ local cfg = {
   look_max_deg = 35,     -- the head never turns further than this into a corner
   glance_deg = 8,        -- peak of the occasional short glance aside while looking; 0 switches glances off
   glance_every_s = 10,   -- mean time between glances
+  replay_now = 0,        -- set to 1 to open the replay, whose bar has Save Replay; resets itself to 0
 }
 
 -- yaw_deg is the camera's whole turn relative to the car, positive right; head_yaw_deg
@@ -340,6 +341,19 @@ local function step(dt)
 end
 
 local failedKey
+local saveConfig
+
+--- Opens the replay on request from rig.txt, for unattended sessions: the pause
+--- menu needs Escape, which a remote-control tool may keep for itself.
+local function replayRequest()
+  if cfg.replay_now ~= 1 then return end
+  cfg.replay_now = 0
+  saveConfig()
+  if not ac.getSim().isReplayActive then
+    local ok = ac.tryToToggleReplay(true, 0)
+    io.save(folder .. '/replay_request.txt', (ok and 'opened' or 'not available') .. '\n')
+  end
+end
 
 --- A failure releases the camera rather than leaving it frozen, so a broken rig can
 --- never record a stationary view, and it stays off until rig.txt changes. The
@@ -354,6 +368,7 @@ function script.update(dt)
     if renderKey() .. cfg.enabled == failedKey then return end
     failedKey = nil
   end
+  pcall(replayRequest)
   local ok, err = pcall(step, dt)
   if not ok then
     lastError = 'update: ' .. tostring(err)
@@ -368,11 +383,11 @@ end
 
 local CFG_KEYS = { 'enabled', 'replay_only', 'lateral_m', 'wander_m', 'wander_len_m', 'wander_yaw', 'wander_seed',
   'forward_m', 'height_m', 'fov_deg', 'edge_limit', 'weather', 'rain', 'look', 'look_ahead_min_m', 'look_ahead_max_m',
-  'look_gain_min', 'look_gain_max', 'look_max_deg', 'glance_deg', 'glance_every_s' }
+  'look_gain_min', 'look_gain_max', 'look_max_deg', 'glance_deg', 'glance_every_s', 'replay_now' }
 
 --- The toggles write rig.txt, so the file stays the one source of settings and the
 --- next re-read does not undo a click.
-local function saveConfig()
+function saveConfig()
   local lines = {}
   for _, key in ipairs(CFG_KEYS) do lines[#lines + 1] = key .. ' = ' .. tostring(cfg[key]) end
   io.save(cfgPath, table.concat(lines, '\n') .. '\n')

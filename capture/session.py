@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import time
 from datetime import datetime, timezone
@@ -99,25 +100,33 @@ def attach_rig_log(session: Path) -> str:
     return logs[-1].name
 
 
-def attach_frame_log(session: Path) -> str | None:
+def attach_frame_log(session: Path, start: float, end: float) -> str | None:
     """
-    Copy the timecode app's per-frame telemetry for the current AC launch into the
-    session. The app writes one folder per launch and the import runs with AC
-    still open, so the newest folder holds this recording; rows are matched to
-    frames later by the barcode counter, so extra rows from the same launch are
-    harmless. Returns None when no log exists, as with recordings made before the
-    app logged anything.
+    Copy the timecode app's per-frame telemetry for a recording into the session.
+    The app writes one folder per launch, named by the launch's first logged
+    second, in chunks flushed every two seconds; the launch is the latest one
+    begun before the recording, and only chunks written between `start` and `end`
+    (epoch seconds) are copied, with a minute's margin, since a bot left running
+    fills a folder with hours of rows. Rows are matched to frames later by the
+    barcode counter, so extra ones are harmless. Returns None when no log covers
+    the recording, as with recordings made before the app logged anything.
     """
     root = find_ac_root()
     base = root / "apps" / "lua" / "locamotif_timecode" / "frame_log" if root else None
-    launches = sorted((p for p in base.iterdir() if p.is_dir()), key=lambda p: p.stat().st_mtime) if base and base.exists() else []
+    if not base or not base.exists():
+        return None
+    launches = sorted(int(p.name) for p in base.iterdir() if p.is_dir() and p.name.isdigit() and int(p.name) <= start)
     if not launches:
         return None
-    if time.time() - launches[-1].stat().st_mtime > 15 * 60:
-        print(f"note: newest frame log {launches[-1].name} is over 15 minutes old; not attached")
+    launch = base / str(launches[-1])
+    chunks = [e for e in os.scandir(launch) if e.name.endswith(".csv") and start - 60 <= e.stat().st_mtime <= end + 60]
+    if not chunks:
+        print(f"note: frame log {launch.name} has nothing written during the recording; not attached")
         return None
-    shutil.copytree(launches[-1], session / "frame_log")
-    return launches[-1].name
+    (session / "frame_log").mkdir()
+    for e in chunks:
+        shutil.copy2(e.path, session / "frame_log" / e.name)
+    return launch.name
 
 
 def cmd_import(args: argparse.Namespace) -> None:
@@ -139,6 +148,9 @@ def cmd_import(args: argparse.Namespace) -> None:
     car = args.car or (snap.car_model if snap else "")
 
     fps, width, height, count = _probe_video(video)
+    # OBS last writes the file when the recording stops.
+    recorded_end = video.stat().st_mtime
+    recorded_start = recorded_end - count / fps
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = f"{track}__{config or 'default'}__{stamp}"
     session = (PREFLIGHT_DIR if args.preflight else SESSIONS_DIR) / name
@@ -169,7 +181,7 @@ def cmd_import(args: argparse.Namespace) -> None:
     }
     if args.rig:
         meta["rig_log"] = attach_rig_log(session)
-    frame_log = attach_frame_log(session)
+    frame_log = attach_frame_log(session, recorded_start, recorded_end)
     if frame_log:
         meta["frame_log"] = frame_log
     (session / "run.json").write_text(json.dumps(meta, indent=2))

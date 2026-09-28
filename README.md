@@ -152,9 +152,11 @@ neither ends a lap. A larger gap does.
 
 ### Unattended recording, and trimming the end
 
-OBS has two hotkeys for this (Settings > Hotkeys): Start Recording
-`Ctrl+Alt+Shift+F9`, Stop Recording `Ctrl+Alt+Shift+F10`. Hold them for a
-moment; OBS polls its hotkeys and misses a tap while AC has focus.
+OBS has two hotkeys for this (Settings > Hotkeys): Start Recording `F13`, Stop
+Recording `F14`. Keyboards have no such keys, so nothing else reacts to them;
+`Ctrl+Alt+Shift+F9/F10` also toggled NVIDIA's Instant Replay, which draws an
+icon into the game and loads the GPU. Hold them for a moment; OBS polls its
+hotkeys and misses a tap while AC has focus.
 
 ```powershell
 # with the bot driving and AC in front: start now, stop after 10 completed laps
@@ -164,8 +166,17 @@ moment; OBS polls its hotkeys and misses a tap while AC has focus.
 ```
 
 `autostop` counts laps from the timecode app's log and only sends keys while
-AC or OBS has focus. If AC stops logging for 30 s it stops the recording too.
+AC or OBS has focus; when the Claude app has taken focus to show a message, it
+brings AC back first. If AC stops logging for 30 s it stops the recording too.
 `trim` writes `end_frame` into `run.json`; the video and labels are untouched.
+
+To save the replay without the pause menu, set `replay_now = 1` in the rig's
+`rig.txt`: the rig opens the replay (and resets the flag), and the replay bar's
+Save Replay button needs only the mouse. Remote control cannot use Escape: the
+Claude app keeps it as its stop key. AC keeps the whole session in the replay
+(7.7 hours of one car came to 1.1 GB), and a normal close also autosaves it to
+`replay\temp`, which keeps only the newest few. `session import` copies only
+the telemetry chunks written during the recording, so it works hours later.
 
 ### New track: pre-flight first
 

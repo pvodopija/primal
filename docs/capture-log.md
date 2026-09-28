@@ -261,10 +261,10 @@ lap's `s` wrap within 4.4 m of AC's lap counter, telemetry joined on 99.9%.
 
 - **Render hitches.** 478 render intervals over 50 ms in 1106 s, the longest
   1.2 s; the camera moves as far as the label across each one, so labels stay
-  exact and only the picture skips (up to 44 m in one frame). About 15 a minute
-  is the baseline on this track; the worst minutes are the ones where analysis
-  or a second program started during the recording. Nothing heavy runs on this
-  PC while recording.
+  exact and only the picture skips (up to 44 m in one frame). They came from
+  work running during the recording: the next session on the same track, with
+  the PC left alone, had 3 in 43 minutes. Nothing heavy runs on this PC while
+  recording.
 - **AI spline kink** about 38 m past the line (`s` 0.021-0.024): the label runs
   up to 1.5 m ahead of the camera for a few metres and then agrees again (over
   50 frames, label 55.66 m against camera path 55.62 m).
@@ -273,6 +273,32 @@ lap's `s` wrap within 4.4 m of AC's lap counter, telemetry joined on 99.9%.
   frames show road beside the barrier, not the inside of a wall.
 - **`phys_ms` equals `sim_ms`** on every frame so far: AC reports the physics
   state as of the frame, so the log gives no sensor latency to simulate.
+
+**Highlands Short, Abarth, 18:30, clear, rig wander 2.5 m**
+(`ks_highlands__layout_short__20260928T005654Z`). Meant as 10 laps; the
+recording ran on for 43 minutes while the stop key could not get through, so it
+has 47 laps of 55.8-55.9 s from low sun (18:39) through dusk into night (19:22).
+`game_time_s` gives the time of day per frame. 100% checksum, every check
+passes except 0.22% of frames with the camera just past the AI edge. Its replay
+was lost: AC's Hotlap session had run out, and closing AC then hung without
+writing the autosave.
+
+**Monza 1966 Junior, MX-5 Cup, 12:02, scattered clouds**
+(`ks_monza66__junior__20260928T091133Z`), after a pre-flight that passed every
+check. 10 laps, 100% checksum, every check passes, 0 render hitches over 50 ms
+in 573 s. The replay was saved hours later from the same launch (the bot drove
+on for 8 hours) and is in the session folder as `replay.acreplay`.
+
+- **AC capped at 60 fps from Monza on.** The monitor now runs at 70 Hz, and AC
+  in a window with V-sync followed it (14.3 ms median), so OBS at 60 fps missed
+  one rendered frame in seven and x264 overloaded. `video.ini` now has
+  `FPS_CAP_MS=16.6667` (original kept as `video.ini.before-primal`); the render
+  interval is 16.7 ms and hitches fell to zero. Both Highlands sessions ran at
+  ~70 fps.
+- **AI strength does not reach the bot in Hotlap.** With CM's Race slider at
+  85%, `race.ini` still carried `AI_LEVEL=100`. Pace varies by car instead.
+- **Hotlap does not stop at 30 minutes.** The bot drives on and AC's lap
+  counter keeps counting; only the session menu changes.
 
 ## Open items
 
