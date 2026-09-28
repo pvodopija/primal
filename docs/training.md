@@ -126,8 +126,11 @@ Each step:
 
 - AdamW, learning rate 3e-4 with a one-cycle schedule (15% warm-up), weight
   decay 1e-4, gradient norm clipped at 1.0.
-- 3000 steps for G1, each one reference lap plus 8 clips. On the M4 Pro (Metal)
-  a run takes about 40 minutes.
+- 3000 steps for G1, each one reference lap plus 8 clips. Preparing the
+  reference on the CPU, not the GPU, bounds a step, so data is prepared in 3
+  worker processes (`--workers`, default 3): 0.37 s per step on the M4 Pro, about
+  20 minutes a run. Each step seeds its own sampling, so workers do not change
+  what is drawn.
 - The ~1000-frame reference is encoded in chunks with gradient checkpointing,
   so gradients flow through the reference too without holding it all in memory.
 - Every 200 steps: 24 evaluation batches without jitter, from a separate random
@@ -165,22 +168,29 @@ Beyond the gates, `train.eval stream` runs whole laps at 15 Hz through the
 particle filter as the phone would, and `train.eval lines` measures error
 against racing-line separation.
 
-## 9. What we do not do yet
+## 9. Optional augmentation, and what is still missing
 
-The augmentation policy in `ml-pivot.md` calls camera-side effects near-free
-and first priority. Implemented today is the photometric jitter above and
-nothing else. Not done:
+Two options exist, both off by default, measured in `ml-pivot.md` (*What moved
+the numbers*):
+
+- `--camera-aug` (`camera_jitter`): head pose (roll ±6 deg, yaw ±4 deg, pitch
+  ±3 deg, zoom 1.03-1.12x, per-frame shake), blur (out of focus or a short
+  streak), one or two fixed blank patches as occluders, vignetting and JPEG
+  compression, drawn separately for each live clip and for the reference.
+- `--mirror-p`: mirrors a step's reference and all its clips together, a
+  mirror-image circuit. Mirroring one side alone would break the match.
+
+With camera augmentation and mirroring together, the unseen track improved
+and known tracks lost precision at 3000 steps. Still missing:
 
 | Missing | Why it matters |
 |---|---|
-| Geometric jitter: small crops, scale, rotation (head roll), shifts | the glasses sit differently every session; the head rolls in corners |
-| Motion blur and vibration | a kart has no suspension; AC renders none |
 | Rolling-shutter shear | irrelevant for Halo's global shutter, not for most cameras |
-| Lens distortion, compression artefacts, sensor noise at low light | real cameras; AC is clean |
-| **Occluders: kart nose, steering wheel, hands, visor edges and tint** | the product camera sees them; the model never has |
+| Lens distortion, sensor noise at low light | real cameras; AC is clean |
+| **Kart-specific occluders: nose, steering wheel, hands, visor edges and tint** | the generic patches stand in for them; the real shapes are better |
 | Camera height | AC's rig sits at a car driver's eye height (~1.15 m); a kart driver's is lower |
 | Field of view | every frame is AC's 91.5° x 57.8°; Halo is about 81° x 65° |
-| **Mirroring live and reference together** | a mirrored circuit is a plausible new circuit: a cheap way to add track variety, the lever the unseen track needs |
+| Larger head turns | ±4 deg of yaw is what today's frames allow; wider renders allow more |
 | Local lighting: moving shadows, sun glare | the dusk-against-noon bias suggests lighting is not yet learned |
 
 ## 10. Input resolution

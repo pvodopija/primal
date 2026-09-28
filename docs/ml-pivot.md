@@ -769,6 +769,30 @@ One training seed each; the per-speed comparisons were checked on both random
 clips and whole-lap streams before being believed, and the first read of time
 bins overstated them.
 
+**Training changes, A/B on the five training tracks** (3000 steps, one seed
+each, against two baseline seeds: 1.45 / 1.43 m on held-out laps of trained
+tracks, 3.58 / 3.71 m on Silverstone; wrong-reference control passing
+throughout). Seed noise is about 0.1 m on medians; Silverstone's p90 swings
+from 87 to 350 m between the two baseline seeds, so p90 alone decides nothing.
+
+| change | trained tracks, held-out laps | Silverstone median / p90 / within 5 bins | verdict |
+|---|---|---|---|
+| Gradients through only nearby and 10% random reference bins | 5.14 m | 8.67 m / 963 m / 54% | much worse, and no faster: every reference bin has to learn, since look-alikes anywhere must be pushed apart. Closed |
+| Data prepared in 3 worker processes | same samples | same | 0.7 -> 0.37 s per step; preparing the reference on the CPU was the bottleneck, not the GPU. Default from now on |
+| Encoder in simulated 8-bit (embedding, weights, activations) | 1.44 m | 3.63 m / 134 m / 77% | no measurable loss |
+| Mirroring (reference and clips together, half the steps) | 1.76 m | 3.79 m / 80 m / 77% | no gain on its own |
+| Camera-side augmentation (head pose, blur, occluders, vignette, JPEG) | 2.66 m | 3.67 m / 22 m / 80% | fewer extreme misses, worse precision on known tracks |
+| Camera augmentation and mirroring | 2.41 m | **3.43 m / 19 m / 80%** | best unseen-track result, same precision cost; likely needs longer training |
+| Encoder 2x wider | 1.43 m | 3.99 m / 132 m / 74% | no gain, 2.6x slower: not capacity-limited |
+| Training 2x longer (6000 steps) | **1.25 m** | 3.56 m / 67 m / 78% | better known tracks; part of the learning curve's known-track decline was under-training |
+| Input 74x40 | 1.92 m | 3.71 m / 168 m / 77% | lower resolution costs precision on known tracks |
+| Input 111x60 | 1.67 m | 4.17 m / 439 m / 71% | as above |
+
+Resolution buys precision on known tracks (1.92 -> 1.67 -> 1.45 m from 74 to
+148 pixels wide, still improving) and nothing visible on the unseen track.
+Augmentation buys robustness on the unseen track at a precision cost that
+longer training may recover.
+
 ## Estimator
 
 `train/estimator.py` is a particle filter over (track position, speed) that folds

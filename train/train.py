@@ -209,7 +209,10 @@ def main() -> None:
     )
     parser.add_argument("--eval-every", type=int, default=200)
     parser.add_argument("--eval-steps", type=int, default=24)
-    parser.add_argument("--workers", type=int, default=0)
+    # Preparing each step's reference on the CPU, not the GPU, bounds a step;
+    # workers overlap it. Every step seeds its own sampling, so the worker count
+    # does not change what is drawn.
+    parser.add_argument("--workers", type=int, default=3)
     parser.add_argument("--device", default=default_device())
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--no-checkpoint", action="store_true", help="disable reference recompute")
