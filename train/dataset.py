@@ -342,6 +342,12 @@ class SampleConfig:
     # reference stays in the training set while the live lap has never been seen.
     reference_only: frozenset[str] | None = None
     live_only: frozenset[str] | None = None
+    # Camera-side augmentation (camera_jitter), drawn separately for every live
+    # clip and for the reference, like the photometric jitter.
+    camera_aug: bool = False
+    # Probability that a step mirrors its reference and all its clips together:
+    # a mirror-image circuit, a plausible track the data does not contain.
+    mirror_p: float = 0.0
 
 
 def _to_chw(frames: np.ndarray) -> np.ndarray:
@@ -368,6 +374,93 @@ def photometric_jitter(x: np.ndarray, rng: np.random.Generator) -> np.ndarray:
     out += np.float32(bias)
     out += rng.normal(0.0, 0.012, size=x.shape).astype(np.float32)
     return np.clip(out, 0.0, 1.0, out=out)
+
+
+def _motion_kernel(length: float, angle_deg: float) -> np.ndarray:
+    size = max(3, int(np.ceil(length)) | 1)
+    kernel = np.zeros((size, size), np.float32)
+    c = size // 2
+    dx, dy = np.cos(np.radians(angle_deg)), np.sin(np.radians(angle_deg))
+    for t in np.linspace(-length / 2, length / 2, 4 * size):
+        kernel[int(round(c + t * dy)), int(round(c + t * dx))] = 1.0
+    return kernel / kernel.sum()
+
+
+def camera_jitter(frames: np.ndarray, rng: np.random.Generator, hfov_deg: float = 91.5) -> np.ndarray:
+    """
+    Camera-side augmentation for uint8 frames [T, H, W, 3] of one clip, or of a
+    whole reference lap. Only what a different camera or head would change, never
+    the scene, since on a kart track the scene is the signal:
+
+    - head pose: one roll (+-6 deg), yaw (+-4 deg), pitch (+-3 deg) and zoom (1.03-1.12x)
+      for the sequence, plus per-frame shake (0.3 px, 0.3 deg);
+    - blur (30%): out of focus, or a short streak as from vibration or motion;
+    - occluders (25%): one or two blank patches fixed in the frame, as a hand, a
+      steering wheel or a kart ahead;
+    - vignetting (30%) and JPEG compression (30%, quality 25-85).
+    """
+    import cv2
+
+    count, height, width = frames.shape[:3]
+    focal = (width / 2) / np.tan(np.radians(hfov_deg / 2))
+    roll = rng.uniform(-6, 6)
+    shift_x = focal * np.tan(np.radians(rng.uniform(-4, 4)))
+    shift_y = focal * np.tan(np.radians(rng.uniform(-3, 3)))
+    zoom = rng.uniform(1.03, 1.12)
+    shake = rng.normal(0.0, [0.3, 0.3, 0.3], size=(count, 3))
+    blur = rng.random() < 0.3
+    blur_kernel = None
+    if blur and rng.random() < 0.5:
+        blur_kernel = _motion_kernel(rng.uniform(1.5, 4.0), rng.uniform(60, 120))
+    blur_sigma = rng.uniform(0.3, 1.0)
+    patches = []
+    if rng.random() < 0.25:
+        for _ in range(int(rng.integers(1, 3))):
+            area = rng.uniform(0.05, 0.2) * height * width
+            aspect = rng.uniform(0.5, 2.0)
+            h = int(min(height, np.sqrt(area / aspect)))
+            w = int(min(width, np.sqrt(area * aspect)))
+            y, x = int(rng.integers(0, height - h + 1)), int(rng.integers(0, width - w + 1))
+            patches.append((y, x, h, w, rng.integers(0, 256, size=3)))
+    vignette = None
+    if rng.random() < 0.3:
+        yy, xx = np.mgrid[0:height, 0:width].astype(np.float32)
+        r2 = ((xx - width / 2) / (width / 2)) ** 2 + ((yy - height / 2) / (height / 2)) ** 2
+        vignette = (1.0 - rng.uniform(0.1, 0.4) * r2 / 2.0)[..., None]
+    jpeg = rng.random() < 0.3
+    quality = int(rng.integers(25, 86))
+
+    out = np.empty_like(frames)
+    center = (width / 2, height / 2)
+    for i in range(count):
+        matrix = cv2.getRotationMatrix2D(center, roll + shake[i, 2], zoom)
+        matrix[0, 2] += shift_x + shake[i, 0]
+        matrix[1, 2] += shift_y + shake[i, 1]
+        frame = cv2.warpAffine(frames[i], matrix, (width, height), flags=cv2.INTER_LINEAR,
+                               borderMode=cv2.BORDER_REFLECT_101)
+        if blur:
+            frame = (cv2.filter2D(frame, -1, blur_kernel) if blur_kernel is not None
+                     else cv2.GaussianBlur(frame, (0, 0), blur_sigma))
+        for y, x, h, w, colour in patches:
+            frame[y : y + h, x : x + w] = colour
+        if vignette is not None:
+            frame = np.clip(frame.astype(np.float32) * vignette, 0, 255).astype(np.uint8)
+        if jpeg:
+            ok, data = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+            frame = cv2.imdecode(data, cv2.IMREAD_UNCHANGED) if ok else frame
+        out[i] = frame
+    return out
+
+
+def prepare_frames(
+    raw: np.ndarray, rng: np.random.Generator, camera_aug: bool, mirror: bool
+) -> np.ndarray:
+    """uint8 [T, H, W, 3] -> float32 [T, 3, H, W], mirrored and camera-jittered as asked."""
+    if mirror:
+        raw = np.ascontiguousarray(raw[:, :, ::-1])
+    if camera_aug:
+        raw = camera_jitter(raw, rng)
+    return _to_chw(raw)
 
 
 def circular_soft_target(target: np.ndarray, n_bins: int, sigma_bins: float) -> np.ndarray:
@@ -463,7 +556,10 @@ class AlignmentBatches(Dataset):
         ref_raw = np.roll(ref_raw, roll, axis=0)
         ref_s, ref_speed = np.roll(grid.frame_s, roll), np.roll(grid.speed_mps, roll)
         ref_pos, ref_time = np.roll(grid.pos_m, roll), np.roll(grid.time_s, roll)
-        ref_frames = _to_chw(ref_raw)
+        # Drawn only when enabled, so runs without these augmentations sample
+        # exactly what they always did.
+        mirror = bool(config.mirror_p > 0.0 and rng.random() < config.mirror_p)
+        ref_frames = prepare_frames(ref_raw, rng, config.camera_aug, mirror)
 
         clips = np.empty(
             (config.batch_size, config.clip_len) + ref_frames.shape[1:], dtype=np.float32
@@ -475,7 +571,7 @@ class AlignmentBatches(Dataset):
         for i in range(config.batch_size):
             live_lap = live_pool[int(rng.integers(0, len(live_pool)))]
             indices = self._clip_indices(live_lap, rng)
-            clip = _to_chw(np.asarray(live_lap.frames()[indices]))
+            clip = prepare_frames(np.asarray(live_lap.frames()[indices]), rng, config.camera_aug, mirror)
             clips[i] = photometric_jitter(clip, rng) if config.jitter else clip
             # The final frame is the one being localised: causal, matching runtime.
             frame_s = live_lap.s()[indices]

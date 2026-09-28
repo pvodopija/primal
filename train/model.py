@@ -160,14 +160,35 @@ class SequenceAligner(nn.Module):
         self.head = AlignmentHead(clip_len=clip_len, hidden=hidden, blocks=blocks)
         self.logit_scale = nn.Parameter(torch.tensor(math.log(10.0)))
 
-    def encode_reference(self, reference: Tensor, chunk: int = 64, use_checkpoint: bool = True) -> Tensor:
+    def encode_reference(
+        self,
+        reference: Tensor,
+        chunk: int = 64,
+        use_checkpoint: bool = True,
+        grad_index: Tensor | None = None,
+    ) -> Tensor:
         """
         Encode the reference lap in chunks.
 
         Gradients must flow through the reference as well as the live clip, but a
         1000-frame reference does not fit in memory as one autograd graph, so the
         chunks are recomputed in the backward pass.
+
+        With `grad_index`, only those bins carry gradient: every bin is encoded
+        once without a graph, and the chosen ones again with one. The reference is
+        most of each step's frames, and this is where a step's time goes; the bins
+        near the answers and a random sample elsewhere keep the useful gradient.
         """
+        if grad_index is not None and self.training and torch.is_grad_enabled():
+            with torch.no_grad():
+                frozen = torch.cat(
+                    [self.encoder(reference[s : s + chunk]) for s in range(0, reference.shape[0], chunk)]
+                )
+            picked = reference[grad_index]
+            fresh = torch.cat(
+                [self.encoder(picked[s : s + chunk]) for s in range(0, picked.shape[0], chunk)]
+            )
+            return frozen.index_put((grad_index,), fresh)
         outputs = []
         for start in range(0, reference.shape[0], chunk):
             block = reference[start : start + chunk]
@@ -178,11 +199,17 @@ class SequenceAligner(nn.Module):
         return torch.cat(outputs, dim=0)
 
     def forward(
-        self, live: Tensor, reference: Tensor, use_checkpoint: bool = True
+        self,
+        live: Tensor,
+        reference: Tensor,
+        use_checkpoint: bool = True,
+        ref_grad_index: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
         batch, clip_len = live.shape[:2]
         live_descriptors = self.encoder(live.flatten(0, 1)).view(batch, clip_len, -1)
-        reference_descriptors = self.encode_reference(reference, use_checkpoint=use_checkpoint)
+        reference_descriptors = self.encode_reference(
+            reference, use_checkpoint=use_checkpoint, grad_index=ref_grad_index
+        )
         correlation = torch.einsum("bkd,nd->bkn", live_descriptors, reference_descriptors)
         correlation = correlation * self.logit_scale.exp()
         return self.head(correlation), correlation
@@ -208,6 +235,21 @@ class FrameOnlyRegressor(nn.Module):
 
     def forward(self, images: Tensor) -> Tensor:
         return self.classifier(self.encoder(images))
+
+
+def reference_grad_bins(
+    frame_targets: Tensor, n_bins: int, window: int, random_fraction: float, generator: torch.Generator | None = None
+) -> Tensor:
+    """
+    Reference bins that keep gradient in a partial-gradient step: every bin within
+    `window` of any clip frame's target, where the loss is decided, plus a random
+    `random_fraction` of the rest, so distant look-alikes still get pushed apart.
+    """
+    offsets = torch.arange(-window, window + 1)
+    near = (frame_targets.detach().round().long().reshape(-1, 1).cpu() + offsets).remainder(n_bins)
+    count = int(round(random_fraction * n_bins))
+    sample = torch.randperm(n_bins, generator=generator)[:count]
+    return torch.unique(torch.cat([near.reshape(-1), sample]))
 
 
 def soft_argmax_circular(logits: Tensor, window: int = 8) -> Tensor:

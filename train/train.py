@@ -27,6 +27,7 @@ from train.model import (
     SequenceAligner,
     alignment_loss,
     compute_metrics,
+    reference_grad_bins,
     soft_argmax_circular,
     summarise,
 )
@@ -212,6 +213,16 @@ def main() -> None:
     parser.add_argument("--device", default=default_device())
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--no-checkpoint", action="store_true", help="disable reference recompute")
+    parser.add_argument(
+        "--ref-grad-random",
+        type=float,
+        default=None,
+        help="partial reference gradients: only bins near the clips' targets plus this random share "
+        "of the rest carry gradient (default: every bin, the original recipe)",
+    )
+    parser.add_argument("--ref-grad-window", type=int, default=8, help="bins either side of each target")
+    parser.add_argument("--camera-aug", action="store_true", help="head pose, blur, occluder, vignette and JPEG jitter")
+    parser.add_argument("--mirror-p", type=float, default=0.0, help="share of steps mirrored, reference and clips together")
     args = parser.parse_args()
 
     gate = GateConfig.get(args.gate)
@@ -243,6 +254,8 @@ def main() -> None:
         reference_axis=args.reference_axis,
         reference_only=trainable if reserved else None,
         live_only=trainable if reserved else None,
+        camera_aug=args.camera_aug,
+        mirror_p=args.mirror_p,
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 
@@ -294,6 +307,7 @@ def main() -> None:
 
     log: list[dict] = []
     best = float("inf")
+    generator = torch.Generator().manual_seed(args.seed)
     started = time.time()
     for step, batch in enumerate(loader, start=1):
         live = batch["live"].to(device)
@@ -301,7 +315,14 @@ def main() -> None:
         target = batch["target"].to(device)
         soft_target = batch["soft_target"].to(device)
 
-        logits, correlation = model(live, reference, use_checkpoint=not args.no_checkpoint)
+        grad_index = None
+        if args.ref_grad_random is not None:
+            grad_index = reference_grad_bins(
+                batch["frame_targets"], reference.shape[0], args.ref_grad_window, args.ref_grad_random, generator
+            ).to(device)
+        logits, correlation = model(
+            live, reference, use_checkpoint=not args.no_checkpoint, ref_grad_index=grad_index
+        )
         parts = alignment_loss(
             logits,
             correlation,
