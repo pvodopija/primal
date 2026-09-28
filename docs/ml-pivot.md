@@ -693,6 +693,31 @@ light barely matters (1.5-1.7 m), on Silverstone it doubles the error (2.1 m
 same session, 4.3 m across car or time of day), so the robustness learned so
 far is partly track-specific.
 
+**Measured on real footage: more tracks keep helping, with no plateau at five.**
+Trained on 1-5 of the five training tracks (two different track sets per count,
+same recipe, 3000 steps; wrong-reference control passing on every run), each
+run tested on Silverstone and on the tracks it left out:
+
+| Tracks trained on | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Silverstone median, two runs | 4.96 / 5.74 m | 4.62 / 4.75 | 3.88 / 4.61 | 3.80 / 3.94 | 3.58 / 3.71 |
+| every unseen track, median of medians | 4.76 m | 4.03 | 4.06 | 3.87 | 3.64 |
+| Silverstone within 5 bins | 65-70% | 70-73% | 72-80% | 76-79% | 78-79% |
+| held-out laps of the trained tracks | 0.66 m | 1.06 | 1.15 | 1.40 | 1.43 |
+
+![Track-count learning curve](img/learning_curve_tracks.png)
+
+Seed-to-seed noise at five tracks is about 0.1 m; which tracks are chosen moves
+the result by up to 0.7 m. Extrapolating the Silverstone median with a power law
+and a log-linear fit gives about 2.9-3.1 m at ten tracks and 2.5-2.8 m at
+fifteen: more tracks are worth recording, and data alone probably does not
+reach 2 m. Two caveats. The share within five bins flattens from three tracks
+on, so tracks help the typical error more than the big misses, which still need
+speed and the filter. And the trained tracks got worse as tracks were added
+(0.66 -> 1.43 m) with steps and model size fixed; that is either less
+memorisation, as on synthetic data, or a model and training budget spread over
+more tracks, which a longer run and a wider encoder at five tracks would tell.
+
 **The leakage control is now a working instrument.** On synthetic it scored at
 chance on seen tracks as well as held-out ones, so a null result could not
 distinguish "no leak" from "broken detector". On real footage it clearly
