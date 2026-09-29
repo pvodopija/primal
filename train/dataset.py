@@ -345,6 +345,9 @@ class SampleConfig:
     # Camera-side augmentation (camera_jitter), drawn separately for every live
     # clip and for the reference, like the photometric jitter.
     camera_aug: bool = False
+    # Zoom range and pitch amplitude for camera_jitter; see its docstring.
+    aug_zoom: tuple[float, float] = (1.03, 1.12)
+    aug_pitch_deg: float = 3.0
     # Probability that a step mirrors its reference and all its clips together:
     # a mirror-image circuit, a plausible track the data does not contain.
     mirror_p: float = 0.0
@@ -386,14 +389,24 @@ def _motion_kernel(length: float, angle_deg: float) -> np.ndarray:
     return kernel / kernel.sum()
 
 
-def camera_jitter(frames: np.ndarray, rng: np.random.Generator, hfov_deg: float = 91.5) -> np.ndarray:
+def camera_jitter(
+    frames: np.ndarray,
+    rng: np.random.Generator,
+    hfov_deg: float = 91.5,
+    zoom: tuple[float, float] = (1.03, 1.12),
+    pitch_deg: float = 3.0,
+) -> np.ndarray:
     """
     Camera-side augmentation for uint8 frames [T, H, W, 3] of one clip, or of a
     whole reference lap. Only what a different camera or head would change, never
     the scene, since on a kart track the scene is the signal:
 
-    - head pose: one roll (+-6 deg), yaw (+-4 deg), pitch (+-3 deg) and zoom (1.03-1.12x)
-      for the sequence, plus per-frame shake (0.3 px, 0.3 deg);
+    - head pose: one roll (+-6 deg), yaw (+-4 deg), pitch (+-`pitch_deg`) and zoom
+      (drawn from `zoom`) for the sequence, plus per-frame shake (0.3 px, 0.3 deg).
+      Zoom and pitch are also distance cues: things look bigger, and the road
+      sits lower, the closer they are. Drawn independently for live and
+      reference they teach the model to ignore its own sense of distance, so a
+      fixed zoom (only to hide the borders) and a small pitch keep precision;
     - blur (30%): out of focus, or a short streak as from vibration or motion;
     - occluders (25%): one or two blank patches fixed in the frame, as a hand, a
       steering wheel or a kart ahead;
@@ -405,8 +418,8 @@ def camera_jitter(frames: np.ndarray, rng: np.random.Generator, hfov_deg: float 
     focal = (width / 2) / np.tan(np.radians(hfov_deg / 2))
     roll = rng.uniform(-6, 6)
     shift_x = focal * np.tan(np.radians(rng.uniform(-4, 4)))
-    shift_y = focal * np.tan(np.radians(rng.uniform(-3, 3)))
-    zoom = rng.uniform(1.03, 1.12)
+    shift_y = focal * np.tan(np.radians(rng.uniform(-pitch_deg, pitch_deg)))
+    zoom = rng.uniform(*zoom)
     shake = rng.normal(0.0, [0.3, 0.3, 0.3], size=(count, 3))
     blur = rng.random() < 0.3
     blur_kernel = None
@@ -453,13 +466,14 @@ def camera_jitter(frames: np.ndarray, rng: np.random.Generator, hfov_deg: float 
 
 
 def prepare_frames(
-    raw: np.ndarray, rng: np.random.Generator, camera_aug: bool, mirror: bool
+    raw: np.ndarray, rng: np.random.Generator, camera_aug: bool, mirror: bool,
+    zoom: tuple[float, float] = (1.03, 1.12), pitch_deg: float = 3.0,
 ) -> np.ndarray:
     """uint8 [T, H, W, 3] -> float32 [T, 3, H, W], mirrored and camera-jittered as asked."""
     if mirror:
         raw = np.ascontiguousarray(raw[:, :, ::-1])
     if camera_aug:
-        raw = camera_jitter(raw, rng)
+        raw = camera_jitter(raw, rng, zoom=zoom, pitch_deg=pitch_deg)
     return _to_chw(raw)
 
 
@@ -559,7 +573,7 @@ class AlignmentBatches(Dataset):
         # Drawn only when enabled, so runs without these augmentations sample
         # exactly what they always did.
         mirror = bool(config.mirror_p > 0.0 and rng.random() < config.mirror_p)
-        ref_frames = prepare_frames(ref_raw, rng, config.camera_aug, mirror)
+        ref_frames = prepare_frames(ref_raw, rng, config.camera_aug, mirror, config.aug_zoom, config.aug_pitch_deg)
 
         clips = np.empty(
             (config.batch_size, config.clip_len) + ref_frames.shape[1:], dtype=np.float32
@@ -571,7 +585,10 @@ class AlignmentBatches(Dataset):
         for i in range(config.batch_size):
             live_lap = live_pool[int(rng.integers(0, len(live_pool)))]
             indices = self._clip_indices(live_lap, rng)
-            clip = prepare_frames(np.asarray(live_lap.frames()[indices]), rng, config.camera_aug, mirror)
+            clip = prepare_frames(
+                np.asarray(live_lap.frames()[indices]), rng, config.camera_aug, mirror,
+                config.aug_zoom, config.aug_pitch_deg,
+            )
             clips[i] = photometric_jitter(clip, rng) if config.jitter else clip
             # The final frame is the one being localised: causal, matching runtime.
             frame_s = live_lap.s()[indices]

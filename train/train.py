@@ -226,6 +226,9 @@ def main() -> None:
     parser.add_argument("--ref-grad-window", type=int, default=8, help="bins either side of each target")
     parser.add_argument("--camera-aug", action="store_true", help="head pose, blur, occluder, vignette and JPEG jitter")
     parser.add_argument("--mirror-p", type=float, default=0.0, help="share of steps mirrored, reference and clips together")
+    parser.add_argument("--aug-zoom", type=float, nargs=2, default=(1.03, 1.12),
+                        help="zoom range for --camera-aug; equal values fix it for live and reference alike")
+    parser.add_argument("--aug-pitch", type=float, default=3.0, help="pitch amplitude in degrees for --camera-aug")
     args = parser.parse_args()
 
     gate = GateConfig.get(args.gate)
@@ -259,6 +262,8 @@ def main() -> None:
         live_only=trainable if reserved else None,
         camera_aug=args.camera_aug,
         mirror_p=args.mirror_p,
+        aug_zoom=tuple(args.aug_zoom),
+        aug_pitch_deg=args.aug_pitch,
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 
