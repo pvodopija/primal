@@ -1395,3 +1395,110 @@ bins) into a new set with the old laps included, check the index, and move it
 by **USB drive** rather than the SMB share, which has stalled twice on large
 files. In your entry: tracks, layouts, sessions per track, which are holdout,
 lap counts, anything that failed a pre-flight, and the telemetry columns added.
+
+---
+
+## 2026-09-29 — Windows → Mac: the recording session, done
+
+Answers the 2026-09-27 spec. Recorded unattended: Claude drove Content Manager,
+AC and OBS by computer use over two days, with `capture.autostop` ending each
+recording by lap count. How that works, and every trap on the way, is in the
+project skill `.claude/skills/ac-unattended-recording/SKILL.md`.
+
+### What is on the USB drive
+
+`packed_ac_v3/` — everything in `packed_ac_v2` plus the sessions below, same
+settings (148x80 square pixels, 2 m bins, `fov_h_deg 91.49`). 380 laps in 44 GB: all 143 of v2's laps under the same ids, plus 237 new.
+`packed_ac_v2` and `data/sessions` are unchanged on this PC.
+
+### Tracks and sessions
+
+No kart tracks: the AC bot cannot drive the kart mods here (the user's call),
+so no kart holdout either. Six new car circuits, none sharing scenery with the
+old six. Two sessions each, 10 laps (Highlands session 2 has 47), rig wander
+2.5 m live at 60° / 1.15 m as before. Session 1: MX-5 Cup, ~12:00, scattered
+clouds. Session 2: Abarth 500, 18:30, clear (low sun).
+
+| Track | Length | Split | Sessions |
+|---|---|---|---|
+| `ks_highlands__layout_short` | 1709 m | train | MX-5 20 laps; Abarth 47 laps, 18:39 → 19:22, low sun into night |
+| `ks_monza66__junior` | 2396 m | train | MX-5 10; Abarth 13 |
+| `ks_nurburgring__layout_sprint_a` | 3567 m | train | MX-5 10; Abarth 10 |
+| `ks_laguna_seca` | 3559 m | train | MX-5 10; Abarth 10 |
+| `rt_lime_rock_park__no_chicane` | 2361 m | **holdout** | MX-5 10; Abarth 10 |
+| `rt_oulton_park__fosters` | 2646 m | **holdout** | MX-5 10; Abarth 10 |
+
+With Silverstone that makes three unseen tracks. Per-lap counts after packing:
+
+| Track | Split | Sessions | Laps packed | of them > 95% of a lap | Frames |
+|---|---|---|---|---|---|
+| `ks_black_cat_county__layout_short` | train | 3 | 19 | 8 | 107,834 |
+| `ks_brands_hatch__indy` | train | 4 | 16 | 16 | 48,503 |
+| `ks_highlands__layout_short` | train | 3 | 86 | 61 | 215,227 |
+| `ks_laguna_seca` | train | 3 | 29 | 20 | 142,371 |
+| `ks_monza66__junior` | train | 3 | 34 | 23 | 93,291 |
+| `ks_nurburgring__layout_sprint_a` | train | 3 | 28 | 20 | 141,575 |
+| `ks_red_bull_ring__layout_national` | train | 3 | 38 | 30 | 115,893 |
+| `ks_silverstone__national` | holdout | 3 | 27 | 23 | 92,502 |
+| `ks_vallelunga__club_circuit` | train | 3 | 23 | 23 | 77,468 |
+| `magione` | train | 3 | 20 | 17 | 86,528 |
+| `rt_lime_rock_park__no_chicane` | holdout | 3 | 32 | 20 | 87,378 |
+| `rt_oulton_park__fosters` | holdout | 3 | 28 | 21 | 100,891 |
+
+A packed lap is a stretch between finish-line crossings and counter gaps
+over `MAX_COUNTER_GAP`, so a lap split by a gap packs as two. The new tracks'
+"sessions" count includes the re-render.
+
+Plus one **look-into-the-corner re-render per track** (rig `look = 1`, gain
+drawn per render from 0.3-0.8, aiming 15-20 m ahead, glances up to 8°, wander
+2.5 m), 5-6 minutes each from the saved replays, same splits as their tracks.
+Session ids end `20260929T20....Z`; each has `rig_log.csv` with `head_yaw_deg`,
+`glance_deg`, `look_gain`, `look_ahead_m`. The applied turn is visible in the
+per-frame telemetry: |`cam_yaw_deg`| 95th percentile 5.8-10.8° (max 23.6°)
+against 4.1° from the wander alone in live sessions. Replays are 15 ms apart
+(~67 Hz) and interpolated to 60 fps.
+
+### Checks
+
+Every session, live and re-rendered: 100% checksum (Highlands 1: 98.04%, the
+invalid 2% a pause menu at the end, trimmed), no label step beyond the camera's
+own movement, label speed / car speed median 1.000-1.002, every AC lap-counter
+tick within 5.2 m of an `s` wrap, telemetry joined on 99.9-100%. Pre-flights
+(one lap on each new track before its session) passed on labels everywhere.
+Soft flag everywhere: the camera past the AI spline's edge on 0-0.6% of frames
+(Laguna highest); the worst frames show kerbs and run-off, not walls.
+
+Findings worth knowing:
+
+- **AI spline kink on Highlands** ~38 m past the line (`s` 0.021-0.024): the
+  label runs up to 1.5 m ahead of the camera for a few metres.
+- **Render hitches** are exact in label but skip the picture. Nearly none with
+  AC capped at 60 fps (from Monza on; `FPS_CAP_MS=16.6667`, monitor is 70 Hz)
+  and nothing else running: 0-6 per session over 50 ms. First lap on a new
+  track has asset-loading hitches (up to 1.3 s). Highlands 1 ran at ~70 fps
+  with analysis running alongside: 478.
+- **`phys_ms` equals `sim_ms`** on every frame: no sensor latency to simulate
+  from AC.
+- **Bot strength can't be varied in Hotlap** (`AI_LEVEL` stays 100 whatever
+  CM's Race slider says). Pace differs by car only; laps within a session
+  agree to 0.1 s (Highlands Abarth 55.8-55.9 s). No human-driven sessions yet;
+  the user offered to drive with a wheel if the model needs it.
+- Every session keeps `replay.acreplay` in its folder except Highlands 2.
+  One car's whole session fits (7.7 h came to 1.1 GB).
+
+### Telemetry columns added
+
+Per frame, joined by counter: camera and car full pose (`cam_x/y/z`,
+`cam_fwd_*`, `cam_up_*`, `cam_fov_deg`, `car_x/y/z`, `car_fwd_*`, `car_up_*`),
+`cam_trk_x`, `cam_trk_h`, `side_l_m`, `side_r_m` (lateral metres =
+`cam_trk_x * (side_l_m + side_r_m) / 2`), `cam_yaw_deg`, `car_s`, `car_trk_x`,
+`steer_deg`, `gas`, `brake`, `gear`, `rpm`, `lap_count`, `lap_ms`,
+`game_time_s`. Table in `docs/capture-log.md` under *Per-frame telemetry*.
+`pack.py` does not carry them into `packed_ac_v3`; they are in each session's
+`frame_log/` on this PC.
+
+### Not done
+
+- Halo FOV (`fov_deg=75`) renders, kart eye height, weather/rain and
+  slow-motion renders, traffic: all still possible from the saved replays.
+- Human-driven sessions.
