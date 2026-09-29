@@ -1407,9 +1407,20 @@ project skill `.claude/skills/ac-unattended-recording/SKILL.md`.
 
 ### What is on the USB drive
 
-`packed_ac_v3/` — everything in `packed_ac_v2` plus the sessions below, same
-settings (148x80 square pixels, 2 m bins, `fov_h_deg 91.49`). 380 laps in 44 GB: all 143 of v2's laps under the same ids, plus 237 new.
-`packed_ac_v2` and `data/sessions` are unchanged on this PC.
+`packed_ac_v3` is everything in `packed_ac_v2` plus the sessions below, same
+settings (148x80 square pixels, 2 m bins, `fov_h_deg 91.49`): 380 laps in 44 GB,
+all 143 of v2's laps under the same ids plus 237 new. The drive is 29 GB, so it
+carries only the new part, `usb_packed_ac_v3_new/` (the 237 new laps, 27.7 GB,
+and v3's full `index.json`). Rebuild v3 from the v2 already on the Mac:
+
+```bash
+cp -R data/packed_ac_v2 data/packed_ac_v3
+cp -R /Volumes/<USB>/usb_packed_ac_v3_new/laps/* data/packed_ac_v3/laps/
+cp /Volumes/<USB>/usb_packed_ac_v3_new/index.json data/packed_ac_v3/index.json
+```
+
+Then `data/packed_ac_v3/laps` holds 380 folders and every `path` in the index
+exists. `packed_ac_v2` and `data/sessions` are unchanged on this PC.
 
 ### Tracks and sessions
 
