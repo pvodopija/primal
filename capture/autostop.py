@@ -92,12 +92,18 @@ def focus_ac() -> bool:
     return foreground_exe() == "acs.exe"
 
 
-def engage_bot(launch: Path, tries: int = 2) -> bool:
+def engage_bot(tries: int = 2) -> bool:
     """
     Hand the car to AC's AI with Ctrl+C and confirm from the telemetry that it
     drives off. AC takes the keys with their scan codes and only while it has
     focus, so both are ensured here rather than left to whoever sent the key.
+    The timecode app logs only once the car is on track, so a stale log means
+    AC is still in its session menu, and no key is sent.
     """
+    launch = newest_launch()
+    if time.time() - last_row(launch)[0] > 10:
+        print("not sending Ctrl+C: no fresh telemetry, so AC is not driving yet (session menu?)", flush=True)
+        return False
     for _ in range(tries):
         if not focus_ac():
             print(f"not sending Ctrl+C: {foreground_exe() or 'unknown'} has focus", flush=True)
@@ -141,7 +147,7 @@ def main() -> None:
 
     launch = newest_launch()
     if args.engage_bot:
-        if not engage_bot(launch):
+        if not engage_bot():
             raise SystemExit("the car did not drive off after Ctrl+C")
         print(f"{time.strftime('%H:%M:%S')} bot driving", flush=True)
         if not args.laps:
