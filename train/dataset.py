@@ -326,6 +326,9 @@ def _cached_grid(lap: Lap, axis: str) -> ReferenceGrid:
     return _grid_for(lap.directory, lap.ref_bins, lap.track_length_m, axis)
 
 
+AUG_PARTS = ("pose", "blur", "occlude", "vignette", "jpeg")
+
+
 @dataclass
 class SampleConfig:
     batch_size: int = 8
@@ -348,6 +351,7 @@ class SampleConfig:
     # Zoom range and pitch amplitude for camera_jitter; see its docstring.
     aug_zoom: tuple[float, float] = (1.03, 1.12)
     aug_pitch_deg: float = 3.0
+    aug_parts: frozenset[str] = frozenset(AUG_PARTS)
     # Probability that a step mirrors its reference and all its clips together:
     # a mirror-image circuit, a plausible track the data does not contain.
     mirror_p: float = 0.0
@@ -395,6 +399,7 @@ def camera_jitter(
     hfov_deg: float = 91.5,
     zoom: tuple[float, float] = (1.03, 1.12),
     pitch_deg: float = 3.0,
+    parts: frozenset[str] = frozenset(AUG_PARTS),
 ) -> np.ndarray:
     """
     Camera-side augmentation for uint8 frames [T, H, W, 3] of one clip, or of a
@@ -411,6 +416,9 @@ def camera_jitter(
     - occluders (25%): one or two blank patches fixed in the frame, as a hand, a
       steering wheel or a kart ahead;
     - vignetting (30%) and JPEG compression (30%, quality 25-85).
+
+    `parts` switches effects off individually (pose, blur, occlude, vignette,
+    jpeg); every random draw is still made, so the others are unchanged.
     """
     import cv2
 
@@ -443,14 +451,22 @@ def camera_jitter(
     jpeg = rng.random() < 0.3
     quality = int(rng.integers(25, 86))
 
+    blur = blur and "blur" in parts
+    patches = patches if "occlude" in parts else []
+    vignette = vignette if "vignette" in parts else None
+    jpeg = jpeg and "jpeg" in parts
+
     out = np.empty_like(frames)
     center = (width / 2, height / 2)
     for i in range(count):
-        matrix = cv2.getRotationMatrix2D(center, roll + shake[i, 2], zoom)
-        matrix[0, 2] += shift_x + shake[i, 0]
-        matrix[1, 2] += shift_y + shake[i, 1]
-        frame = cv2.warpAffine(frames[i], matrix, (width, height), flags=cv2.INTER_LINEAR,
-                               borderMode=cv2.BORDER_REFLECT_101)
+        if "pose" in parts:
+            matrix = cv2.getRotationMatrix2D(center, roll + shake[i, 2], zoom)
+            matrix[0, 2] += shift_x + shake[i, 0]
+            matrix[1, 2] += shift_y + shake[i, 1]
+            frame = cv2.warpAffine(frames[i], matrix, (width, height), flags=cv2.INTER_LINEAR,
+                                   borderMode=cv2.BORDER_REFLECT_101)
+        else:
+            frame = frames[i].copy()
         if blur:
             frame = (cv2.filter2D(frame, -1, blur_kernel) if blur_kernel is not None
                      else cv2.GaussianBlur(frame, (0, 0), blur_sigma))
@@ -468,12 +484,13 @@ def camera_jitter(
 def prepare_frames(
     raw: np.ndarray, rng: np.random.Generator, camera_aug: bool, mirror: bool,
     zoom: tuple[float, float] = (1.03, 1.12), pitch_deg: float = 3.0,
+    parts: frozenset[str] = frozenset(AUG_PARTS),
 ) -> np.ndarray:
     """uint8 [T, H, W, 3] -> float32 [T, 3, H, W], mirrored and camera-jittered as asked."""
     if mirror:
         raw = np.ascontiguousarray(raw[:, :, ::-1])
     if camera_aug:
-        raw = camera_jitter(raw, rng, zoom=zoom, pitch_deg=pitch_deg)
+        raw = camera_jitter(raw, rng, zoom=zoom, pitch_deg=pitch_deg, parts=parts)
     return _to_chw(raw)
 
 
@@ -573,7 +590,9 @@ class AlignmentBatches(Dataset):
         # Drawn only when enabled, so runs without these augmentations sample
         # exactly what they always did.
         mirror = bool(config.mirror_p > 0.0 and rng.random() < config.mirror_p)
-        ref_frames = prepare_frames(ref_raw, rng, config.camera_aug, mirror, config.aug_zoom, config.aug_pitch_deg)
+        ref_frames = prepare_frames(
+            ref_raw, rng, config.camera_aug, mirror, config.aug_zoom, config.aug_pitch_deg, config.aug_parts
+        )
 
         clips = np.empty(
             (config.batch_size, config.clip_len) + ref_frames.shape[1:], dtype=np.float32
@@ -587,7 +606,7 @@ class AlignmentBatches(Dataset):
             indices = self._clip_indices(live_lap, rng)
             clip = prepare_frames(
                 np.asarray(live_lap.frames()[indices]), rng, config.camera_aug, mirror,
-                config.aug_zoom, config.aug_pitch_deg,
+                config.aug_zoom, config.aug_pitch_deg, config.aug_parts,
             )
             clips[i] = photometric_jitter(clip, rng) if config.jitter else clip
             # The final frame is the one being localised: causal, matching runtime.

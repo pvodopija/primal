@@ -229,6 +229,9 @@ def main() -> None:
     parser.add_argument("--aug-zoom", type=float, nargs=2, default=(1.03, 1.12),
                         help="zoom range for --camera-aug; equal values fix it for live and reference alike")
     parser.add_argument("--aug-pitch", type=float, default=3.0, help="pitch amplitude in degrees for --camera-aug")
+    parser.add_argument("--aug-parts", default="pose,blur,occlude,vignette,jpeg",
+                        help="which --camera-aug effects to apply, comma-separated")
+    parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
     args = parser.parse_args()
 
     gate = GateConfig.get(args.gate)
@@ -264,6 +267,7 @@ def main() -> None:
         mirror_p=args.mirror_p,
         aug_zoom=tuple(args.aug_zoom),
         aug_pitch_deg=args.aug_pitch,
+        aug_parts=frozenset(args.aug_parts.split(",")),
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 
@@ -290,6 +294,9 @@ def main() -> None:
         frame_size=frame_size,
     ).to(device)
     parameters = sum(p.numel() for p in model.parameters())
+    if args.init:
+        model.load_state_dict(torch.load(args.init, map_location=device, weights_only=False)["model"])
+        print(f"started from {args.init}")
 
     name = args.name or f"{gate.name}_{time.strftime('%Y%m%d-%H%M%S')}"
     run = ML_ROOT / "runs" / name
