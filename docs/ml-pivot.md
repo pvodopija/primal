@@ -790,8 +790,30 @@ from 87 to 350 m between the two baseline seeds, so p90 alone decides nothing.
 
 Resolution buys precision on known tracks (1.92 -> 1.67 -> 1.45 m from 74 to
 148 pixels wide, still improving) and nothing visible on the unseen track.
-Augmentation buys robustness on the unseen track at a precision cost that
-longer training may recover.
+
+**Whole laps through the filter** (the product metric), camera augmentation
+with mirroring at 6000 steps:
+
+| run | trained tracks | Silverstone | Silverstone >10 m | Silverstone with true speed |
+|---|---|---|---|---|
+| baseline, 3000 steps | 1.66 m | 4.34 m | 15.9% | 2.00 m |
+| baseline, 6000 steps | 1.28 m | 3.75 m | 13.4% | |
+| augmentation + mirroring, 6000 steps | 2.45 m | **2.80 m** | 6.8% | 2.18 m |
+| the same with zoom fixed at 1.08x and pitch ±1° | 2.35 m | 2.89 m | **5.4%** | 2.46 m |
+
+**The unseen track is the product's metric.** A customer's track will almost
+never be in the training set, so what a driver meets is the Silverstone column:
+without a speed signal, augmentation and mirroring take it from 4.34 m to about
+2.8 m and cut misses beyond 10 m by two thirds, worst case from 1178 m to 22-36 m.
+Known-track precision still matters, for tracks in the training set and once a
+speed signal exists: with true speed the baseline is better (2.00 m against
+2.18 and 2.46), because the filter then removes the catastrophes and what is
+left is the matcher's precision.
+
+Fixing the zoom and cutting pitch recovered little of the known-track loss
+(2.45 -> 2.35 m), so zoom as a distance cue was not the main cause. Mirroring
+alone costs some (1.45 -> 1.76 m); which of blur, occluders, JPEG and pose costs
+the rest, and whether a clean fine-tune at the end recovers it, is open.
 
 ## Estimator
 
