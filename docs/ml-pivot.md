@@ -352,7 +352,8 @@ out of the model: tolerance is trained in, measured, and abstained beyond. The
 magnetometer's better use is in the filter: look-alike corners usually face
 different directions, and even a ±15° heading, used only when it looks
 trustworthy, would rule out the wrong one. The new recordings log the camera's
-orientation, so that can be simulated before the hardware exists.
+orientation, so that can be simulated before the hardware exists. Only ever an
+outdoor assist: indoors a compass is unreliable, and the product is camera-only.
 
 **Frames are not kept on the glasses.** Halo has no storage for video (2 MB SRAM,
 1.8 MB MRAM), so in the embeddings design each frame is gone once encoded. Two
@@ -1012,9 +1013,9 @@ On the cross-car Silverstone demo lap it goes from 3.87 m / 106 ms median and
   report speed about once a second, which is the 1 Hz row above: Silverstone
   from 54% of ticks over budget to about 29%, more once latency is handled.
   It costs the phone 15-185 mW and the glasses nothing; an external 10-25 Hz
-  GNSS unit over Bluetooth would be close to the oracle. Positioning stays
-  visual. It would turn the product constraint "no GNSS at runtime" into "no
-  GNSS positioning at runtime", which is undecided.
+  GNSS unit over Bluetooth would be close to the oracle. **Not a core source:**
+  the product is camera-only by decision, and GNSS does not exist indoors. At
+  most an optional outdoor assist.
 - **Pretrained visual odometry** (DPVO, DROID-SLAM, TartanVO, Monodepth2's pose
   network; the comma.ai speed challenge is the same task on dashcams). One
   camera gives speed only up to an unknown scale, and the filter's scale state
@@ -1333,14 +1334,14 @@ Recorded so they are not relitigated.
 
 ## Build order
 
-1. **An independent speed signal.** The largest measured lever on the unseen
-   track. The filter side, estimating its bias, is built; a delay-aware update
-   for timestamped readings is not. Encoder motion vectors failed as recorded
-   and are closed. Candidates: road flow on the glasses, which works on AC below
-   about 0.28 m moved per frame (about 90 fps at a kart's top speed; slow-motion
-   replays to confirm fast straights); GNSS Doppler speed (1 Hz on a phone; a
-   product decision); the IMU, now that capture logs AC's acceleration, angular
-   velocity and times per frame.
+1. **Speed from the camera.** The product is camera-only (no GNSS indoors), so
+   the road-flow speed lane on the glasses is the speed plan: it works on AC
+   below about 0.28 m moved per frame, about 90 fps at a kart's top speed, and
+   indoor karts are slower still. Slow-motion replays confirm fast straights;
+   Halo's frame rate decides it. The filter's bias state is built; a
+   delay-aware update for timestamped readings is not. GNSS, compass and phone
+   IMU remain optional outdoor assists at most. Encoder motion vectors are
+   closed.
 2. **Hardware feasibility on Halo.** Chip-friendly layers and 8-bit weights,
    verified against today's gates; a Vela estimate of cycles and memory; then
    on hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
@@ -1354,8 +1355,12 @@ Recorded so they are not relitigated.
    Collection in order: more circuits, preferring kart tracks with the camera at
    a kart driver's eye height; lighting variety; a kart driver's view with the
    nose, steering wheel, hands and visor edges in frame, which the model has
-   never seen and which can also be approximated by pasting occluders. New
-   training should use the NPU-friendly layers from then on.
+   never seen and which can also be approximated by pasting occluders. **Indoor
+   tracks** are a target market and a different domain: artificial light
+   (flicker at 100/120 Hz, lower light and more noise), repetitive walls and
+   banners that make look-alikes worse, slower karts. AC mods of indoor kart
+   centres first, real indoor footage from the glasses later. New training
+   should use the NPU-friendly layers from then on.
 4. **An abstain signal** sharp enough to grey out a wrong delta.
 5. On-device port: Core ML on the phone and/or the Ethos-U55 on the glasses.
 

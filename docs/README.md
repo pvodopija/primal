@@ -88,10 +88,12 @@ These bound every design choice. Do not relax them to make training easier.
   [`ml-pivot.md`](ml-pivot.md).
 - **Precision:** ≤ 100 ms time delta ≈ 1.5 m at kart speed. Place-recognition
   benchmarks that score "correct within 25 m" are the wrong metric.
-- **No GNSS at runtime.** RTK/GNSS is fine for training and eval labels only.
-  Open question: GNSS Doppler as a speedometer only, with positioning still
-  visual. It is the most promising speed source measured so far; allowing it
-  would change this to "no GNSS positioning at runtime". Undecided.
+- **Camera only** (decided). The product meets its targets from the glasses
+  camera alone: no GNSS, no compass, no phone motion sensors required. They may
+  assist outdoors, never be needed. Indoors there is no GNSS and a compass is
+  unreliable, and indoor tracks (about 30% of tracks worldwide, by the user's
+  research) are where GNSS-based timers cannot follow. RTK/GNSS is fine for
+  training and evaluation labels only.
 - **The map is context, not parameters.** One set of weights for every track.
   A new circuit costs a reference lap, not a GPU day.
 - **Head movement:** tolerate normal hot-lapping head motion — principally
