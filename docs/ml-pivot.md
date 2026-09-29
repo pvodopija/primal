@@ -1052,6 +1052,73 @@ For *training* line invariance on real footage, the camera rig in
 `capture/ac_rig` re-renders a replay from known sideways offsets, which gives AC
 data the line separation the `lines` gate needs.
 
+### A pretrained backbone for the encoder (planned experiment)
+
+![Backbone experiment](img/backbone_experiment.svg)
+
+**The question.** Unseen tracks are 2.7x worse than known ones, and the evidence
+says the encoder lacks general visual experience, not capacity (a 2x wider
+encoder did not help; more tracks do). An encoder that starts from a network
+already trained on millions of general images might carry that experience in.
+
+**What it is not.** It is not a place-recognition model. Those (NetVLAD, AnyLoc,
+SALAD) are trained to call everything within about 25 m the same place, and add
+pooling (VLAD, GeM, optimal transport) built for that invariance: the opposite
+of what this product measures. A *backbone* is only the feature-extracting
+part of a general network (an ImageNet ResNet or MobileNet, or DINOv2), trained
+to see edges, textures and objects, not to be position-invariant. What a
+descriptor keeps or throws away is decided by the objective trained on top,
+and here that stays ours.
+
+**The change, and only this change.** The encoder's five convolutions trained
+from scratch are replaced by a pretrained backbone, cut off at a stride of 16
+so the feature map still says where things sit. Everything after it is
+unchanged: pooling to the same 3x5 spatial grid (not a global pooling, which
+would discard where a landmark is in the frame), the projection to 128
+numbers, the correlation, the head, the loss, time-spaced bins, every frame
+supervised, the tracker. The backbone is then fine-tuned end to end by our
+loss, which rewards metre-level alignment and punishes look-alikes.
+
+**Candidates, smallest first:**
+
+| Backbone | Parameters | Cost at 148x80, per frame (est.) | Note |
+|---|---|---|---|
+| MobileNetV3-small (ImageNet) | 2.5 M | ~15 M multiply-adds | small enough to run on the glasses as is |
+| ResNet-18 up to its third stage (ImageNet) | ~3 M | ~0.25 G | the standard, well-understood choice |
+| DINOv2 ViT-S/14 | 22 M | ~3 G at 224 px | strongest general features; 14 px patches give only a ~10x5 grid at 148x80, so a teacher, not a deployable encoder |
+
+**How it would be trained.** The same recipe as the current best run, so the
+comparison isolates the backbone:
+- inputs normalised the way the backbone was pretrained (ImageNet mean and
+  standard deviation);
+- a lower learning rate for the backbone than for the layers after it (about
+  a tenth), so fine-tuning adjusts rather than overwrites what it knows;
+- the backbone's batch-norm statistics frozen: live clips and the reference go
+  through the encoder in very different batch sizes, the reason the current
+  encoder uses GroupNorm;
+- both controls on every run: wrong reference and leakage.
+
+**What counts as a win.** Better on Silverstone and on tracks left out of
+training, in whole-lap streams through the tracker, **without** losing
+precision on known tracks: precision is the one thing a general network might
+trade away, since it was pretrained to recognise what things are, not exactly
+where they sit. Tested at 148x80 and, since backbones are built for larger
+images, again at 296x160 once that repack exists.
+
+**If it wins, how it reaches the glasses.** A backbone other than
+MobileNetV3-small is too large for Halo's NPU at 30 fps, so it would become a
+**teacher**: the small encoder is trained to reproduce its 128 numbers for the
+same frames (distillation), then fine-tuned with our loss, and it is the small
+encoder that runs on the glasses in 8-bit.
+
+**Cost.** Pretrained weights come from pytorch.org (MobileNetV3-small about
+10 MB, ResNet-18 about 45 MB), and the user approves downloads. Encoder cost
+rises roughly 1-4x with the smaller backbones; steps are bound by preparing
+data on the CPU, so training time rises less.
+
+**Priority.** After more tracks, hard-negative mining and the augmentation
+work, all cheaper and more directly aimed at the look-alike failures.
+
 ### Cameras and field of view
 
 The encoder loads at any resolution, but a different **field of view** moves

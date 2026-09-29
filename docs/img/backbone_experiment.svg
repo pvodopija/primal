@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="400" viewBox="0 0 680 400" font-family="-apple-system, Segoe UI, sans-serif">
+<rect width="680" height="400" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="#5F5E5A" stroke-width="1.5"/></marker></defs>
+<g font-size="12" fill="#5F5E5A"><text x="40" y="38">Today</text><text x="40" y="158">Experiment: swap one box</text><text x="40" y="278">If it wins: distil for Halo</text><text x="236" y="306" text-anchor="middle">copy</text></g>
+<g stroke-width="0.8">
+<rect x="40" y="48" width="110" height="56" rx="4" fill="#F1EFE8" stroke="#5F5E5A"/><rect x="175" y="48" width="170" height="56" rx="4" fill="#EEEDFE" stroke="#534AB7"/><rect x="370" y="48" width="130" height="56" rx="4" fill="#EEEDFE" stroke="#534AB7"/><rect x="525" y="48" width="115" height="56" rx="4" fill="#F1EFE8" stroke="#5F5E5A"/>
+<rect x="40" y="168" width="110" height="56" rx="4" fill="#F1EFE8" stroke="#5F5E5A"/><rect x="175" y="168" width="170" height="56" rx="4" fill="#FAECE7" stroke="#993C1D" stroke-width="1.5"/><rect x="370" y="168" width="130" height="56" rx="4" fill="#EEEDFE" stroke="#534AB7"/><rect x="525" y="168" width="115" height="56" rx="4" fill="#F1EFE8" stroke="#5F5E5A"/>
+<rect x="40" y="288" width="170" height="56" rx="4" fill="#FAECE7" stroke="#993C1D"/><rect x="265" y="288" width="170" height="56" rx="4" fill="#EEEDFE" stroke="#534AB7"/><rect x="490" y="288" width="150" height="56" rx="4" fill="#F1EFE8" stroke="#5F5E5A"/>
+</g>
+<g stroke="#5F5E5A" stroke-width="1.5" marker-end="url(#a)"><line x1="150" y1="76" x2="173" y2="76"/><line x1="345" y1="76" x2="368" y2="76"/><line x1="500" y1="76" x2="523" y2="76"/><line x1="150" y1="196" x2="173" y2="196"/><line x1="345" y1="196" x2="368" y2="196"/><line x1="500" y1="196" x2="523" y2="196"/><line x1="210" y1="316" x2="263" y2="316"/><line x1="435" y1="316" x2="488" y2="316"/></g>
+<g font-size="14" font-weight="600" text-anchor="middle">
+<text x="95" y="72" fill="#444441">Frames</text><text x="260" y="72" fill="#3C3489">Encoder</text><text x="435" y="72" fill="#3C3489">3x5 grid</text><text x="582" y="72" fill="#444441">Matcher</text>
+<text x="95" y="192" fill="#444441">Frames</text><text x="260" y="192" fill="#712B13">Pretrained backbone</text><text x="435" y="192" fill="#3C3489">3x5 grid</text><text x="582" y="192" fill="#444441">Matcher</text>
+<text x="125" y="312" fill="#712B13">Backbone (teacher)</text><text x="350" y="312" fill="#3C3489">Small encoder</text><text x="565" y="312" fill="#444441">Halo NPU</text></g>
+<g font-size="12" text-anchor="middle">
+<text x="95" y="92" fill="#5F5E5A">148x80</text><text x="260" y="92" fill="#534AB7">5 layers, from scratch</text><text x="435" y="92" fill="#534AB7">to 128 numbers</text><text x="582" y="92" fill="#5F5E5A">head, tracker</text>
+<text x="95" y="212" fill="#5F5E5A">148x80 or 2x</text><text x="260" y="212" fill="#993C1D">then tuned by our loss</text><text x="435" y="212" fill="#534AB7">same as today</text><text x="582" y="212" fill="#5F5E5A">unchanged</text>
+<text x="125" y="332" fill="#993C1D">too big for glasses</text><text x="350" y="332" fill="#534AB7">learns its fingerprints</text><text x="565" y="332" fill="#5F5E5A">8-bit, 30 fps</text></g>
+<rect x="40" y="372" width="12" height="12" rx="2" fill="#FAECE7" stroke="#993C1D"/><text x="58" y="382" font-size="12" fill="#5F5E5A">pretrained on general images</text>
+<rect x="260" y="372" width="12" height="12" rx="2" fill="#EEEDFE" stroke="#534AB7"/><text x="278" y="382" font-size="12" fill="#5F5E5A">trained on our laps</text>
+</svg>
