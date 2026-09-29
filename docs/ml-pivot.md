@@ -828,9 +828,34 @@ speed signal exists: with true speed the baseline is better (2.00 m against
 left is the matcher's precision.
 
 Fixing the zoom and cutting pitch recovered little of the known-track loss
-(2.45 -> 2.35 m), so zoom as a distance cue was not the main cause. Mirroring
-alone costs some (1.45 -> 1.76 m); which of blur, occluders, JPEG and pose costs
-the rest, and whether a clean fine-tune at the end recovers it, is open.
+(2.45 -> 2.35 m), so zoom as a distance cue was not the main cause.
+
+**What costs the precision: the ablation.** Each effect switched on alone with
+head pose, all with mirroring, zoom fixed at 1.08x and pitch ±1°, 3000 steps:
+
+| augmentation | trained tracks | Silverstone / within 5 bins |
+|---|---|---|
+| all effects | 2.56 m | 3.40 m / 79% |
+| **head pose only** | **1.93 m** | **2.96 m / 83%** |
+| pose and blur | 2.23 m | 3.40 m / 84% |
+| pose and occluders | 2.26 m | 3.16 m / 81% |
+| pose, JPEG and vignetting | 2.34 m | 3.45 m / 82% |
+
+Head pose (roll, yaw, a little pitch, per-frame shake) with mirroring is the
+useful part. Blur, occluding patches and JPEG/vignetting each cost known-track
+precision and did not help the unseen track: on 148x80 frames they remove
+detail the model cannot spare.
+
+**A clean finish recovers most of the rest.** Fine-tuning the augmented
+6000-step model for 1500 steps on unaugmented data (learning rate 1e-4), on
+whole laps: trained tracks 1.92 m and 33% over budget (augmented 2.35 m and
+42%, baseline 1.66 m and 27%); Silverstone 2.65 m, 37% over budget, 5.6% beyond
+10 m (baseline 4.34 m, 57%, 15.9%), the best unseen result yet; and with true
+speed 1.30 m / 6.6% and 2.02 m / 17.2%, level with the baseline's 1.05 m / 6.7%
+and 2.00 m / 16.5%. Train robust, finish clean: the trade-off largely goes.
+
+The candidate recipe is therefore head-pose augmentation only, mirroring,
+6000 steps, then the clean finish.
 
 ## Estimator
 
