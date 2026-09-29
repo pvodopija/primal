@@ -338,6 +338,22 @@ that limit, which comes from zoom, but they coarsen texture (2.7 cm of road per
 pixel at 5 m) and worsen the streak problem; `--focal 186.7` on the existing
 sessions measures that in the working range.
 
+**Motion sensors, and why head pose is not a model input.** Halo has a Bosch
+BMA580 accelerometer (16-bit, ±2-16 g, up to 6.4 kHz, 120 µg/√Hz) and a QST
+QMC6308 magnetometer (±30 G, 2 mG resolution, 1-2° heading when calibrated in a
+clean field), and no gyroscope. An accelerometer cannot tell gravity from the
+kart's own acceleration: at 1.5 g sideways its "down" leans about 56°, so pitch
+and roll read wrong in exactly the corners where heads turn, and without a
+gyroscope nothing separates the two. The compass needs that tilt to correct
+itself and sits near an engine, an ignition and a steel frame. A model given
+head pose as an input would be trained on exact offsets (the augmentation's)
+and misled at runtime whenever a corner corrupts the reading, so pose stays
+out of the model: tolerance is trained in, measured, and abstained beyond. The
+magnetometer's better use is in the filter: look-alike corners usually face
+different directions, and even a ±15° heading, used only when it looks
+trustworthy, would rule out the wrong one. The new recordings log the camera's
+orientation, so that can be simulated before the hardware exists.
+
 **Frames are not kept on the glasses.** Halo has no storage for video (2 MB SRAM,
 1.8 MB MRAM), so in the embeddings design each frame is gone once encoded. Two
 things need frames anyway. Reference laps must be re-encodable: embeddings are
