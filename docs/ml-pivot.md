@@ -139,17 +139,65 @@ power is waking the accelerator, estimated at tens of mW and not measured. The
 head scans every bin, so it grows with track length; restricting it to a window
 around the tracker's position would cut it if that ever matters.
 
-The encoder accepts any resolution. Its cost at other inputs, as a share of a
-46 GOPS Ethos-U55 at theoretical peak (real utilisation is typically 30-50%, so
-busy time is 2-3x these):
+The encoder accepts any resolution. Its cost at other inputs, as a share of
+Halo's NPU at theoretical peak (Ethos-U55, 128 MACs per cycle at 160 MHz, 41
+GOPS); Vela puts our encoder at 67-72% utilisation (below), so busy time is
+about 1.5x these:
 
 | Encoder input | M MACs/frame | 15 fps | 30 fps | 60 fps |
 |---|---|---|---|---|
-| 148x80 (today) | 34.7 | 2% | 5% | 9% |
-| 160x120 (4:3) | 54.9 | 4% | 7% | 14% |
-| 224x168 | 107.5 | 7% | 14% | 28% |
-| 320x240 | 216.6 | 14% | 28% | 57% |
-| 640x480 | 862.9 | 56% | 113% | 225% |
+| 148x80 (today) | 34.7 | 3% | 5% | 10% |
+| 160x120 (4:3) | 54.9 | 4% | 8% | 16% |
+| 224x168 | 107.5 | 8% | 16% | 31% |
+| 320x240 | 216.6 | 16% | 32% | 63% |
+| 640x480 | 862.9 | 63% | 126% | 253% |
+
+### Measured for Halo's NPU with Vela
+
+`npu/` ports the trained model to int8 TensorFlow Lite and compiles it with Arm's
+Vela 5.2 for Halo's Ethos-U55-128 at 160 MHz (`npu/vela.ini`):
+- `python -m npu.export_weights` (training environment) dumps the weights,
+  calibration frames and PyTorch's own outputs.
+- `.venv-npu/bin/python npu/build_tflite.py` (TensorFlow and Vela) rebuilds the
+  model, checks it, quantises it and compiles it.
+
+The port is exact and 8-bit costs nothing measurable:
+- **Encoder:** fp32 matches PyTorch to 2e-6; int8 embeddings keep 0.997 cosine
+  similarity (worst 0.985) on held-out-track frames.
+- **Head:** int8 moves the readout by 0.1 bins in median (p90 0.2-0.6), with
+  the peak in the same place within one bin 95-100% of the time.
+
+Vela per inference, from the `v3_recipe_s0` weights. Weights read from MRAM
+cost the same time as from SRAM, with the MRAM timing assumed:
+
+| | NPU time | NPU busy | not on the NPU | SRAM + MRAM |
+|---|---|---|---|---|
+| encoder, as trained | 9.0 ms + CPU | 27% at 30 fps + CPU | GroupNorm (40 ops) | 833 + 543 KiB |
+| **encoder, no GroupNorm (GELU kept)** | **2.5 ms** | **7.5% at 30 fps** | nothing | 224 + 541 KiB |
+| head, Silverstone 1300 bins, as trained | 50.6 ms + CPU | 76% at 15 Hz + CPU | GroupNorm (25 ops) | 1381 + 102 KiB |
+| **head, 1300 bins, no GroupNorm** | **17.5 ms** | **26% at 15 Hz** | nothing | 273 + 100 KiB |
+| **head, 958 bins, no GroupNorm** | **12.9 ms** | **19% at 15 Hz** | nothing | 209 + 100 KiB |
+
+- **GroupNorm is the only operator the NPU cannot run.** GELU runs on it and
+  costs the same as ReLU, so a model ready for the glasses needs only
+  GroupNorm removed and a retrain. Accuracy without it is untested.
+- **Standalone fits:** 27-34% of the NPU, about 0.3 MB of the 2 MB SRAM, and
+  0.64 MB of weights in the 1.8 MB MRAM, which the ~0.6 MB firmware also uses.
+- **The head's large dilations are paid in full.** The NPU handles dilation up
+  to 2, and Vela pads dilations 4 and 8 with zeros: those two blocks cost 1.8x
+  and 3.4x a plain block, 6.8 of the head's 17.5 ms. Two ways to cut it:
+  - Run the head only on a window around the tracker's position, ±128 bins at
+    15 Hz, with a full-lap scan once a second to recover from a wrong lock. The
+    head is convolutional, so inside the window it gives the identical answer,
+    at about a quarter of the cost. That brings the whole pipeline to ~15% of
+    the NPU.
+  - Or replace dilations 4 and 8 with shapes the NPU runs natively, such as
+    downsampling and then dilation 2. That changes the model.
+- **Halo's firmware allows all of this.** It is open (`brilliantlabsAR/halo-firmware`,
+  Zephyr on Alif's SDK), accepts owner-built images over Bluetooth by design,
+  and carries Alif's TensorFlow Lite Micro and Ethos-U samples for the same
+  chip. Brilliant's stock app does not use the NPU and is short of memory, so a
+  standalone build is our own firmware with the voice features left out.
 
 ### Meta Ray-Ban glasses, through the Wearables Device Access Toolkit
 
@@ -1668,6 +1716,7 @@ docs/
 
 capture/              AC + OBS + timecode overlay (Windows-only), encoder motion vectors, flow speed
 train/                encoder, correlation head, reference grid, estimator, gates, synthetic renderer
+npu/                  int8 TensorFlow Lite export and Vela estimate for Halo's NPU
 tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, lag correction,
                       motion vectors, flow speed
 ```
