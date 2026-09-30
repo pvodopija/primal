@@ -55,7 +55,12 @@ local conditions
 local overriding = false
 local lastError
 local sinceConfig, sinceLog, sinceSave, clock = 1, 0, 0, 0
+-- `rows` holds the samples since the last save and `written` the file's text so
+-- far, so a save appends a couple of seconds of rows instead of rebuilding the
+-- whole log, and the write itself happens off the render thread.
 local rows, logPath, logKey = {}, nil, nil
+local written, rowCount = '', 0
+local MAX_ROWS = 110000 -- an hour at 30 Hz, with margin; autostop --max-min defaults to 60
 local lastSaveOk = true
 local lastFrame = -1
 local applied, trackX, clamped, wanderNow, yawNow = 0, 0, false, 0, 0
@@ -225,7 +230,7 @@ local function startLog(key)
     n = n + 1
   until not io.fileExists(logPath)
   logKey = key
-  rows = {}
+  rows, written, rowCount = {}, HEADER, 0
   clampFrames, heldFrames = 0, 0
   smoothLat = nil
   -- A new head for every render, so re-rendering one replay gives different ones.
@@ -322,8 +327,9 @@ local function step(dt)
   if wasClamped then clampFrames = clampFrames + 1 end
   sinceLog = sinceLog + dt
   sinceSave = sinceSave + dt
-  if sinceLog >= LOG_EVERY_S and #rows < 60000 then
+  if sinceLog >= LOG_EVERY_S and rowCount < MAX_ROWS then
     sinceLog = 0
+    rowCount = rowCount + 1
     local camTrk = ac.worldCoordinateToTrack(position)
     local carTrk = ac.worldCoordinateToTrack(car.position)
     local camLat, sides = metresFromMiddle(camTrk)
@@ -334,9 +340,15 @@ local function step(dt)
       carLat, camLat, cfg.lateral_m + offset, lateral, wasClamped and '1' or '0', cfg.weather, cfg.rain,
       distance, offset, yaw, head, glanceNow, cfg.look == 1 and lookGain or 0, cfg.look == 1 and lookAhead or 0)
   end
-  if sinceSave >= 2.0 then
+  if sinceSave >= 2.0 and #rows > 0 then
     sinceSave = 0
-    lastSaveOk = io.save(logPath, HEADER .. table.concat(rows, '\n') .. '\n')
+    written = written .. table.concat(rows, '\n') .. '\n'
+    rows = {}
+    if io.saveAsync then
+      io.saveAsync(logPath, written, function(err) lastSaveOk = err == nil end)
+    else
+      lastSaveOk = io.save(logPath, written)
+    end
   end
 end
 
@@ -423,7 +435,7 @@ function script.windowMain(dt)
     ui.text(string.format('head %+.1f deg (glance %+.1f)   gain %.2f   aiming %.1f m ahead', headNow, glanceNow,
       lookGain, lookAhead))
   end
-  ui.text(string.format('clamped %d of %d frames   log rows %d   saved %s', clampFrames, heldFrames, #rows,
+  ui.text(string.format('clamped %d of %d frames   log rows %d   saved %s', clampFrames, heldFrames, rowCount,
     lastSaveOk and 'ok' or 'FAILED'))
   if lastError then ui.textWrapped('ERROR ' .. lastError) end
 end

@@ -187,6 +187,11 @@ def cmd_import(args: argparse.Namespace) -> None:
     frame_log = attach_frame_log(session, recorded_start, recorded_end)
     if frame_log:
         meta["frame_log"] = frame_log
+        # The rendering camera's vertical FOV, as the telemetry logged it every frame;
+        # `pack` derives the packed image's field of view from it.
+        fov = pd.concat(pd.read_csv(c, usecols=["cam_fov_deg"]) for c in (session / "frame_log").glob("*.csv")).cam_fov_deg
+        meta["camera_vfov_deg"] = round(float(fov.median()), 2)
+        print(f"  camera vertical FOV {meta['camera_vfov_deg']} deg (logged range {fov.min():.1f}-{fov.max():.1f})")
     (session / "run.json").write_text(json.dumps(meta, indent=2))
 
     print(f"created {session}")

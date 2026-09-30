@@ -75,6 +75,14 @@ local function flushLog()
   logRows = {}
 end
 
+-- Rows are written 120 at a time, so the last couple of seconds would be lost
+-- when the app unloads; write them then. CSP skips this if AC closes abruptly.
+if ac.onRelease then
+  ac.onRelease(function()
+    if logDir and not logError then pcall(flushLog) end
+  end)
+end
+
 local function logFrame(spline)
   local sim = ac.getSim()
   local car = ac.getCar(0)
