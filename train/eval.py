@@ -723,7 +723,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
         print(f"  {gate} {live.track[:28]:<28} ref {reference.session_id[-7:]}  live {live.session_id[-7:]}", flush=True)
 
     report = {}
-    print(f"\n{'':36}{'median':>17}{'p90':>9}{'>100 ms':>9}{'>10 m':>8}{'worst':>10}")
+    print(f"\n{'':60}{'median':>17}{'p90':>9}{'>100 ms':>9}{'>10 m':>8}{'worst':>10}")
     for gate in scores:
         for kind in kinds:
             m, ms = (np.concatenate(v) for v in scores[gate][kind])
@@ -733,7 +733,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
                        p90_ms=float(np.percentile(ms, 90)), over_100ms=float(np.mean(ms > 100)),
                        over_10m=float(np.mean(m > 10)), worst_m=float(m.max()), ticks=int(m.size))
             report[f"{gate} {kind}"] = row
-            print(f"{(gate + ' ' + kind)[-36:]:<36}{row['median_m']:>8.2f} m {row['median_ms']:>4.0f} ms"
+            print(f"{gate + ' ' + kind:<60}{row['median_m']:>8.2f} m {row['median_ms']:>4.0f} ms"
                   f"{row['p90_ms']:>6.0f} ms{100 * row['over_100ms']:>8.1f}%{100 * row['over_10m']:>7.1f}%"
                   f"{row['worst_m']:>9.1f} m")
     if args.out:
