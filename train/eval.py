@@ -32,6 +32,7 @@ from train.model import (
     AlignmentMetrics,
     FrameOnlyRegressor,
     SequenceAligner,
+    _interp_circular,
     compute_metrics,
     soft_argmax_circular,
     summarise,
@@ -513,6 +514,10 @@ ACQUISITION_S = 2.0
 # temper vision hard; tuned on held-out laps of trained tracks with speed known
 # to +-2 m/s.
 SPEED_FED = dict(accel_noise=8.0, likelihood_power=0.2)
+# The lag correction's memory: the running median of the forward-backward gap over the
+# last LAG_HISTORY_S of frames whose following clip has been seen, once LAG_MIN_S of them.
+LAG_HISTORY_S = 10.0
+LAG_MIN_S = 1.0
 
 
 def _stream_pairs(data: Path, axis: str, holdout_laps: int) -> list[tuple[str, Lap, Lap]]:
@@ -552,8 +557,14 @@ def _instantaneous_speed(s: np.ndarray, t: np.ndarray, frames: np.ndarray, lengt
 
 @torch.no_grad()
 def _lap_stream(model, clip_len: int, reference: Lap, live: Lap, axis: str, stride: int,
-                device: torch.device, window: int) -> dict:
-    """One belief per tick along a whole live lap, as the phone would receive them."""
+                device: torch.device, window: int, backward: bool = False) -> dict:
+    """
+    One belief per tick along a whole live lap, as the phone would receive them.
+
+    With `backward`, also each tick's frame read backwards: as the last frame of the
+    clip that starts 0.73 s later and runs back to it, the way training's reversed clips
+    look. The phone has that reading 0.73 s late; `_lag_corrected` uses it.
+    """
     grid = reference.reference_grid(axis)
     ref = model.encode_reference(
         torch.from_numpy(_to_chw(np.asarray(reference.frames()[grid.frame_idx]))).to(device),
@@ -570,14 +581,26 @@ def _lap_stream(model, clip_len: int, reference: Lap, live: Lap, axis: str, stri
     ticks = np.arange((clip_len - 1) * stride, live.n_frames, every)
     clip_idx = ticks[:, None] - np.arange(clip_len - 1, -1, -1)[None, :] * stride
     scale = model.logit_scale.exp()
-    beliefs, single = [], []
+    back_idx = np.minimum(ticks[:, None] + np.arange(clip_len - 1, -1, -1)[None, :] * stride, live.n_frames - 1)
+    beliefs, single, single_back = [], [], []
     for chunk in np.array_split(np.arange(ticks.size), max(1, ticks.size // 64)):
         corr = torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(clip_idx[chunk]).to(device)], ref) * scale
         logits = model.head(corr)
         single.append(soft_argmax_circular(logits, window=window).float().cpu())
         beliefs.append(logits.softmax(dim=-1).cpu().double())  # MPS has no float64
+        if backward:
+            corr = torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(back_idx[chunk]).to(device)], ref) * scale
+            single_back.append(soft_argmax_circular(model.head(corr), window=window).float().cpu())
     s, t = live.s(), live.t()
+    extra = {}
+    if backward:
+        extra = {
+            "single_backward": torch.cat(single_back),
+            "backward_valid": ticks + (clip_len - 1) * stride < live.n_frames,
+            "backward_delay_ticks": int(np.ceil((clip_len - 1) * stride / every)),
+        }
     return {
+        **extra,
         "grid": grid,
         "belief": torch.cat(beliefs).numpy(),
         "single": torch.cat(single),
@@ -596,6 +619,39 @@ def _stream_errors(stream: dict, predicted_bins: torch.Tensor) -> tuple[np.ndarr
     )
     skip = int(ACQUISITION_S * STREAM_HZ)
     return m[skip:], ms[skip:]
+
+
+def _lag_corrected(stream: dict, bins: torch.Tensor, k: float) -> torch.Tensor:
+    """
+    The estimate with the tracker's lag taken out, using only what the phone has.
+
+    A clip ending at a frame places that frame slightly behind where it is, and more so
+    the weaker the match: ~20 ms on trained tracks, ~60 ms on an unseen one. Read
+    backwards, the same frame lands about as far ahead. So once a frame's following clip
+    has arrived, the gap between its two readings measures the lag, and the estimate is
+    moved forward by k times the running median of that gap, in reference time.
+    """
+    g = stream["grid"]
+    lap_ms = g.lap_time_s * 1000.0
+    times = torch.from_numpy(g.time_s.astype(np.float32))
+
+    def ref_ms(b: torch.Tensor) -> np.ndarray:
+        return _interp_circular(times, b.float(), g.lap_time_s).numpy().astype(np.float64) * 1000.0
+
+    gap = (ref_ms(stream["single"]) - ref_ms(stream["single_backward"]) + lap_ms / 2) % lap_ms - lap_ms / 2
+    gap[~stream["backward_valid"]] = np.nan
+    delay = stream["backward_delay_ticks"]
+    history, least = int(LAG_HISTORY_S * STREAM_HZ), int(LAG_MIN_S * STREAM_HZ)
+    shift = np.zeros(gap.size)
+    for i in range(gap.size):
+        seen = gap[max(0, i - delay - history) : max(0, i - delay)]
+        seen = seen[np.isfinite(seen)]
+        if seen.size >= least:
+            shift[i] = -k * np.median(seen)
+    corrected = (ref_ms(bins) + shift) % lap_ms
+    cycle_ms = np.r_[g.time_s.astype(np.float64), g.time_s[0] + g.lap_time_s] * 1000.0
+    out = np.interp((corrected - cycle_ms[0]) % lap_ms + cycle_ms[0], cycle_ms, np.arange(g.time_s.size + 1.0))
+    return torch.from_numpy(out % g.time_s.size)
 
 
 def _run_estimator(stream: dict, config: EstimatorConfig, speed: np.ndarray | None,
@@ -629,9 +685,12 @@ def cmd_stream(args: argparse.Namespace) -> None:
     rng = np.random.default_rng(args.seed)
 
     kinds = ["single", "filter"] + (["filter + speed"] if args.speed_sigma else [])
+    if args.lag_k is not None:
+        kinds += [f"{k}, lag-corrected" for k in kinds if k != "single"]
     scores: dict[str, dict[str, list]] = {g: {k: [[], []] for k in kinds} for g in ("G1", "G2")}
     for gate, reference, live in pairs:
-        stream = _lap_stream(model, clip_len, reference, live, axis, args.stride, device, args.window)
+        stream = _lap_stream(model, clip_len, reference, live, axis, args.stride, device, args.window,
+                             backward=args.lag_k is not None)
         runs = {
             "single": stream["single"],
             "filter": _run_estimator(stream, EstimatorConfig(), None, None, args.seed),
@@ -641,6 +700,9 @@ def cmd_stream(args: argparse.Namespace) -> None:
             runs["filter + speed"] = _run_estimator(
                 stream, EstimatorConfig(**SPEED_FED), speed, args.speed_sigma, args.seed
             )
+        if args.lag_k is not None:
+            runs.update({f"{k}, lag-corrected": _lag_corrected(stream, b, args.lag_k)
+                         for k, b in list(runs.items()) if k != "single"})
         for kind, bins in runs.items():
             m, ms = _stream_errors(stream, bins)
             scores[gate][kind][0].append(m)
@@ -648,7 +710,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
         print(f"  {gate} {live.track[:28]:<28} ref {reference.session_id[-7:]}  live {live.session_id[-7:]}", flush=True)
 
     report = {}
-    print(f"\n{'':22}{'median':>17}{'p90':>9}{'>100 ms':>9}{'>10 m':>8}{'worst':>10}")
+    print(f"\n{'':36}{'median':>17}{'p90':>9}{'>100 ms':>9}{'>10 m':>8}{'worst':>10}")
     for gate in ("G1", "G2"):
         for kind in kinds:
             m, ms = (np.concatenate(v) for v in scores[gate][kind])
@@ -658,7 +720,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
                        p90_ms=float(np.percentile(ms, 90)), over_100ms=float(np.mean(ms > 100)),
                        over_10m=float(np.mean(m > 10)), worst_m=float(m.max()), ticks=int(m.size))
             report[f"{gate} {kind}"] = row
-            print(f"{gate + ' ' + kind:<22}{row['median_m']:>8.2f} m {row['median_ms']:>4.0f} ms"
+            print(f"{gate + ' ' + kind:<36}{row['median_m']:>8.2f} m {row['median_ms']:>4.0f} ms"
                   f"{row['p90_ms']:>6.0f} ms{100 * row['over_100ms']:>8.1f}%{100 * row['over_10m']:>7.1f}%"
                   f"{row['worst_m']:>9.1f} m")
     if args.out:
@@ -728,6 +790,8 @@ def main() -> None:
     stream.add_argument("--speed-sigma", type=float, help="also feed the filter the true speed, stated to +-this m/s")
     stream.add_argument("--speed-noise", type=float, default=0.0, help="fractional random error added to that speed")
     stream.add_argument("--window", type=int, default=8)
+    stream.add_argument("--lag-k", type=float,
+                        help="also score the filters with their lag removed, estimated from backward readings (0.5 = midpoint)")
     stream.add_argument("--seed", type=int, default=0)
     stream.add_argument("--out")
     stream.add_argument("--device", default=default_device())

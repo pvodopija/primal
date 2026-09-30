@@ -72,10 +72,15 @@ Each step:
    reference, drawn independently:
    - **12 frames** (`clip_len`). The **last frame is the one being localised**:
      the network sees only the past, as it will at runtime.
-   - **Stride** 1, 2, 3 or 4 frames between clip frames, uniformly. At 60 fps
-     that is a 0.18-0.73 s span. A stride-4 clip of a slow corner looks like a
-     faster car, so this is the speed augmentation: live and reference driven at
-     different speeds. Runtime uses frames 1/15 s apart, stride 4.
+   - **Stride** 1, 2, 3 or 4 frames between clip frames, uniformly (`--strides`).
+     At 60 fps that is a 0.18-0.73 s span. A stride-4 clip of a slow corner looks
+     like a faster car, so this is the speed augmentation: live and reference
+     driven at different speeds. The stream eval defaults to stride 4 (frames
+     1/15 s apart); runtime should use stride 2. At stride 4, the fast edge of
+     training, a weak match is read at training's average pace and the estimate
+     lags, about 60 ms on an unseen track. Wherever runtime ends up, training's
+     strides must be centred on it (`ml-pivot.md`, *Most of the unseen-track
+     error was a lag*).
    - **Reversed** with probability 0.25: the same frames backwards in time, the
      target still the last frame shown. The network cannot assume motion only
      runs forward, so it has to match each frame rather than extrapolate a slope.
@@ -166,7 +171,11 @@ first, `python -m train.eval leakage` the second:
 
 Beyond the gates, `train.eval stream` runs whole laps at 15 Hz through the
 particle filter as the phone would, and `train.eval lines` measures error
-against racing-line separation.
+against racing-line separation. Run `stream` with `--lag-k 0.5`. It adds rows
+with the tracker's lag removed, estimated from each frame's backward reading as
+the phone would. `--speed-sigma 2.0` adds rows with the true speed.
+`--holdout-laps 23` uses every Silverstone lap instead of the first three.
+Laps from the other sessions are harder.
 
 ## 9. Optional augmentation, and what is still missing
 
@@ -218,5 +227,5 @@ Windows repacks at `--height 160`, and the same training runs on it.
 ./.venv/bin/python -m train.train --data data/packed_ac_v2 --gate g1 --name <run>
 ./.venv/bin/python -m train.eval gates --data data/packed_ac_v2 --checkpoint runs/<run>/best.pt
 ./.venv/bin/python -m train.eval leakage --data data/packed_ac_v2
-./.venv/bin/python -m train.eval stream --data data/packed_ac_v2 --checkpoint runs/<run>/best.pt
+./.venv/bin/python -m train.eval stream --data data/packed_ac_v2 --checkpoint runs/<run>/best.pt --speed-sigma 2.0 --lag-k 0.5
 ```

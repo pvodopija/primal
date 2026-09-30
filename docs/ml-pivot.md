@@ -825,7 +825,9 @@ without a speed signal, augmentation and mirroring take it from 4.34 m to about
 Known-track precision still matters, for tracks in the training set and once a
 speed signal exists: with true speed the baseline is better (2.00 m against
 2.18 and 2.46), because the filter then removes the catastrophes and what is
-left is the matcher's precision.
+left is the matcher's precision. That comparison predates the lag correction
+(*Most of the unseen-track error was a lag*); with it, the augmented models are
+the better ones with speed too.
 
 Fixing the zoom and cutting pitch recovered little of the known-track loss
 (2.45 -> 2.35 m), so zoom as a distance cue was not the main cause.
@@ -874,8 +876,10 @@ in one belief per tick, as the phone would receive them. No learning.
   weight as confidence.
 
 Measured with `python -m train.eval stream`: whole cross-session laps at 15 Hz,
-clip frames 1/15 s apart (a 0.73 s span), the first 2 s of each lap left out as
-acquisition. Streams are harsher than the random-clip gates: every pair crosses
+clip frames 1/15 s apart (a 0.73 s span, `--stride 4`), the first 2 s of each
+lap left out as acquisition. Every table in this section is at that stride.
+Runtime should use stride 2 instead (*Most of the unseen-track error was a
+lag*). Streams are harsher than the random-clip gates: every pair crosses
 sessions, and every Silverstone live lap is an MX-5 against Abarth references.
 
 | | median | p90 | >100 ms | >10 m | worst |
@@ -901,15 +905,16 @@ routine, not occasional.
 
 ### Why the median does not move
 
-Per-tick errors are correlated noise rather than a fixed bias. Consecutive
+On trained tracks, per-tick errors are mostly correlated noise (on the unseen
+track most of the error was a lag; see *Most of the unseen-track error was a
+lag* below). Consecutive
 ticks share most of their clip frames (lag-1 autocorrelation 0.84-0.96), but
 errors decorrelate within about a second, so they *could* be averaged — by
 carrying position accurately across more than a second, which needs the speed.
 The filter can only infer speed from the same noisy position stream, so it
 cannot average without lagging through braking zones. On the unseen track the
 remaining failures are sticky: the aligner stays confidently wrong for 1-3 s,
-and after a few ticks the filter follows it. A constant per-pair bias of up to
-0.9 m sits underneath, consistent with the inter-session label offsets.
+and after a few ticks the filter follows it.
 
 ### Speed is the missing input
 
@@ -975,6 +980,95 @@ built.
 lap with a second tracker given the labelled speed (`--speed-every` in ticks).
 On the cross-car Silverstone demo lap it goes from 3.87 m / 106 ms median and
 52% over budget without speed to 1.59 m / 42 ms and 6% with speed every tick.
+
+### Most of the unseen-track error was a lag
+
+The tracker trailed the kart. Signed errors (estimate minus truth), median over
+whole laps at the runtime stride of 4; Silverstone is all 23 laps against two
+references each (46 pairs), for three models (baseline, clean finish, pose and
+mirror recipe with its clean finish):
+
+| | trained tracks | Silverstone |
+|---|---|---|
+| filter | -10 to -19 ms | -57 to -69 ms |
+| filter with true speed | -3 to -14 ms | -54 to -64 ms |
+
+With true speed the lag was nearly the whole of Silverstone's error: on the
+standard six pairs, clean-finish model, the signed median is -55 ms and the
+median of the absolute error 56 ms.
+
+**The cause: runtime sits at the edge of the training strides.** Training
+draws the gap between clip frames from 1-4 frames (at 60 fps). Runtime always
+uses 4, the fastest look the model has seen. The head reads the kart's pace
+from the slope of the stripe of matches. When the stripe is faint it falls
+back on the average pace of training, which is slower than runtime, so it
+extrapolates to the clip's last frame too short. Everything measured fits:
+- The lag grows as the match weakens: on the clean-finish model, from -37 ms in
+  the most confident quarter of Silverstone ticks to -132 ms in the least. The
+  predicted worst case, no evidence at all, is about -130 ms.
+- It is small on trained tracks, where matches are sharp.
+- The same frame read backwards leads by about as much (+16 to +74 ms per
+  pair). That is the clip that starts 0.73 s later and runs back to the frame,
+  as training's reversed clips do.
+- The average belief shows no second bump one clip span behind the truth. Its
+  main peak is skewed backward: 58% of the mass behind the true bin on
+  Silverstone, 62% in the weakest quarter, 47% on trained tracks.
+- It shrinks when runtime moves toward the middle of training (below).
+
+Two things that did not remove it:
+- **A weak-match augmentation.** The head's input was given lower contrast,
+  blur and noise on half the clips, over a 1500-step fine-tune. Lag -63 ms,
+  against -62 ms for the same fine-tune without it. Removed.
+- **Labels or lighting.** The lag appears between laps of one session too.
+
+**Three fixes, measured on the 46 Silverstone pairs** (share of ticks over
+100 ms; clean-finish model unless noted):
+
+| | lag | filter | filter >10 m | with true speed | trained tracks, with speed |
+|---|---|---|---|---|---|
+| runtime stride 4 (as before) | -67 ms | 43.9% | 11.9% | 23.6% | 6.6% |
+| **runtime stride 2**, same model | -19 ms | **37.1%** | 10.9% | **3.7%** | 6.4% |
+| runtime stride 3, same model | -37 ms | 38.7% | 10.8% | 7.8% | 6.7% |
+| stride 4, lag correction (`--lag-k 0.5`) | | 37.8% | 10.0% | 6.9% | 6.7% |
+| trained on strides 2-6, runtime 4 (1500-step fine-tune) | -11 ms | 38.4% | 10.4% | 4.3% | 7.4% |
+| the control: the same fine-tune on strides 1-4 | -62 ms | 43.0% | 11.9% | 20.8% | 4.8% |
+
+- **Runtime stride 2 is the fix.** It costs no retraining, and at 30 fps it
+  means using every frame, which the glasses already send.
+- **The shorter clip no longer costs robustness.** Stride 4 was chosen when the
+  single-shot tail was the problem; now the filter handles that tail. Misses
+  beyond 10 m are 10.9% at stride 2 against 11.9% at stride 4.
+- **Training strides centred on runtime also removes the lag, but overshoots on
+  trained tracks** (+17 ms). So the prior on pace now matters in both
+  directions. Whichever pairing is chosen, runtime has to sit where training's
+  paces are centred.
+
+**The lag correction**, a safety net whichever stride is used, costs no
+labels. Once a frame's following clip has arrived, the gap between the frame's
+forward and backward readings measures the lag. The phone moves its estimate
+forward by half the running median of that gap over the last 10 s
+(`_lag_corrected`; `train.eval stream --lag-k 0.5`). The cost:
+- a second head pass per tick;
+- 0.73 s before the first correction;
+- nothing on the glasses.
+
+Nothing is fitted: 0.5 is the midpoint between the two readings. At stride 4,
+share of ticks over 100 ms on the 46 pairs, with "oracle" removing each lap's
+own median lag (a bound, not a method):
+
+| model | filter | filter, corrected (oracle) | with true speed | with speed, corrected (oracle) |
+|---|---|---|---|---|
+| baseline | 53.7% | 49.8% (47.9%) | 21.4% | **13.3%** (7.5%) |
+| clean finish | 43.9% | 37.8% (36.7%) | 23.6% | **6.9%** (2.6%) |
+| pose + mirror recipe, clean finish | 42.9% | 37.8% (37.0%) | 18.5% | **6.4%** (3.7%) |
+
+At stride 2 the correction has little left to remove (3.7% -> 4.0% with speed).
+A fixed offset learned on trained tracks does less. An offset scaled by belief
+confidence makes the speed-fed filter worse (about 20% -> 39-46%).
+
+**It reverses the verdict on augmentation with speed.** Before the correction,
+the baseline looked better once speed was known. After it, the augmented models
+are about twice as good (6.4-6.9% against 13.3%).
 
 ### Where the speed can come from
 
@@ -1059,6 +1153,104 @@ wrong place. Hiding the least confident 30% of Silverstone ticks cut those more
 than 10 m out from 16% to 9%. An "unavailable" readout needs a sharper signal,
 most likely the disagreement between the filter's prediction and the incoming
 belief.
+
+## Using more than one lap as the reference
+
+A track day produces dozens of laps. Two ways to use them were measured: vote
+across several reference laps, or keep one reference that improves with every
+lap. **Both are worth about half of the remaining unseen-track error, and both
+fail today for one reason: the phone cannot yet place one lap on another
+precisely enough.**
+
+### Voting across reference laps
+
+The live clip is matched against each reference lap separately. Each belief is
+resampled onto the first reference's bins by track position, and the beliefs
+are averaged. Whole laps, the stream eval's live laps, five references per live
+lap drawn across sessions; runtime stride 2; pose + mirror recipe (±3° pitch),
+clean finish:
+
+| | trained tracks, filter | Silverstone, filter | Silverstone >10 m | Silverstone, with true speed |
+|---|---|---|---|---|
+| 1 reference | 28.2% | 31.4% | 5.6% | 0.8% |
+| **5 references, aligned by labels** | **18.0%** | **14.9%** | **0.7%** | **0.1%** |
+| 5 references, aligned by the model | 28.5% | 30.4% | 4.1% | 2.0% |
+| the same, forward and backward readings | 27.0% | 29.8% | 4.2% | 1.1% |
+
+At stride 4 the label-aligned gain was the same size for every model: the
+baseline's Silverstone 51.7% -> 47.2%, the clean finish's 32.2% -> 23.8%, the
+recipe's 22.9% -> 15.5%.
+
+"Aligned by the model": each extra reference lap is run as a live lap against
+the first, and a monotone path through its beliefs places its frames. That is
+1.7 m off in median and 5.7 m at p90, and the gain is gone.
+
+### A reference that improves every lap
+
+The design tested:
+- The **anchor**, one raw lap, defines positions and times and never changes.
+- A second, **refined** set of fingerprints on the anchor's bins is blended
+  with every finished lap: 70% old, 30% the new lap's frame nearest each bin.
+- The head reads the live clip against both, and the two beliefs are averaged:
+  two references in memory, one extra head pass per tick.
+
+Silverstone's 23 laps in recording order, across three sessions with changing
+light, clean-finish model, filter without speed. Laps 2-22 are scored, each one
+before it updates anything, as a driver would experience it:
+
+| where each finished lap's frames are placed | stride 4: median / >100 ms / >10 m | stride 2 |
+|---|---|---|
+| (anchor only, today) | 3.04 m / 42.5% / 10.5% | 2.19 m / 31.9% / 9.1% |
+| **by the labels (upper bound)** | **2.60 m / 35.2% / 4.8%** | **1.65 m / 18.0% / 2.7%** |
+| by the model, against the refined map | 4.60 m / 61.1% / 17.9% | |
+| by the model, against the anchor only | 3.75 m / 52.5% / 13.5% | |
+| the same, each lap's own lag removed | 3.32 m / 46.4% / 11.4% | 2.46 m / 35.0% / 8.4% |
+| the same, each lap's true mean offset removed (oracle) | 2.98 m / 42.0% / 9.5% | 2.19 m / 31.0% / 7.5% |
+| by each frame's own fingerprint, one monotone path | | 2.21 m / 31.8% / 8.3% |
+| by the speed-fed, lag-corrected filter (true speed) | 3.13 m / 43.8% / 5.7% | |
+
+Keeping the last four laps as separate views instead of one blend gave the same
+answers (by labels, stride 4: 2.68 m / 35.4%).
+
+- **The upside is large.** With exact placement at stride 2, 14 points fewer
+  ticks over budget and a third of the big misses. The gain is largest when
+  the light changes.
+- **Placing laps against the refined map drifts like an integrated gyro.** A
+  lap placed slightly wrong shifts the map, and the next lap is placed against
+  the shifted map. Median placement error grew every lap, from 2.1 m to 19 m
+  over 22 laps. Gating on confidence did not stop it, because the map agrees
+  with itself.
+- **Placing against the raw anchor only stops the drift, not the damage.**
+  Every placer the model offers leaves the map no better than the anchor alone.
+- **Offset hurts, noise does not.** With placement by labels plus controlled
+  error (stride 4):
+
+  | placement error | >100 ms |
+  |---|---|
+  | none | 35.0% |
+  | wandering noise of 1 m / 2 m (about 1 s correlation) | 35.2% / 36.1% |
+  | steady offset of -0.5 m | 38.9% |
+  | steady offset of -1.5 m | 47.0% |
+
+  The model's placements carry 1-2 m of offset. The monotone path follows the
+  peak of a belief that leans backward. Worse, many of the errors are tied to
+  places on the track, so they bend the map the same way every lap: removing
+  each lap's true mean offset does not help. Per-frame fingerprints cut the
+  offset to 0.1-1.2 m but double the scatter (2.4 m median, 10.6% beyond 10 m).
+
+### What unblocks both: a lap aligner
+
+Placing one finished lap on another is easier than live tracking. It runs after
+the lap, sees the whole lap in both directions, and has no deadline. It needs
+to be sub-metre, unbiased, and free of place-tied errors. Nothing built so far
+is, because the matcher is trained for a different job: the last frame of a
+live clip. A model trained for this job, supervised by the labels Assetto Corsa
+provides and run without labels on real laps, would likely do better. Examples:
+- a head trained on the clip's middle frame, with context on both sides;
+- a pairwise lap-to-lap alignment network.
+
+Built on top of it, voting and the improving reference are the largest gains
+measured on the unseen track besides speed. Not built.
 
 ## Head movement
 
@@ -1386,8 +1578,15 @@ Recorded so they are not relitigated.
    banners that make look-alikes worse, slower karts. AC mods of indoor kart
    centres first, real indoor footage from the glasses later. New training
    should use the NPU-friendly layers from then on.
-4. **An abstain signal** sharp enough to grey out a wrong delta.
-5. On-device port: Core ML on the phone and/or the Ethos-U55 on the glasses.
+4. **A lap aligner**, to place one finished lap on another to under a metre
+   without labels. It unlocks voting across reference laps and a reference
+   that improves every lap: each is worth about half of the remaining
+   unseen-track error when aligned by labels, and nothing when aligned by
+   today's matcher (*Using more than one lap as the reference*).
+5. **An abstain signal** sharp enough to grey out a wrong delta.
+6. On-device port: Core ML on the phone and/or the Ethos-U55 on the glasses.
+   Runtime stride 2: every frame at 30 fps, a 0.37 s clip
+   (*Most of the unseen-track error was a lag*).
 
 ---
 
@@ -1402,7 +1601,8 @@ docs/
 
 capture/              AC + OBS + timecode overlay (Windows-only), encoder motion vectors, flow speed
 train/                encoder, correlation head, reference grid, estimator, gates, synthetic renderer
-tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, motion vectors, flow speed
+tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, lag correction,
+                      motion vectors, flow speed
 ```
 
 Everything from packing onward is portable; only capture is Windows-only.

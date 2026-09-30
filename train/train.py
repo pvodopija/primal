@@ -232,6 +232,8 @@ def main() -> None:
     parser.add_argument("--aug-parts", default="pose,blur,occlude,vignette,jpeg",
                         help="which --camera-aug effects to apply, comma-separated")
     parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
+    parser.add_argument("--strides", default="1,2,3,4",
+                        help="frames between clip frames, drawn uniformly per clip; runtime uses 4, so centre them there")
     args = parser.parse_args()
 
     gate = GateConfig.get(args.gate)
@@ -268,6 +270,7 @@ def main() -> None:
         aug_zoom=tuple(args.aug_zoom),
         aug_pitch_deg=args.aug_pitch,
         aug_parts=frozenset(args.aug_parts.split(",")),
+        strides=tuple(int(s) for s in args.strides.split(",")),
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 
@@ -280,6 +283,7 @@ def main() -> None:
         reference_axis=args.reference_axis,
         reference_only=trainable if reserved else None,
         live_only=reserved if reserved else None,
+        strides=tuple(int(s) for s in args.strides.split(",")),
     )
     # A distinct seed stream, so evaluation clips are not the training clips.
     eval_set = AlignmentBatches(eval_index, eval_config, steps=args.eval_steps, seed=args.seed + 9973)
