@@ -55,7 +55,10 @@ Two things that result does *not* settle, and they are the next work:
   catastrophic tail, but cannot improve the median or hold through 1-3 s sticky
   wrong locks without knowing the speed. Given an unbiased speed, the unseen
   track goes from 57% of ticks over the 100 ms budget to 12-17%, with
-  catastrophic errors under 1%. A *drifting* speed is worse than none, but the
+  catastrophic errors under 1%. Most of what remained was a lag, the tracker
+  trailing the kart by ~60 ms: runtime's clip stride sat at the fast edge of
+  training's. At runtime stride 2, with speed, the augmented models reach 2.6-5.6%
+  of ticks over budget and a p90 under 100 ms on the unseen track. A *drifting* speed is worse than none, but the
   filter can now learn a sensor's scale. Speed read off the reference match,
   frame-to-frame motion at the packed 148x80, and the video encoder's own motion
   vectors at 720p are all not good enough; the encoder stops tracking the road

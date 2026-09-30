@@ -859,6 +859,26 @@ and 2.00 m / 16.5%. Train robust, finish clean: the trade-off largely goes.
 The candidate recipe is therefore head-pose augmentation only, mirroring,
 6000 steps, then the clean finish.
 
+**Pitch ±1° against ±3°, and what one seed is worth.** The recipe was trained
+with pitch ±1° and ±3°. On the standard six Silverstone pairs, ±3° looked
+clearly better: 29.2% of ticks over budget against 34.6%. Two more seeds of ±3°
+gave 39.3% and 40.4%. On all 46 Silverstone pairs (stride 4, filter):
+
+| run | Silverstone, filter | with speed, lag-corrected | trained tracks, filter |
+|---|---|---|---|
+| baseline | 53.7% | 13.3% | 26.5% |
+| clean finish (all effects, then clean) | 43.9% | 6.9% | 33.1% |
+| pose + mirror, ±1°, seed 0 | 42.9% | 6.4% | 27.9% |
+| pose + mirror, ±3°, seeds 0 / 1 / 2 | 40.3% / 50.6% / 48.6% | 5.1% / 11.3% / 9.2% | 32.5% / 29.3% / 31.1% |
+
+- **Augmentation with the clean finish beats the baseline on the unseen track
+  by about 10 points.** That holds across every run.
+- **±3° is not better than ±1°.** Its first seed was luck; the recipe stays at
+  ±1°, itself one seed.
+- **Six pairs on one unseen track cannot rank recipes.** Between seeds the
+  same recipe moves 10 points. Recipe choices need several seeds and more than
+  one unseen track: the three holdout tracks of `packed_ac_v3`.
+
 ## Estimator
 
 `train/estimator.py` is a particle filter over (track position, speed) that folds
@@ -877,9 +897,9 @@ in one belief per tick, as the phone would receive them. No learning.
 
 Measured with `python -m train.eval stream`: whole cross-session laps at 15 Hz,
 clip frames 1/15 s apart (a 0.73 s span, `--stride 4`), the first 2 s of each
-lap left out as acquisition. Every table in this section is at that stride.
-Runtime should use stride 2 instead (*Most of the unseen-track error was a
-lag*). Streams are harsher than the random-clip gates: every pair crosses
+lap left out as acquisition. Every table in this section up to the lag is at
+that stride. Runtime uses stride 2 instead, now the eval's default (*Most of
+the unseen-track error was a lag*). Streams are harsher than the random-clip gates: every pair crosses
 sessions, and every Silverstone live lap is an MX-5 against Abarth references.
 
 | | median | p90 | >100 ms | >10 m | worst |
@@ -1034,7 +1054,19 @@ Two things that did not remove it:
 | the control: the same fine-tune on strides 1-4 | -62 ms | 43.0% | 11.9% | 20.8% | 4.8% |
 
 - **Runtime stride 2 is the fix.** It costs no retraining, and at 30 fps it
-  means using every frame, which the glasses already send.
+  means using every frame, which the glasses already send. It holds on every
+  model (46 Silverstone pairs, share of ticks over 100 ms):
+
+  | model | filter, stride 4 -> 2 | with true speed, stride 4 -> 2 | stride 2 with speed: median / p90 |
+  |---|---|---|---|
+  | baseline | 53.7% -> 49.6% | 21.4% -> 7.0% | 1.25 m / 89 ms |
+  | clean finish | 43.9% -> 37.1% | 23.6% -> 3.7% | 1.10 m / 76 ms |
+  | pose + mirror, ±1° pitch | 42.9% -> 37.5% | 18.5% -> **2.7%** | 1.02 m / 71 ms |
+  | pose + mirror, ±3° pitch, three seeds | 40-51% -> 38-43% | 11-27% -> 2.6-5.6% | 0.92-1.19 m / 67-83 ms |
+
+  **With a speed signal, the unseen track's p90 delta error is now under
+  100 ms for every model.** Without one it stays at 37-43% of ticks over
+  budget: there, scatter, not lag, is the limit.
 - **The shorter clip no longer costs robustness.** Stride 4 was chosen when the
   single-shot tail was the problem; now the filter handles that tail. Misses
   beyond 10 m are 10.9% at stride 2 against 11.9% at stride 4.

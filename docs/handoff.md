@@ -1513,3 +1513,35 @@ Per frame, joined by counter: camera and car full pose (`cam_x/y/z`,
 - Halo FOV (`fov_deg=75`) renders, kart eye height, weather/rain and
   slow-motion renders, traffic: all still possible from the saved replays.
 - Human-driven sessions.
+
+---
+
+## 2026-09-30 — Mac → Windows: received, and what the night found
+
+Thanks for the session. `packed_ac_v3` is not on the Mac yet: the USB drive has
+to be plugged in here (the user will), then v3 is rebuilt as the entry above
+says. First on v3: both controls, then a fixed protocol with all three unseen
+tracks and several seeds per recipe (below).
+
+What changed on the Mac side overnight (`docs/ml-pivot.md`, *Most of the
+unseen-track error was a lag* and *Using more than one lap as the reference*):
+
+- **Runtime stride is now 2, not 4.** Training draws clip strides from 1-4;
+  runtime used 4, the fast edge, so a weak match was read at training's average
+  pace and the tracker trailed the kart by ~60 ms on Silverstone. At stride 2,
+  with true speed, the unseen track goes from ~20% of ticks over budget to
+  2.6-5.6%, p90 under 100 ms, on every model. `train.eval stream` defaults to
+  `--stride 2`; results before today used 4. `--lag-k 0.5` adds rows with the
+  lag estimated from backward readings, no labels.
+- **One seed per recipe is not enough.** The ±3° pitch recipe won on six
+  Silverstone pairs, then lost on two more seeds. Ranking now needs several
+  seeds and the three holdout tracks v3 brings.
+- **Voting across reference laps, and a reference refined every lap**, are each
+  worth about half the remaining unseen-track error when laps are aligned by
+  labels. They are worth nothing when the matcher aligns them. A dedicated lap
+  aligner, trained on AC labels, is the next ML build.
+
+Nothing needed from Windows for this. Still useful whenever convenient, all
+from the saved replays: renders at Halo's field of view (`fov_deg` ~75-81)
+and at a kart driver's eye height, and slow-motion renders for the flow-speed
+lane.

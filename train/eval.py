@@ -785,7 +785,9 @@ def main() -> None:
     stream = sub.add_parser("stream", help="whole laps at 15 Hz through the estimator, as the product runs")
     stream.add_argument("--data", required=True)
     stream.add_argument("--checkpoint", required=True)
-    stream.add_argument("--stride", type=int, default=4, help="frames between clip frames")
+    stream.add_argument("--stride", type=int, default=2,
+                        help="frames between clip frames (at 60 fps). 2 is the runtime setting: at 4, the fast edge of "
+                             "training's strides, the estimate lags; results before 2026-09-30 used 4")
     stream.add_argument("--holdout-laps", type=int, default=3, help="live laps taken from the held-out track")
     stream.add_argument("--speed-sigma", type=float, help="also feed the filter the true speed, stated to +-this m/s")
     stream.add_argument("--speed-noise", type=float, default=0.0, help="fractional random error added to that speed")

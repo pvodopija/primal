@@ -603,7 +603,7 @@ def main() -> None:
     infer.add_argument("--track")
     infer.add_argument("--reference", help="lap id to use as the reference")
     infer.add_argument("--live", help="lap id to use as the live lap")
-    infer.add_argument("--stride", type=int, default=1, help="frames between clip samples")
+    infer.add_argument("--stride", type=int, default=2, help="frames between clip samples (2 is the runtime setting)")
     infer.add_argument("--every", type=int, default=1, help="localize every Nth live frame")
     infer.add_argument("--window", type=int, default=8)
     infer.add_argument("--plot-height", type=int, default=240)
