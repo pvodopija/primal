@@ -122,6 +122,8 @@ def engage_bot(tries: int = 2) -> bool:
 
 def newest_launch() -> Path:
     root = find_ac_root()
+    if root is None:
+        raise SystemExit("Assetto Corsa not found through Steam; is it installed?")
     base = root / "apps" / "lua" / "locamotif_timecode" / "frame_log"
     return max((p for p in base.iterdir() if p.is_dir()), key=lambda p: p.stat().st_mtime)
 
@@ -152,6 +154,9 @@ def main() -> None:
         print(f"{time.strftime('%H:%M:%S')} bot driving", flush=True)
         if not args.laps:
             return
+    if args.laps < 1:
+        # 0 is only for --engage-bot alone; recording 0 laps would stop at once.
+        raise SystemExit("--laps must be at least 1 to record")
     _, start_lap, _ = last_row(launch)
     if args.start and not press(VK_F13):
         raise SystemExit(1)

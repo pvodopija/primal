@@ -1545,3 +1545,38 @@ Nothing needed from Windows for this. Still useful whenever convenient, all
 from the saved replays: renders at Halo's field of view (`fov_deg` ~75-81)
 and at a kart driver's eye height, and slow-motion renders for the flow-speed
 lane.
+
+---
+
+## 2026-09-30 (later) — Mac → Windows: fixes from the cloud code review
+
+A multi-agent cloud review (`/code-review ultra`) of everything since 22 Sept
+found nine issues; each was checked against the code before acting. Fixed on the
+Mac, please pull before the next session:
+
+- `capture/pack.py` now writes `"variant"` into every index entry: `"look"` when
+  the session's `rig_log.csv` shows the rig turning the head (`look_gain > 0`),
+  otherwise `"live"`. Training and evaluation already read it. Until now the Mac
+  tagged v3's six look re-render sessions by hand in its own copy of the index
+  (Windows' original kept as `index.windows.json`); a repack now carries the tag.
+- `capture/session.py import` stops with a clear message when OpenCV reads no
+  frame rate from the video (it used to divide by zero).
+- `capture/autostop.py` refuses `--laps 0` unless it only engages the bot (0
+  laps used to stop a fresh recording after 2 s), and says so when AC is not
+  found instead of crashing.
+
+Two for Windows, since they run inside AC and need testing there:
+
+1. **`capture/ac_rig/primal_rig.lua`: the rig log's row cap now covers only
+   ~33 minutes.** The rate went to 30 Hz (`LOG_EVERY_S = 1/30`) but the cap only
+   to 60000 rows (line ~325), so a longer render silently loses the rest of its
+   log. The file keeps being rewritten every 2 s, so nothing looks stale.
+   `autostop --max-min` defaults to 60, and one Highlands render already ran 43
+   minutes. Either raise the cap to at least 60 min x 30 Hz (108000 rows; check
+   the 2 s full rewrite does not cause render hitches), or write the log in
+   chunks as the timecode overlay does.
+2. **`capture/ac_overlay/locamotif_timecode.lua`: the last buffered telemetry
+   rows are never written.** `logRows` is only flushed at 120 rows, and nothing
+   flushes it when the app unloads, so up to ~2 s at the very end is lost. This
+   is harmless while AC keeps running after a recording stops, but it hurts
+   when AC exits right after one. Add a flush on unload or on a timer.

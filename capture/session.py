@@ -148,6 +148,9 @@ def cmd_import(args: argparse.Namespace) -> None:
     car = args.car or (snap.car_model if snap else "")
 
     fps, width, height, count = _probe_video(video)
+    if fps <= 0.0:
+        # Every later step (the telemetry window below, packing) places frames in time by fps.
+        raise SystemExit(f"{video}: no frame rate in the container; remux it (ffmpeg -c copy) and retry")
     # OBS last writes the file when the recording stops.
     recorded_end = video.stat().st_mtime
     recorded_start = recorded_end - count / fps

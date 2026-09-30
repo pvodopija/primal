@@ -125,6 +125,16 @@ def rig_line_stats(rig_log: Path) -> tuple[float, float]:
     return float(moving["applied_lateral_m"].mean()), float(moving["applied_lateral_m"].std())
 
 
+def rig_variant(rig_log: Path) -> str:
+    """
+    "look" for a render that turned the camera into corners (the rig's `look`
+    option), "live" otherwise. A look render repeats a drive that is already
+    recorded, so training and evaluation must know it apart (LapIndex `variant`).
+    """
+    log = pd.read_csv(rig_log)
+    return "look" if "look_gain" in log and bool((log["look_gain"].fillna(0) > 0).any()) else "live"
+
+
 AC_VFOV_DEG = 60.0  # vertical FOV of AC's cameras and of the rig's default
 
 
@@ -175,6 +185,7 @@ def pack_session(
         line_mean_m, line_std_m = rig_line_stats(rig_log)
     else:
         line_mean_m, line_std_m = float(meta.get("line_offset_m", 0.0)), 0.0
+    variant = meta.get("variant") or (rig_variant(rig_log) if rig_log.exists() else "live")
 
     fps = float(meta["fps"])
     track_length = float(meta["track_length_m"])
@@ -239,6 +250,7 @@ def pack_session(
                 "line_mean_m": line_mean_m,
                 "line_std_m": line_std_m,
                 "split": meta.get("split", "train"),
+                "variant": variant,
                 "n_frames": int(plan.frame_idx.size),
                 "s_span": plan.span,
                 "track_length_m": track_length,

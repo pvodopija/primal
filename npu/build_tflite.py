@@ -107,6 +107,7 @@ def to_int8(model: keras.Model, calib: np.ndarray, path: Path) -> tuple[bytes, l
         for sample in calib:
             yield [sample[None].astype(np.float32)]
 
+    blob = None
     for strict in (True, False):
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
@@ -120,6 +121,8 @@ def to_int8(model: keras.Model, calib: np.ndarray, path: Path) -> tuple[bytes, l
             break
         except Exception as error:  # an op with no int8 kernel: keep it in float, and say so
             print(f"  {model.name}: strict int8 conversion failed ({str(error).splitlines()[0][:120]}); allowing float ops")
+    if blob is None:
+        raise RuntimeError(f"{model.name}: TFLite conversion failed, in int8 and with float operators allowed")
     path.write_bytes(blob)
     return blob, _ops(blob)
 

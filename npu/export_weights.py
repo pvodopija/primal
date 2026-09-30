@@ -70,6 +70,8 @@ def main() -> None:
                     grids.append((emb[idx] @ ref_emb.T).numpy() * scale)
             grids = np.stack(grids).astype(np.float32)  # [S, K, N]
             n = grid.n_bins
+            if f"head{n}_calib" in out:  # the arrays are keyed by bin count
+                raise SystemExit(f"{track} has {n} bins like an earlier track; pick tracks of different lengths")
             out[f"head{n}_calib"] = grids[:160]
             out[f"head{n}_check"] = grids[160:]
             out[f"head{n}_check_logits"] = model.head(torch.from_numpy(grids[160:])).numpy()
