@@ -1312,9 +1312,12 @@ With it as the placer (stride 2, same setups as above):
   nothing there, and the improving reference gets a quarter of what exact
   placement gives. It is precise where it has seen the track (about 1 m) and
   not where it has not (1.9 m, offset -0.5 m, place-tied errors). That is the
-  same track-generalisation gap as everywhere else. More circuits
-  (`packed_ac_v3`) are the obvious next input, then a longer aligner training
-  and a dedicated pairwise design.
+  same track-generalisation gap as everywhere else. Two cheap variants did not
+  close it: Silverstone placement was 1.93 m when fine-tuned from the pose +
+  mirror recipe, and 1.97 m trained twice as long, against 1.86 m. Longer
+  training did sharpen trained tracks (eval median 0.98 -> 0.81 m). More
+  circuits (`packed_ac_v3`) are the next input, then a dedicated pairwise
+  design.
 
 ## Head movement
 
