@@ -944,7 +944,9 @@ speed 1.30 m / 6.6% and 2.02 m / 17.2%, level with the baseline's 1.05 m / 6.7%
 and 2.00 m / 16.5%. Train robust, finish clean: the trade-off largely goes.
 
 The candidate recipe is therefore head-pose augmentation only, mirroring,
-6000 steps, then the clean finish.
+6000 steps, then the clean finish. Since `packed_ac_v3` it also trains on the
+head-turn re-renders (`--with-look`) with yaw widened to ±10-15° (`--aug-yaw`);
+see *Nine training circuits*.
 
 **Pitch ±1° against ±3°, and what one seed is worth.** The recipe was trained
 with pitch ±1° and ±3°. On the standard six Silverstone pairs, ±3° looked
@@ -999,9 +1001,14 @@ the three unseen circuits, both controls passing for every model. Share of ticks
     range. The NPU-ready model needs a replacement normalisation, not none.
     Candidates: BatchNorm with frozen statistics, which folds into the weights
     for free; or training the model without norms to copy the current one.
-  - **Wider yaw helps head turns by ~5 points** (29.1% against the recipe's
-    33.9% mean) and is level or better everywhere else. Two more seeds, and
-    ±15°, are running.
+  - **Wider yaw helps head turns, and it replicated.** Mean of three seeds at
+    ±10° against the recipe's ±4°: head turns 30.1% vs 33.9% (metres), 14.3% vs
+    16.1% (reference time), 5.5% vs 6.7% (true speed). The seed ranges do not
+    overlap (29.1-31.8% vs 32.7-35.6%). Everything else is level or better:
+    trained tracks 30.1% vs 31.7%, unseen 13.3% vs 13.9%, true speed 1.7% vs 2.6%.
+    One seed at ±15° is better still under head turns: 28.9% / 12.7% / 4.0%.
+    **The recipe now uses wide yaw augmentation.** The proper version is exact
+    head rotations cropped from wide renders, which are requested from Windows.
 - **"Same car" is 16 pairs, all on Silverstone.** Lime Rock and Oulton have one
   session per car. The bot drives near-identical laps within 0.1 s, so same-car
   pairs flatter the reference-time filter. A human driver's pace varies more,

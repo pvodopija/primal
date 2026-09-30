@@ -11,6 +11,11 @@ run's folder; what each experiment tested is in `experiments/README.md` and
 
 | run | finished | data | training | seed | wrong-ref control | protocol | G1 | G2 metres | G2 ref. time | G2 + speed | other results |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| v3_yaw15_s0 | 2026-09-30 22:36 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw15_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 29.6% | 30.0% | 12.9% | 1.9% | gates_v3.json, stream_look.json, stream_v3.json |
+| v3_yaw15_s0_base | 2026-09-30 22:24 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
+| v3_yaw10_s2 | 2026-09-30 21:38 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s2_base, 1500 steps | 2 | PASS | v3, stride 2, 3 unseen tracks | 31.7% | 30.5% | 13.3% | 2.1% | gates_v3.json, stream_look.json, stream_v3.json |
+| v3_yaw10_s2_base | 2026-09-30 21:28 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 2 |  |  |  |  |  |  |  |
+| v3_yaw10_s1 | 2026-09-30 20:46 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s1_base, 1500 steps | 1 | PASS | v3, stride 2, 3 unseen tracks | 29.0% | 29.8% | 13.5% | 1.8% | gates_v3.json, stream_look.json, stream_v3.json |
 | v3_yaw10_s1_base | 2026-09-30 20:32 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 1 |  |  |  |  |  |  |  |
 | v3_yaw10_s0 | 2026-09-30 19:39 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 29.5% | 30.4% | 13.0% | 1.3% | gates_v3.json, stream_look.json, stream_v3.json |
 | v3_yaw10_s0_base | 2026-09-30 19:27 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
@@ -83,4 +88,3 @@ run's folder; what each experiment tested is in `experiments/README.md` and
 | g1_yaw | 2026-09-20 18:34 | packed_yaw | None steps | 0 | PASS |  |  |  |  |  | ac_fov_gates.json, ac_gates.json, ac_lines.json, cmp_yaw_primal.json, cmp_yaw_seqslam.json, gates.json, lines.json, lines_yaw.json |
 | g1_scale | 2026-09-20 18:20 | packed_scale | None steps | 0 | PASS |  |  |  |  |  | ac_fov_gates.json, ac_gates.json, ac_lines.json, ac_lines_seqslam.json, cmp_line_primal.json, cmp_line_seqslam.json, gates.json, lines.json, lines_yaw_on_yawdata.json |
 | g1_lines | 2026-09-20 16:26 | packed_lines | None steps | 0 | PASS |  |  |  |  |  | gates.json, lines.json |
-| v3_yaw10_s1 |  | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s1_base, 1500 steps | 1 |  |  |  |  |  |  |  |
