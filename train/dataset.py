@@ -347,6 +347,10 @@ class SampleConfig:
     # sides, for placing a finished lap on another after the fact.
     target_at: str = "last"
     p_reverse: float = 0.25
+    # Share of clips that turn back at a random frame and retrace it, [a b c d c b]:
+    # pace changes inside the clip, so the last frame cannot be found by
+    # extrapolating the clip's slope (the pace prior behind the stride lag).
+    p_fold: float = 0.0
     p_static: float = 0.03
     sigma_bins: float = 2.0
     roll_reference: bool = True
@@ -576,6 +580,13 @@ class AlignmentBatches(Dataset):
         indices = np.clip(indices, 0, lap.n_frames - 1)
         if rng.random() < self.config.p_reverse:
             indices = indices[::-1].copy()
+        # Drawn only when enabled, so runs without folds sample exactly what they always did.
+        if self.config.p_fold > 0.0 and rng.random() < self.config.p_fold:
+            pivot = int(rng.integers(1, clip_len - 1))
+            k = np.arange(clip_len)
+            steps = np.where(k <= pivot, k, 2 * pivot - k)  # forward to the pivot, then back past it
+            step = int(indices[1] - indices[0]) if clip_len > 1 else 0
+            indices = np.clip(indices[0] + steps * step, 0, lap.n_frames - 1).astype(np.int64)
         return indices
 
     def __getitem__(self, step: int) -> dict:
