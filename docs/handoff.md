@@ -1594,7 +1594,7 @@ driver brakes, so it needs no speed sensor.
 1. **Retrained on v3, both controls passing, per unseen track.** Pose + mirror recipe
    with the look re-renders and a clean finish, three seeds, share of ticks over 100 ms
    with the reference-time tracker: Silverstone, Lime Rock and Oulton together 13.9%
-   (12.4-15.5% across seeds). Silverstone about 12-18%, Lime Rock 7-9%, Oulton 13-15%.
+   (12.4-15.5% across seeds). Per circuit across seeds: Silverstone 15-19%, Lime Rock 7-9%, Oulton 11-14%.
    With the true speed: 2.6%. The plain baseline without augmentation: 18.9%.
 2. **The learning curve, 5 -> 7 -> 9 training circuits** (plain, fixed 3000 steps, one
    seed): unseen 18.8% -> 19.4% -> 17.9% with the reference-time tracker, 45.8% -> 41.8%
