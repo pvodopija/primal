@@ -238,6 +238,9 @@ def main() -> None:
     parser.add_argument("--aug-parts", default="pose,blur,occlude,vignette,jpeg",
                         help="which --camera-aug effects to apply, comma-separated")
     parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
+    parser.add_argument("--norm", choices=("group", "none"), default="group",
+                        help="GroupNorm in encoder and head, or none (Halo's NPU cannot run GroupNorm)")
+    parser.add_argument("--aug-yaw", type=float, default=4.0, help="yaw amplitude in degrees for --camera-aug")
     parser.add_argument("--with-look", action="store_true",
                         help="also train on look-into-the-corner re-renders (index variant 'look')")
     parser.add_argument("--target-at", choices=("last", "middle"), default="last",
@@ -280,6 +283,7 @@ def main() -> None:
         mirror_p=args.mirror_p,
         aug_zoom=tuple(args.aug_zoom),
         aug_pitch_deg=args.aug_pitch,
+        aug_yaw_deg=args.aug_yaw,
         aug_parts=frozenset(args.aug_parts.split(",")),
         strides=tuple(int(s) for s in args.strides.split(",")),
         target_at=args.target_at,
@@ -309,6 +313,7 @@ def main() -> None:
         width=args.width,
         hidden=args.hidden,
         frame_size=frame_size,
+        norm=args.norm,
     ).to(device)
     parameters = sum(p.numel() for p in model.parameters())
     if args.init:

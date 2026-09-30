@@ -34,10 +34,12 @@ from torch import Tensor, nn
 from torch.utils.checkpoint import checkpoint
 
 
-def _norm(channels: int) -> nn.Module:
+def _norm(channels: int, kind: str = "group") -> nn.Module:
     # GroupNorm, not BatchNorm: live and reference pass through the same encoder
     # with wildly different batch sizes, so batch statistics would not match.
-    return nn.GroupNorm(min(8, channels), channels)
+    # "none" leaves it out: Halo's NPU cannot run GroupNorm (docs/ml-pivot.md,
+    # *Measured for Halo's NPU with Vela*).
+    return nn.GroupNorm(min(8, channels), channels) if kind == "group" else nn.Identity()
 
 
 # Spatial grid the stem is pooled to before projection. Not 1x1: where a
@@ -89,7 +91,8 @@ class FrameEncoder(nn.Module):
     canonical FOV before resizing.
     """
 
-    def __init__(self, dim: int = 128, width: int = 32, frame_size: tuple[int, int] | None = None):
+    def __init__(self, dim: int = 128, width: int = 32, frame_size: tuple[int, int] | None = None,
+                 norm: str = "group"):
         super().__init__()
         # frame_size is accepted and ignored: checkpoints record it, and it is
         # still the right thing to report, but it no longer shapes any weight.
@@ -97,7 +100,7 @@ class FrameEncoder(nn.Module):
         channels = [3, width, width * 2, width * 3, width * 4, width * 4]
         layers: list[nn.Module] = []
         for inp, out in zip(channels[:-1], channels[1:]):
-            layers += [nn.Conv2d(inp, out, 3, stride=2, padding=1), _norm(out), nn.GELU()]
+            layers += [nn.Conv2d(inp, out, 3, stride=2, padding=1), _norm(out, norm), nn.GELU()]
         self.stem = nn.Sequential(*layers)
 
         self.project = nn.Linear(channels[-1] * POOL_GRID[0] * POOL_GRID[1], dim)
@@ -114,7 +117,7 @@ class AlignmentHead(nn.Module):
     with K channels, and emits one logit per reference bin.
     """
 
-    def __init__(self, clip_len: int, hidden: int = 64, blocks: int = 4, kernel: int = 5):
+    def __init__(self, clip_len: int, hidden: int = 64, blocks: int = 4, kernel: int = 5, norm: str = "group"):
         super().__init__()
         self.entry = nn.Conv1d(
             clip_len, hidden, kernel, padding=kernel // 2, padding_mode="circular"
@@ -124,7 +127,7 @@ class AlignmentHead(nn.Module):
             dilation = 2**i
             self.blocks.append(
                 nn.Sequential(
-                    _norm(hidden),
+                    _norm(hidden, norm),
                     nn.GELU(),
                     nn.Conv1d(
                         hidden,
@@ -136,7 +139,7 @@ class AlignmentHead(nn.Module):
                     ),
                 )
             )
-        self.exit = nn.Sequential(_norm(hidden), nn.GELU(), nn.Conv1d(hidden, 1, 1))
+        self.exit = nn.Sequential(_norm(hidden, norm), nn.GELU(), nn.Conv1d(hidden, 1, 1))
 
     def forward(self, correlation: Tensor) -> Tensor:
         x = self.entry(correlation)
@@ -154,10 +157,11 @@ class SequenceAligner(nn.Module):
         hidden: int = 64,
         blocks: int = 4,
         frame_size: tuple[int, int] = (96, 160),
+        norm: str = "group",
     ):
         super().__init__()
-        self.encoder = FrameEncoder(dim=dim, width=width, frame_size=frame_size)
-        self.head = AlignmentHead(clip_len=clip_len, hidden=hidden, blocks=blocks)
+        self.encoder = FrameEncoder(dim=dim, width=width, frame_size=frame_size, norm=norm)
+        self.head = AlignmentHead(clip_len=clip_len, hidden=hidden, blocks=blocks, norm=norm)
         self.logit_scale = nn.Parameter(torch.tensor(math.log(10.0)))
 
     def encode_reference(
