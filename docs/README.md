@@ -41,64 +41,59 @@ cannot memorize a circuit.
 
 ## Where the project stands
 
-Trained on **real Assetto Corsa footage**, six tracks with one held out:
-G1 reaches **1.45 m / 46 ms** and G2 — a circuit the model has never seen —
-reaches **3.58 m / 96 ms**, with both negative controls passing.
+Trained on **real Assetto Corsa footage** (`data/packed_ac_v3`: 380 laps on 12
+circuits, 9 for training and 3 never seen), with both negative controls passing.
+The product metric is the share of 15 Hz ticks whose delta is more than 100 ms
+off, on whole laps of the unseen circuits, from the camera alone:
 
-Synthetic pretraining turned out **not to transfer at all** (a synthetic
-checkpoint scores at chance on real footage), so synthetic data is now for
-plumbing and architecture only. The architecture itself was never the problem.
+| | unseen circuits | same car as the reference | median |
+|---|---|---|---|
+| tracker in metres (the original design) | 30.8% | 38.5% | 2.3 m / 62 ms |
+| **tracker in reference-lap time** | **12.2%** | **5.3%** | **1.6 m / 43 ms** |
+| with a true speed signal, for comparison | 2.3% | 2.4% | 1.0 m / 28 ms |
 
-Two things that result does *not* settle, and they are the next work:
+What got it there, all measured in [`ml-pivot.md`](ml-pivot.md):
+- **Tracking in reference-lap time.** The reference lap already knows where the
+  driver brakes, so in its time the kart moves at almost one second per second.
+  This replaced most of what a speed sensor would give.
+- **Runtime stride 2.** At stride 4, runtime sat at the fast edge of what
+  training saw, and the estimate trailed the kart by ~60 ms.
+- **Head-pose augmentation with mirroring,** then a clean fine-tune.
 
-- **Speed is the missing input.** A particle filter now removes the
-  catastrophic tail, but cannot improve the median or hold through 1-3 s sticky
-  wrong locks without knowing the speed. Given an unbiased speed, the unseen
-  track goes from 57% of ticks over the 100 ms budget to 12-17%, with
-  catastrophic errors under 1%. Most of what remained was a lag, the tracker
-  trailing the kart by ~60 ms: runtime's clip stride sat at the fast edge of
-  training's. At runtime stride 2, with speed, the augmented models reach 2.6-5.6%
-  of ticks over budget and a p90 under 100 ms on the unseen track. Without any
-  sensor, tracking in reference-lap time instead of metres (the reference already
-  knows where the driver brakes) takes the unseen tracks from 30.8% to 12.2%,
-  and 5.3% when the reference was driven in the same car. A *drifting* speed is worse than none, but the
-  filter can now learn a sensor's scale. Speed read off the reference match,
-  frame-to-frame motion at the packed 148x80, and the video encoder's own motion
-  vectors at 720p are all not good enough; the encoder stops tracking the road
-  near the car at speed. The IMU and learned motion on a sharper road crop are
-  the next candidates.
-- **Track generalisation is the other constraint.** Held-out *laps* cost 1.09x;
-  a held-out *track* costs 2.7x. More circuits, not more laps and not a bigger
-  model.
+Synthetic pretraining **does not transfer** (a synthetic checkpoint scores at
+chance on real footage), so synthetic data is for plumbing and architecture
+only.
+
+Open, in order of value:
+- a measured speed from the camera (road flow on Halo at 90-120 fps), now a
+  refinement rather than a requirement;
+- a lap aligner, which would unlock voting across reference laps and a
+  reference that improves every lap;
+- more circuits;
+- an abstain signal;
+- the port to Halo's NPU. It fits (27-34% of the NPU by Vela) once GroupNorm is
+  replaced, which needs a retrain.
 
 Against classical SeqSLAM on identical real clips, PRIMAL is 29x more accurate
-on trained tracks (1.59 m against 46.6 m) and 9x on the unseen one (3.56 m
-against 31.1 m); SeqSLAM only holds up when light, car and weather are
-unchanged. How this compares with GPS lap timers, and the prior art the matcher
-builds on, is under *Landscape* in [`ml-pivot.md`](ml-pivot.md).
-
-Real capture works end to end: 19 sessions over six tracks in
-`data/packed_ac_v2`, across time of day, weather and car, with labels that
-describe the camera rather than the car.
-
-Numbers, method, and the full gate table are in [`ml-pivot.md`](ml-pivot.md).
+on trained tracks and 9x on the unseen one (v2 data). How this compares with GPS
+lap timers, and the prior art the matcher builds on, is under *Landscape* in
+[`ml-pivot.md`](ml-pivot.md).
 
 ## Product constraints
 
 These bound every design choice. Do not relax them to make training easier.
 
-- **Runtime:** glasses + iPhone, ~15 Hz, ~25 min session. **The delta is shown
-  on the glasses** (decided). Where the network runs, on the phone's Neural
-  Engine or partly or fully on a glasses NPU, is being evaluated; Brilliant Labs
-  Halo is the first prototype target. See *Hardware target* in
-  [`ml-pivot.md`](ml-pivot.md).
+- **Runtime:** ~15 Hz, ~25 min session. **The delta is shown on the glasses**
+  (decided). Brilliant Labs Halo is the first prototype. By Vela's estimate the
+  whole pipeline fits on its NPU, standalone. A phone is optional for setup and
+  analysis. See *Hardware target* in [`ml-pivot.md`](ml-pivot.md).
 - **Precision:** ≤ 100 ms time delta ≈ 1.5 m at kart speed. Place-recognition
   benchmarks that score "correct within 25 m" are the wrong metric.
 - **Camera only** (decided). The product meets its targets from the glasses
   camera alone: no GNSS, no compass, no phone motion sensors required. They may
   assist outdoors, never be needed. Indoors there is no GNSS and a compass is
-  unreliable, and indoor tracks (about 30% of tracks worldwide, by the user's
-  research) are where GNSS-based timers cannot follow. RTK/GNSS is fine for
+  unreliable, and indoor tracks (about 30% of tracks by the user's estimate;
+  no public count confirms or refutes it) are where GNSS-based timers cannot follow. RTK/GNSS is fine for
   training and evaluation labels only.
 - **The map is context, not parameters.** One set of weights for every track.
   A new circuit costs a reference lap, not a GPU day.

@@ -15,6 +15,35 @@
 
 ---
 
+## Where it stands (2026-09-30)
+
+- **Data:** `packed_ac_v3`, Assetto Corsa at 148x80. 9 training circuits and 3
+  unseen ones (Silverstone, Lime Rock, Oulton Park). Leakage and wrong-reference
+  controls pass.
+- **Product metric:** share of 15 Hz ticks whose delta is more than 100 ms off,
+  on whole laps of the unseen tracks, camera only, runtime stride 2 (*Evaluation*).
+- **Best camera-only result:** the pose + mirror recipe with the reference-time
+  tracker (*The reference lap as the speed prior*):
+  - unseen tracks: 12.2% of ticks over budget; 5.3% when the reference is the
+    same car;
+  - median 1.6 m / 43 ms; misses beyond 10 m 0.2%;
+  - with a true speed signal: 2.3%.
+- **What moved it this week:**
+  - runtime stride 2 removed a ~60 ms lag;
+  - tracking in reference time replaced most of a speed sensor;
+  - augmentation with mirroring.
+- **Hardware:** Halo can run it standalone. Vela puts it at 27-34% of the NPU
+  once GroupNorm, the one layer the NPU cannot run, is removed (*Measured for
+  Halo's NPU with Vela*).
+- **Open:**
+  - a retrain without GroupNorm;
+  - speed from the camera on Halo, as a refinement;
+  - a lap aligner, for voting and a self-improving reference;
+  - an abstain signal;
+  - tests on the glasses themselves.
+
+---
+
 ## Goal
 
 Given **one reference lap as context**, estimate progress `s` along it from a
@@ -45,7 +74,7 @@ One number drives the design. A kart at 15 m/s covers 1 m in **67 ms**, so
 | **Target delta error** | **≤ 100 ms (≈ 1.5 m)** |
 | Target delta jitter | ≤ 50 ms std over a 1 s window |
 | Live inference rate | 15 Hz |
-| Runtime | iPhone, Core ML / ANE, ~25 min session |
+| Runtime | on the glasses (Halo's Ethos-U55 NPU) or a phone; ~25 min session |
 
 Published place-recognition benchmarks score "correct within 25 m." That is
 ~1.7 **seconds** of delta at kart speed. Retrieval models are trained to be
@@ -930,7 +959,10 @@ gave 39.3% and 40.4%. On all 46 Silverstone pairs (stride 4, filter):
 ## Estimator
 
 `train/estimator.py` is a particle filter over (track position, speed) that folds
-in one belief per tick, as the phone would receive them. No learning.
+in one belief per tick, as the phone would receive them. No learning. Fed each
+bin's reference time instead of its position, the same filter tracks progress
+through the reference lap instead, which works far better without a speed
+sensor (*The reference lap as the speed prior*).
 
 - **Predict**: advance each particle by its speed, with room to brake and accelerate.
 - **Update**: weight it by the belief at its position — tempered, because ticks
@@ -980,7 +1012,9 @@ ticks share most of their clip frames (lag-1 autocorrelation 0.84-0.96), but
 errors decorrelate within about a second, so they *could* be averaged — by
 carrying position accurately across more than a second, which needs the speed.
 The filter can only infer speed from the same noisy position stream, so it
-cannot average without lagging through braking zones. On the unseen track the
+cannot average without lagging through braking zones. (Tracking in reference
+time sidesteps this: the reference supplies the braking zones. See *The
+reference lap as the speed prior*.) On the unseen track the
 remaining failures are sticky: the aligner stays confidently wrong for 1-3 s,
 and after a few ticks the filter follows it.
 
@@ -1446,8 +1480,11 @@ one of them.
 
 ### An independent speed signal
 
-The largest measured lever on the unseen track, and unbuilt. It must be unbiased
-or have its bias estimated; the filter can now estimate it. See *Estimator*.
+Once the largest measured lever on the unseen track. Tracking in reference time
+now gives most of its benefit without a sensor (12.2% of ticks over budget
+against 2.3% with true speed), so a measured speed is a refinement for where the
+driver departs from the reference. It must be unbiased or have its bias
+estimated; the filter can estimate it. See *Estimator*.
 
 ### An abstain signal
 
@@ -1629,11 +1666,23 @@ to appearance.
 | Sweep error against **viewpoint separation**, don't aggregate | a flat average hides "matches viewpoint, not place" |
 | Track the **sim → real** drop as a standing metric | the health of the entire sim investment |
 | Both negative controls, every time | a good score without them may be leakage |
+| Score each unseen track separately, and the same-car pairs as a group | tracks differ in reference sessions; same car is the product's case |
+| Run the eval with the product's runtime settings (stride 2), inside what training covers | stride 4 at the edge of training's strides cost ~60 ms of lag |
+| Tune tracker settings on G1 only | G2 must stay an untouched test |
+| Three seeds before ranking training recipes | one seed swings 10 points on one unseen track |
 
 Gates are implemented in `train/train.py` (`--gate g0|g1|g2`) and
 `train/eval.py` (`gates`, `lines --axis line|yaw`, `leakage`). `stream` runs whole
 laps through the estimator at 15 Hz, the way the product does, and with
 `--speed-sigma` measures what an independent speed signal would be worth.
+
+The protocol since `packed_ac_v3`: `train.eval stream --holdout-laps 99
+--speed-sigma 2.0` at the default stride 2, over every full lap of the three
+unseen tracks. Each lap is paired with a reference from every other recorded
+session of its track, always across sessions. The report has rows per unseen
+track and a "same car" group, for the filter in metres, the filter in reference
+time, and the filter with true speed. `--look` scores the head-turn re-renders,
+against the other car's drives only.
 
 ### Negative controls
 
@@ -1656,7 +1705,6 @@ where a HUD is a live risk rather than a theoretical one.
 | Condition | Conclusion |
 |-----------|------------|
 | Can't beat 1.5 m median on held-out **sim** tracks | architecture is wrong — **passed, 1.41 m** |
-| Sim-pretrained + real footage can't beat 150 ms on the home circuit in good light | sim investment isn't paying; go real-data-first |
 | Aliasing unfixable at indoor venues | narrow the product to outdoor circuits |
 | Sustained 15 Hz impossible in the thermal envelope | reduce rate, lean harder on the filter |
 
@@ -1684,7 +1732,7 @@ Recorded so they are not relitigated.
 | Risk | Mitigation |
 |------|------------|
 | **Sim2real gap** — measured and total: synthetic checkpoints score at chance on real footage | closed as a strategy. Train on real footage directly; synthetic is for plumbing and architecture only |
-| **Perceptual aliasing** — the estimator removes the catastrophic tail, but 1-3 s sticky locks survive on unseen tracks | an independent speed signal (it takes those locks from 16% of ticks to under 1%); more circuits; cap scene-side augmentation |
+| **Perceptual aliasing** — the estimator removes the catastrophic tail, but 1-3 s sticky locks survive on unseen tracks | tracking in reference time (misses beyond 10 m 6.6% -> 0.2% on v3's unseen tracks); a speed signal; more circuits; cap scene-side augmentation |
 | **Biased speed signal** — a 5% drift is worse than no speed at all | only fuse an unbiased source, or carry its bias as a filter state |
 | **Capacity on real footage** — unknown; real scenes carry far more texture than the renderer | do not size the model on synthetic; measure on real |
 | **Field of view / aspect mismatch** across glasses, AC, and shared maps | canonical-FOV crop at pack time; store intrinsics per session |
@@ -1692,12 +1740,12 @@ Recorded so they are not relitigated.
 | **Glasses do not fit inside a full-face karting helmet** | non-algorithmic and unresolved; test with hardware before further engineering |
 | **Glasses ↔ phone clock offset** | delta accuracy is bounded by timestamp accuracy; timestamp frames at capture on the glasses; on Halo, camera, tracker and display can share one clock; otherwise calibrate explicitly, target ≤ 10 ms |
 | **Glasses battery and heat** — Meta estimates about 30 minutes of livestreaming, cut short by heat | send as little as possible from the glasses: the lowest video preset, or embeddings instead of video (Halo); measure 25 minutes before building on either |
-| **Halo's continuous capture is unverified** — the stock SDK takes single photos | a hardware test of capture rate at a small size before any port work beyond the model changes |
+| **Halo's continuous capture is unverified** — Brilliant's app takes single photos; the firmware's own camera sample streams raw frames, untested by us | a hardware test of capture rate at a small size before any port work beyond the model changes |
 | **Input inside a full-face helmet** — frame taps impossible, voice against engine noise | detect the start line when the lap closes on itself; set up on the phone; a hand gesture seen by the camera in the pits; the wrist band on Meta Display |
 | **Meta toolkit apps cannot be published yet** | prototype on Halo; keep the network hardware-neutral |
 | **Kart vibration** (no suspension) → blur | capture-side augmentation must include it; measure on real footage early |
 | **Stale map after a model update** | store a weight hash with the map; refuse to load a mismatch; keep the reference lap's frames (at matcher size) on the phone so it can be re-encoded, which on Halo means streaming them while the reference lap is recorded |
-| **Lighting-dependent model bias** — the same car at dusk against noon reads about 1 m apart on the unseen track and 0.5 m on a trained one; a model-free match (ORB + RANSAC) shows the labels themselves agree within 0.2 m | more lighting variety in capture and augmentation; re-measure the dusk/noon asymmetry after each change |
+| **Lighting-dependent model bias** — the same car at dusk against noon read about 1 m apart on the unseen track; the labels agree within 0.2 m. Most of it was probably the stride lag, which grows as matches weaken | re-measure at stride 2; more lighting variety in capture and augmentation |
 | **Label accuracy** — 0.3 m is 20 ms at kart speed | measured model-free at 0.10-0.18 m between sessions, inside that; recheck when capture changes |
 | **Patents on matching or localisation methods** — the matcher's parts are published and standard, but no search has been done | a freedom-to-operate check by a patent attorney before any commercial launch |
 | **Thermals** over a 25 min session | 15 Hz, small encoder, 8-bit on an NPU; on the glasses the radio dominates, so embeddings over video |
@@ -1717,17 +1765,16 @@ Recorded so they are not relitigated.
    delay-aware update for timestamped readings is not. GNSS, compass and phone
    IMU remain optional outdoor assists at most. Encoder motion vectors are
    closed.
-2. **Hardware feasibility on Halo.** Chip-friendly layers and 8-bit weights,
-   verified against today's gates; a Vela estimate of cycles and memory; then
-   on hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
+2. **Hardware feasibility on Halo.** The Vela estimate is done: 8-bit costs
+   nothing, and without GroupNorm the model uses 27-34% of the NPU (~15% with a
+   windowed head). Next, retrain without GroupNorm and check it against today's
+   gates; then on hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
    throughput, 25-minute power and temperature, helmet fit. AC footage at
    Halo's field of view once it is chosen.
-3. **More and more varied data.** Track generalisation costs 2.7x and nothing
-   else has moved it. First a track-count learning curve on real footage (train
-   on 2, 3, 4, 5 tracks, test on Silverstone) to size the collection, with a
-   2x wider encoder and a ~1.5 s clip as cheap probes; if the curve flattens,
-   architecture becomes the suspect (pretrained encoder, capacity, resolution).
-   Collection in order: more circuits, preferring kart tracks with the camera at
+3. **More and more varied data.** Unseen tracks are still well behind known
+   ones. On v2, 1 -> 5 training tracks helped without a plateau. On v3, 5 -> 9
+   tracks helped only a little at a fixed step budget (45.8% -> 41.8% of unseen
+   ticks over budget, filter in metres, one seed). Collection in order: more circuits, preferring kart tracks with the camera at
    a kart driver's eye height; lighting variety; a kart driver's view with the
    nose, steering wheel, hands and visor edges in frame, which the model has
    never seen and which can also be approximated by pasting occluders. **Indoor
@@ -1742,7 +1789,8 @@ Recorded so they are not relitigated.
    unseen-track error when aligned by labels, and nothing when aligned by
    today's matcher (*Using more than one lap as the reference*).
 5. **An abstain signal** sharp enough to grey out a wrong delta.
-6. On-device port: Core ML on the phone and/or the Ethos-U55 on the glasses.
+6. On-device port: the Ethos-U55 on Halo, standalone (open firmware, owner-built
+   images accepted), or a phone.
    Runtime stride 2: every frame at 30 fps, a 0.37 s clip
    (*Most of the unseen-track error was a lag*).
 
