@@ -1273,16 +1273,48 @@ answers (by labels, stride 4: 2.68 m / 35.4%).
 ### What unblocks both: a lap aligner
 
 Placing one finished lap on another is easier than live tracking. It runs after
-the lap, sees the whole lap in both directions, and has no deadline. It needs
-to be sub-metre, unbiased, and free of place-tied errors. Nothing built so far
-is, because the matcher is trained for a different job: the last frame of a
-live clip. A model trained for this job, supervised by the labels Assetto Corsa
-provides and run without labels on real laps, would likely do better. Examples:
-- a head trained on the clip's middle frame, with context on both sides;
-- a pairwise lap-to-lap alignment network.
+the lap, sees the whole lap in both directions, and has no deadline. It needs to
+be sub-metre, unbiased, and free of place-tied errors. The live matcher is
+trained for a different job, the last frame of a live clip, and inherits the
+pace-prior lag.
 
-Built on top of it, voting and the improving reference are the largest gains
-measured on the unseen track besides speed. Not built.
+**First aligner: the clip's middle frame as the target.** It is the clean-finish
+model fine-tuned for 3000 steps with `--target-at middle`, with context on both
+sides of the localised frame. Silverstone's 22 laps placed on the first, each
+with a monotone path through its beliefs:
+
+| placer | stride | median | p90 | >10 m | signed |
+|---|---|---|---|---|---|
+| live matcher (last frame) | 2 / 3 / 4 | 2.28 / 2.66 / 3.07 m | 8.6 / 9.0 / 9.8 m | 7.8 / 8.4 / 9.6% | -1.20 / -1.85 / -2.67 m |
+| **aligner (middle frame)** | 2 / 3 / 4 | **1.86 / 1.90 / 1.96 m** | 6.7 / 6.4 / 6.4 m | 5.2 / 4.6 / 4.0% | -0.46 / -0.84 / -0.59 m |
+
+On trained tracks its own eval median is 0.98 m, the most precise of any model
+here. Its offset does not grow with the stride, while the live matcher's does,
+which is what the pace-prior explanation of the lag predicts.
+
+With it as the placer (stride 2, same setups as above):
+
+| | trained tracks, filter | Silverstone, filter | Silverstone >10 m |
+|---|---|---|---|
+| voting, 1 reference | 28.3% | 30.3% | 4.0% |
+| voting, 5 references aligned by labels | 18.3% | 17.0% | 0.7% |
+| voting, 5 references aligned by the live matcher | 28.2% | 34.8% | 4.1% |
+| **voting, 5 references aligned by the aligner** | **21.6%** | 30.9% | 4.4% |
+| improving reference, anchor only | | 31.9% | 9.1% |
+| improving reference, placed by labels | | 18.0% | 2.7% |
+| **improving reference, placed by the aligner** | | **28.6%** | **6.2%** |
+
+- **The first label-free gains.**
+  - On trained tracks, voting keeps two thirds of its gain: 28.3% -> 21.6%.
+  - On Silverstone, the improving reference goes from 31.9% to 28.6%, and big
+    misses from 9.1% to 6.2%.
+- **On the unseen track the aligner is not yet good enough.** Voting gains
+  nothing there, and the improving reference gets a quarter of what exact
+  placement gives. It is precise where it has seen the track (about 1 m) and
+  not where it has not (1.9 m, offset -0.5 m, place-tied errors). That is the
+  same track-generalisation gap as everywhere else. More circuits
+  (`packed_ac_v3`) are the obvious next input, then a longer aligner training
+  and a dedicated pairwise design.
 
 ## Head movement
 

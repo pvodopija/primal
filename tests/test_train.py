@@ -111,6 +111,20 @@ def test_frame_targets_place_every_clip_frame() -> None:
             signs = np.sign(np.round(step_bins, 3))
             assert np.all((signs == signs[:, :1]) | (signs == 0)), "a clip changed direction"
 
+def test_middle_target_sits_between_the_central_frames() -> None:
+    index = _dataset()
+    config = SampleConfig(batch_size=6, clip_len=4, roll_reference=True, reference_axis="distance", target_at="middle")
+    batches = AlignmentBatches(index, config, steps=6, seed=6)
+    for step in range(6):
+        batch = batches[step]
+        frames = batch["frame_targets"].numpy().astype(np.float64)
+        n_bins = batch["reference"].shape[0]
+        a, b = frames[:, 1], frames[:, 2]
+        middle = (a + 0.5 * ((b - a + n_bins / 2) % n_bins - n_bins / 2)) % n_bins
+        gap = (batch["target"].numpy() - middle + n_bins / 2) % n_bins - n_bins / 2
+        assert np.abs(gap).max() < 1e-2
+
+
 def test_time_axis_target_follows_the_reference_clock() -> None:
     index = _dataset()
     config = SampleConfig(

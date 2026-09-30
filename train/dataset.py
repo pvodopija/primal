@@ -334,6 +334,10 @@ class SampleConfig:
     batch_size: int = 8
     clip_len: int = 12
     strides: tuple[int, ...] = (1, 2, 3, 4)
+    # Which clip frame is localised: "last" is causal, as the live tracker runs;
+    # "middle" is halfway between the two central frames, with context on both
+    # sides, for placing a finished lap on another after the fact.
+    target_at: str = "last"
     p_reverse: float = 0.25
     p_static: float = 0.03
     sigma_bins: float = 2.0
@@ -612,6 +616,9 @@ class AlignmentBatches(Dataset):
             # The final frame is the one being localised: causal, matching runtime.
             frame_s = live_lap.s()[indices]
             s_now = float(frame_s[-1])
+            if config.target_at == "middle":
+                a, b = frame_s[config.clip_len // 2 - 1], frame_s[config.clip_len // 2]
+                s_now = float((a + 0.5 * (((b - a) + 0.5) % 1.0 - 0.5)) % 1.0)
             live_s[i] = s_now
             target[i] = (float(grid.target(s_now)) + roll) % n_bins
             # Where every clip frame sits, for supervising each frame's own row.
