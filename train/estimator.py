@@ -56,6 +56,14 @@ class EstimatorConfig:
     speed_scale_walk: float = 0.0
     speed_scale_prior: float = 0.15
     speed_scale_range: tuple[float, float] = (0.5, 2.0)
+    # Two modes, for a driver who usually repeats the reference's rhythm but sometimes
+    # does not (a late brake, a mistake): each particle either follows (accel_noise) or is
+    # off-script (accel_noise_free, free to slow toward a stop), switching at these rates
+    # per second. 0 leaves the second mode out.
+    accel_noise_free: float = 0.0
+    to_free_per_s: float = 0.2
+    to_follow_per_s: float = 1.0
+    free_speed_floor: float = 0.05
 
 
 @dataclass
@@ -77,8 +85,12 @@ class ProgressEstimator:
         track_length_m: float,
         config: EstimatorConfig | None = None,
         seed: int = 0,
+        noise_profile: np.ndarray | None = None,
     ) -> None:
         self.config = config or EstimatorConfig()
+        # Per-bin multiplier on accel_noise, e.g. larger where the reference brakes hard,
+        # which is where a driver's pace departs from it most.
+        self.noise_profile = None if noise_profile is None else np.asarray(noise_profile, dtype=np.float64)
         self.length = float(track_length_m)
         n = int(np.asarray(bin_position_m).size)
         self.n_bins = n
@@ -89,6 +101,7 @@ class ProgressEstimator:
         self.position: np.ndarray | None = None
         self.speed: np.ndarray | None = None
         self.scale: np.ndarray | None = None
+        self.free: np.ndarray | None = None
         self.weight: np.ndarray | None = None
 
     def bin_of(self, position: np.ndarray) -> np.ndarray:
@@ -132,12 +145,26 @@ class ProgressEstimator:
                 if c.speed_scale_walk > 0.0
                 else np.ones(c.particles)
             )
+            self.free = np.zeros(c.particles, dtype=bool)
             self.weight = np.full(c.particles, 1.0 / c.particles)
         else:
             dt = max(float(dt), 1e-3)
-            self.speed = np.clip(
-                self.speed + self.rng.normal(0.0, c.accel_noise * np.sqrt(dt), c.particles), lo, hi
-            )
+            if c.accel_noise_free > 0.0 or self.noise_profile is not None:
+                sigma = np.full(c.particles, c.accel_noise)
+                if self.noise_profile is not None:
+                    bins = np.floor(self.bin_of(self.position)).astype(np.int64) % self.n_bins
+                    sigma = sigma * self.noise_profile[bins]
+                low = np.full(c.particles, lo)
+                if c.accel_noise_free > 0.0:
+                    rates = np.where(self.free, c.to_follow_per_s, c.to_free_per_s)
+                    self.free = self.free ^ (self.rng.random(c.particles) < rates * dt)
+                    sigma = np.where(self.free, c.accel_noise_free, sigma)
+                    low = np.where(self.free, c.free_speed_floor, lo)
+                self.speed = np.clip(self.speed + self.rng.normal(0.0, 1.0, c.particles) * sigma * np.sqrt(dt), low, hi)
+            else:  # the original draw, so single-mode runs reproduce exactly
+                self.speed = np.clip(
+                    self.speed + self.rng.normal(0.0, c.accel_noise * np.sqrt(dt), c.particles), lo, hi
+                )
             self.position = (
                 self.position
                 + self.speed * dt
@@ -155,6 +182,7 @@ class ProgressEstimator:
                 mean_v = float(np.average(self.speed, weights=self.weight))
                 self.speed[slot] = np.clip(self.rng.normal(mean_v, c.reinject_speed_sd, count), lo, hi)
                 self.scale[slot] = float(np.average(self.scale, weights=self.weight))
+                self.free[slot] = False
                 self.weight[slot] = self.weight.mean() * c.reinject_weight
 
         self.weight = self.weight * self._likelihood(belief, self.position)
@@ -207,4 +235,5 @@ class ProgressEstimator:
         self.position = self.position[picks]
         self.speed = self.speed[picks]
         self.scale = self.scale[picks]
+        self.free = self.free[picks]
         self.weight = np.full(n, 1.0 / n)
