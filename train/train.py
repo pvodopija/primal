@@ -106,25 +106,31 @@ def holdout_live_laps(index: LapIndex, per_track: int) -> frozenset[str]:
     """
     reserved: set[str] = set()
     for group in index.by_track.values():
-        ordered = sorted(group, key=lambda lap: lap.lap_id)
+        # Only recorded drives: every run holds out the same laps whether or not
+        # it also trains on re-renders.
+        ordered = sorted((lap for lap in group if lap.variant == "live"), key=lambda lap: lap.lap_id)
         spare = len(ordered) - 2
         if spare <= 0:
             continue
-        reserved.update(lap.lap_id for lap in ordered[-min(per_track, spare) :])
+        # The last whole laps: a partial one would leave its track out of the test.
+        whole = [lap for lap in ordered if lap.s_span > 0.98] or ordered
+        reserved.update(lap.lap_id for lap in whole[-min(per_track, spare) :])
     return frozenset(reserved)
 
 
-def build_index(data: Path, gate: GateConfig, split: str, tracks: list[str] | None = None) -> LapIndex:
-    index = LapIndex.load(data, split=split, tracks=tracks)
+def build_index(data: Path, gate: GateConfig, split: str, tracks: list[str] | None = None,
+                variants: tuple[str, ...] = ("live",)) -> LapIndex:
+    index = LapIndex.load(data, split=split, tracks=tracks, variants=variants)
     if gate.tracks is not None:
         keep = sorted(index.by_track)[: gate.tracks]
-        index = LapIndex.load(data, split=split, tracks=keep)
+        index = LapIndex.load(data, split=split, tracks=keep, variants=variants)
     if gate.laps_per_track is not None:
         index = LapIndex.load(
             data,
             split=split,
             tracks=sorted(index.by_track),
             max_laps_per_track=gate.laps_per_track,
+            variants=variants,
         )
     return index
 
@@ -232,6 +238,8 @@ def main() -> None:
     parser.add_argument("--aug-parts", default="pose,blur,occlude,vignette,jpeg",
                         help="which --camera-aug effects to apply, comma-separated")
     parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
+    parser.add_argument("--with-look", action="store_true",
+                        help="also train on look-into-the-corner re-renders (index variant 'look')")
     parser.add_argument("--target-at", choices=("last", "middle"), default="last",
                         help="localise the clip's last frame (live tracking) or its middle (placing finished laps)")
     parser.add_argument("--strides", default="1,2,3,4",
@@ -245,7 +253,8 @@ def main() -> None:
 
     data = Path(args.data)
     tracks = args.tracks.split(",") if args.tracks else None
-    train_index = build_index(data, gate, split="train", tracks=tracks)
+    train_index = build_index(data, gate, split="train", tracks=tracks,
+                              variants=("live", "look") if args.with_look else ("live",))
     if tracks and sorted(train_index.by_track) != sorted(tracks):
         raise SystemExit(f"--tracks names not in the train split: {sorted(set(tracks) - set(train_index.by_track))}")
     eval_index = build_index(data, gate, split=gate.eval_split, tracks=tracks if gate.eval_split == "train" else None)

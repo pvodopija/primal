@@ -520,24 +520,31 @@ LAG_HISTORY_S = 10.0
 LAG_MIN_S = 1.0
 
 
-def _stream_pairs(data: Path, axis: str, holdout_laps: int) -> list[tuple[str, Lap, Lap]]:
+def _stream_pairs(data: Path, axis: str, holdout_laps: int, look: bool = False) -> list[tuple[str, Lap, Lap]]:
     """
     (gate, reference, live) triples, always across sessions: in the product the
     reference lap and the live lap are driven on different days. G1 lives are the
-    laps held out of training; G2 lives come from the held-out track.
+    laps held out of training; G2 lives come from the held-out tracks.
+
+    With `look`, the lives are instead the held-out tracks' look-into-the-corner
+    re-renders, against recorded drives in the other car: a re-render repeats one
+    drive exactly, so it is never paired with that drive.
     """
     pairs: list[tuple[str, Lap, Lap]] = []
-    for split, gate in (("train", "G1"), ("holdout", "G2")):
-        index = LapIndex.load(data, split=split)
+    for split, gate in ((("holdout", "G2"),) if look else (("train", "G1"), ("holdout", "G2"))):
+        index = LapIndex.load(data, split=split, variants=("live", "look") if look else ("live",))
         reserved = holdout_live_laps(index, 1) if gate == "G1" else None
         for _, group in sorted(index.by_track.items()):
-            lives = [l for l in group if l.s_span > 0.98 and (reserved is None or l.lap_id in reserved)]
+            lives = [l for l in group if l.s_span > 0.98 and (reserved is None or l.lap_id in reserved)
+                     and l.variant == ("look" if look else "live")]
             if gate == "G2":
                 lives = lives[:holdout_laps]
             for live in lives:
                 by_session: dict[str, Lap] = {}
                 for ref in group:
                     if ref.session_id == live.session_id or ref.session_id in by_session:
+                        continue
+                    if ref.variant != "live" or (look and ref.car_model == live.car_model):
                         continue
                     if reserved is not None and ref.lap_id in reserved:
                         continue
@@ -681,7 +688,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
     model, payload = load_model(Path(args.checkpoint), device)
     clip_len = int(payload["args"]["clip_len"])
     axis = reference_axis_of(payload)
-    pairs = _stream_pairs(Path(args.data), axis, args.holdout_laps)
+    pairs = _stream_pairs(Path(args.data), axis, args.holdout_laps, look=args.look)
     rng = np.random.default_rng(args.seed)
 
     kinds = ["single", "filter"] + (["filter + speed"] if args.speed_sigma else [])
@@ -703,15 +710,21 @@ def cmd_stream(args: argparse.Namespace) -> None:
         if args.lag_k is not None:
             runs.update({f"{k}, lag-corrected": _lag_corrected(stream, b, args.lag_k)
                          for k, b in list(runs.items()) if k != "single"})
+        # Each unseen track is also scored on its own: they differ in how many
+        # reference sessions they have, so pooling lets the biggest one decide.
+        groups = [gate] + ([f"{gate} {live.track}"] if gate == "G2" else [])
+        for group in groups:
+            scores.setdefault(group, {k: [[], []] for k in kinds})
         for kind, bins in runs.items():
             m, ms = _stream_errors(stream, bins)
-            scores[gate][kind][0].append(m)
-            scores[gate][kind][1].append(ms)
+            for group in groups:
+                scores[group][kind][0].append(m)
+                scores[group][kind][1].append(ms)
         print(f"  {gate} {live.track[:28]:<28} ref {reference.session_id[-7:]}  live {live.session_id[-7:]}", flush=True)
 
     report = {}
     print(f"\n{'':36}{'median':>17}{'p90':>9}{'>100 ms':>9}{'>10 m':>8}{'worst':>10}")
-    for gate in ("G1", "G2"):
+    for gate in scores:
         for kind in kinds:
             m, ms = (np.concatenate(v) for v in scores[gate][kind])
             if m.size == 0:
@@ -720,7 +733,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
                        p90_ms=float(np.percentile(ms, 90)), over_100ms=float(np.mean(ms > 100)),
                        over_10m=float(np.mean(m > 10)), worst_m=float(m.max()), ticks=int(m.size))
             report[f"{gate} {kind}"] = row
-            print(f"{gate + ' ' + kind:<36}{row['median_m']:>8.2f} m {row['median_ms']:>4.0f} ms"
+            print(f"{(gate + ' ' + kind)[-36:]:<36}{row['median_m']:>8.2f} m {row['median_ms']:>4.0f} ms"
                   f"{row['p90_ms']:>6.0f} ms{100 * row['over_100ms']:>8.1f}%{100 * row['over_10m']:>7.1f}%"
                   f"{row['worst_m']:>9.1f} m")
     if args.out:
@@ -792,6 +805,8 @@ def main() -> None:
     stream.add_argument("--speed-sigma", type=float, help="also feed the filter the true speed, stated to +-this m/s")
     stream.add_argument("--speed-noise", type=float, default=0.0, help="fractional random error added to that speed")
     stream.add_argument("--window", type=int, default=8)
+    stream.add_argument("--look", action="store_true",
+                        help="score the held-out tracks' look-into-the-corner re-renders instead (head turns)")
     stream.add_argument("--lag-k", type=float,
                         help="also score the filters with their lag removed, estimated from backward readings (0.5 = midpoint)")
     stream.add_argument("--seed", type=int, default=0)

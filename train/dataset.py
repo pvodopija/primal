@@ -55,6 +55,10 @@ class Lap:
     # a head pose is logged.
     yaw_mean_deg: float = 0.0
     yaw_bias_deg: float = 0.0
+    # "live" for a recorded drive; "look" for a re-render of one from its replay
+    # with the rig turning the head into corners. A re-render repeats its source
+    # drive exactly, so it must never be paired with it as a test.
+    variant: str = "live"
 
     @property
     def directory(self) -> Path:
@@ -116,12 +120,15 @@ class LapIndex:
         split: str | None = None,
         tracks: list[str] | None = None,
         max_laps_per_track: int | None = None,
+        variants: tuple[str, ...] | None = ("live",),
     ) -> "LapIndex":
         root = Path(root)
         payload = json.loads((root / "index.json").read_text())
         laps: list[Lap] = []
         for entry in payload["laps"]:
             if split is not None and entry.get("split", "train") != split:
+                continue
+            if variants is not None and entry.get("variant", "live") not in variants:
                 continue
             if tracks is not None and entry["track"] not in tracks:
                 continue
@@ -144,6 +151,7 @@ class LapIndex:
                     line_bias_m=float(entry.get("line_bias_m", 0.0)),
                     yaw_mean_deg=float(entry.get("yaw_mean_deg", 0.0)),
                     yaw_bias_deg=float(entry.get("yaw_bias_deg", 0.0)),
+                    variant=entry.get("variant", "live"),
                 )
             )
         index = LapIndex(laps)
