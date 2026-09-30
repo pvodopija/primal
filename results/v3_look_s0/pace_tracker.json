@@ -1,0 +1,73 @@
+{
+  "reference time (today)": {
+    "G1 imperfect": 0.32233793141050104,
+    "G2 imperfect": 0.32419437212720636,
+    "G2 steady": 0.12736264565977903,
+    "G2 rough": 0.4613010894892626,
+    "G1 steady": 0.12496556284092787
+  },
+  "retuned, pace noise 0.03, vision 0.15": {
+    "G1 imperfect": 0.2664522108936263
+  },
+  "retuned, pace noise 0.03, vision 0.3": {
+    "G1 imperfect": 0.26143612671064825,
+    "G2 imperfect": 0.22756885362298981,
+    "G2 steady": 0.14681750685827902,
+    "G2 rough": 0.285106114994647,
+    "G1 steady": 0.1805609124469668
+  },
+  "retuned, pace noise 0.03, vision 0.5": {
+    "G1 imperfect": 0.27081402322665066
+  },
+  "retuned, pace noise 0.06, vision 0.15": {
+    "G1 imperfect": 0.2629627610272068
+  },
+  "retuned, pace noise 0.06, vision 0.3": {
+    "G1 imperfect": 0.27037784199334824
+  },
+  "retuned, pace noise 0.06, vision 0.5": {
+    "G1 imperfect": 0.2772476964178616
+  },
+  "retuned, pace noise 0.12, vision 0.15": {
+    "G1 imperfect": 0.28062810097595553
+  },
+  "retuned, pace noise 0.12, vision 0.3": {
+    "G1 imperfect": 0.2897879068753067
+  },
+  "retuned, pace noise 0.12, vision 0.5": {
+    "G1 imperfect": 0.2919688130418189
+  },
+  "two modes, free 0.1, to free 0.1/s": {
+    "G1 imperfect": 0.2630718063355324
+  },
+  "two modes, free 0.1, to free 0.5/s": {
+    "G1 imperfect": 0.2570743143776239
+  },
+  "two modes, free 0.3, to free 0.1/s": {
+    "G1 imperfect": 0.2544027043236465,
+    "G2 imperfect": 0.22840344299256343,
+    "G2 steady": 0.13571842045654745,
+    "G2 rough": 0.29747465205617485,
+    "G1 steady": 0.14099950410490936
+  },
+  "two modes, free 0.3, to free 0.5/s": {
+    "G1 imperfect": 0.2636170328771605
+  },
+  "braking zones, k 2.0": {
+    "G1 imperfect": 0.28346327899242135,
+    "G2 imperfect": 0.2604417095379863,
+    "G2 steady": 0.1848841013766894,
+    "G2 rough": 0.29874677246678,
+    "G1 steady": 0.2359909636894595
+  },
+  "braking zones, k 5.0": {
+    "G1 imperfect": 0.31154244588626573
+  },
+  "both": {
+    "G1 imperfect": 0.27692056049288477,
+    "G2 imperfect": 0.2417817860212509,
+    "G2 steady": 0.19486321193969747,
+    "G2 rough": 0.2706719566723345,
+    "G1 steady": 0.23643175932558266
+  }
+}

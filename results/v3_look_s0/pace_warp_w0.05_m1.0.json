@@ -1,0 +1,20 @@
+{
+  "args": {
+    "checkpoint": "runs/v3_look_s0/best.pt",
+    "data": "data/packed_ac_v3",
+    "wander": 0.05,
+    "mistakes": 1.0,
+    "seed": 0
+  },
+  "report": {
+    "G1 filter": 0.3172673245733602,
+    "G1 filter, reference time": 0.32233793141050104,
+    "G1 filter + speed": 0.055776675208549155,
+    "G2 filter": 0.29756225164737976,
+    "G2 filter, reference time": 0.32419437212720636,
+    "G2 filter + speed": 0.019058533364889947,
+    "G2 same car filter": 0.38300653594771245,
+    "G2 same car filter, reference time": 0.28179271708683473,
+    "G2 same car filter + speed": 0.019919078742608155
+  }
+}

@@ -31,6 +31,10 @@
   - with a true speed signal: 2.6%.
   - More circuits barely help at this model size (5 -> 9 circuits: 18.8% ->
     17.9%).
+  - That tracker was tuned on bot laps, which repeat the reference's rhythm.
+    For a driver whose pace wanders ±5% with a mistake a minute, the two-mode
+    version reaches 22.8% (the single mode 32.4%). Measured pace is again
+    worth having for real drivers.
 - **What moved it this week:**
   - runtime stride 2 removed a ~60 ms lag;
   - tracking in reference time replaced most of a speed sensor;
@@ -1285,6 +1289,40 @@ pose + mirror recipe on `packed_ac_v3`, share of ticks over 100 ms:
 - **A speed signal would still add something,** mostly where the driver departs
   from the reference: a mistake, a different line, traffic. The road-flow lane
   on Halo becomes a refinement, not a requirement.
+
+**When the driver does not repeat the reference's rhythm.** The bot drives laps
+within 0.1 s of each other, which flatters a tracker that assumes the reference's
+rhythm. `experiments/pace_warp.py` replays every live lap on a warped clock:
+- the pace wanders around the recording's, ±5% or ±10% with ~1 s correlation;
+- optionally a "mistake" a minute: 1.5-3 s at 35-60% of the pace.
+
+Labels stay exact, and unwarped it reproduces the stream eval. Share of ticks
+over 100 ms on the unseen circuits, recipe with re-renders (seed 0); settings
+tuned on G1's imperfect laps (`experiments/pace_tracker.py`):
+
+| | steady (bot) | ±5% + a mistake a minute | ±10% |
+|---|---|---|---|
+| filter in metres | 29.6% | 29.8% | 29.8% |
+| reference time, tuned on bot laps (`REFERENCE_TIME`) | **12.7%** | 32.4% | 46.1% |
+| reference time, looser pace (0.03) and more vision (0.3) | 14.7% | 22.8% | 28.5% |
+| **reference time, two modes** (`REFERENCE_TIME_TWO_MODES`) | **13.6%** | **22.8%** | **29.7%** |
+| reference time, pace noise scaled by the reference's braking | 18.5% | 26.0% | 29.9% |
+| filter in metres, true speed | 1.7% | 1.9% | 2.0% |
+
+- **Tuned on bot laps, the reference-time filter was brittle.** At ±10% it was
+  worse than the filter in metres.
+- **Two modes fixes most of it.** Each particle either follows the reference's
+  rhythm or is off-script, with a freer pace down to a near stop, and switches
+  between the two. It keeps nearly all of the steady-driving gain, cuts the
+  imperfect driver from 32.4% to 22.8%, and is never worse than the filter in
+  metres. It is the one to use.
+- **Loosening the pace noise only in braking zones did not help.**
+- **For a real, inconsistent driver a measured pace is worth a lot again:**
+  22.8% against 1.9% with true speed. The road-flow lane (or its rate against
+  the reference's speed at that point) matters more than the bot laps
+  suggested.
+- **How imperfect real drivers are is the open question.** The warp is a guess
+  at human variation; human-driven laps are the next data for that reason.
 
 ### Where the speed can come from
 

@@ -520,6 +520,12 @@ SPEED_FED = dict(accel_noise=8.0, likelihood_power=0.2)
 # reference braked there too. The map is the speed prior; no sensor. Tuned on G1.
 REFERENCE_TIME = dict(accel_noise=0.01, likelihood_power=0.15, position_noise=0.01,
                       speed_range=(0.6, 1.6), reinject_speed_sd=0.05, cluster_m=0.5)
+# The same with a second mode for a driver who departs from the reference's rhythm (a
+# late brake, a mistake): tuned on G1 laps replayed at an imperfect pace
+# (experiments/pace_tracker.py). Near the single mode for steady driving, far better
+# when the pace varies, never worse than the filter in metres.
+REFERENCE_TIME_TWO_MODES = dict(REFERENCE_TIME, speed_range=(0.05, 1.6), accel_noise_free=0.3,
+                                to_free_per_s=0.1, to_follow_per_s=1.0)
 # The lag correction's memory: the running median of the forward-backward gap over the
 # last LAG_HISTORY_S of frames whose following clip has been seen, once LAG_MIN_S of them.
 LAG_HISTORY_S = 10.0
@@ -702,7 +708,8 @@ def cmd_stream(args: argparse.Namespace) -> None:
     pairs = _stream_pairs(Path(args.data), axis, args.holdout_laps, look=args.look)
     rng = np.random.default_rng(args.seed)
 
-    kinds = ["single", "filter", "filter, reference time"] + (["filter + speed"] if args.speed_sigma else [])
+    kinds = ["single", "filter", "filter, reference time", "filter, reference time, two modes"] + (
+        ["filter + speed"] if args.speed_sigma else [])
     if args.lag_k is not None:
         kinds += [f"{k}, lag-corrected" for k in kinds if k != "single"]
     scores: dict[str, dict[str, list]] = {g: {k: [[], []] for k in kinds} for g in ("G1", "G2")}
@@ -714,6 +721,8 @@ def cmd_stream(args: argparse.Namespace) -> None:
             "filter": _run_estimator(stream, EstimatorConfig(), None, None, args.seed),
             "filter, reference time": _run_estimator(stream, EstimatorConfig(**REFERENCE_TIME), None, None,
                                                      args.seed, reference_time=True),
+            "filter, reference time, two modes": _run_estimator(
+                stream, EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None, args.seed, reference_time=True),
         }
         if args.speed_sigma:
             speed = stream["speed"] * (1.0 + rng.normal(0.0, args.speed_noise, stream["speed"].size))
