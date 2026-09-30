@@ -42,6 +42,8 @@ class EstimatorConfig:
     # is lost. Redrawn particles land on the belief's peak, so at full weight a
     # single confidently wrong tick would outweigh the true place.
     reinject_weight: float = 1e-6
+    # Spread of the speeds redrawn particles start with, around the filter's mean.
+    reinject_speed_sd: float = 8.0
     speed_range: tuple[float, float] = (2.0, 90.0)
     # Particles within this distance of the densest place form the estimate.
     cluster_m: float = 15.0
@@ -151,7 +153,7 @@ class ProgressEstimator:
                 slot = self.rng.choice(c.particles, size=count, replace=False)
                 self.position[slot] = self._sample_from(belief, count)
                 mean_v = float(np.average(self.speed, weights=self.weight))
-                self.speed[slot] = np.clip(self.rng.normal(mean_v, 8.0, count), lo, hi)
+                self.speed[slot] = np.clip(self.rng.normal(mean_v, c.reinject_speed_sd, count), lo, hi)
                 self.scale[slot] = float(np.average(self.scale, weights=self.weight))
                 self.weight[slot] = self.weight.mean() * c.reinject_weight
 
