@@ -374,7 +374,7 @@ def cmd_infer(args: argparse.Namespace) -> None:
     import torch
 
     from train.estimator import EstimatorConfig, ProgressEstimator
-    from train.eval import SPEED_FED, _instantaneous_speed, load_model, reference_axis_of
+    from train.eval import REFERENCE_TIME, SPEED_FED, _instantaneous_speed, load_model, reference_axis_of
     from train.model import compute_metrics, soft_argmax_circular
 
     index = _load_index(args.data, None)
@@ -400,6 +400,10 @@ def cmd_infer(args: argparse.Namespace) -> None:
         if args.speed_sigma
         else None
     )
+    # The same filter counting progress in reference-lap time: the camera-only tracker.
+    time_estimator = ProgressEstimator(grid.time_s, grid.lap_time_s, EstimatorConfig(**REFERENCE_TIME))
+    time_m: list[float] = []
+    time_ms: list[float] = []
     live_t = live_lap.t()
     previous_t: float | None = None
     filter_m: list[float] = []
@@ -459,7 +463,14 @@ def cmd_infer(args: argparse.Namespace) -> None:
             )
             filter_m.append(float(fm[0]))
             filter_ms.append(float(fms[0]))
-            tracks = [("filter", tracked, (245, 245, 245))]
+            timed = float(time_estimator.bin_of(time_estimator.step(belief.astype(np.float64), dt).position_m))
+            tm, tms = compute_metrics(
+                torch.tensor([timed]), torch.tensor([true_bin]),
+                grid_pos, grid_time, grid.track_length_m, grid.lap_time_s,
+            )
+            time_m.append(float(tm[0]))
+            time_ms.append(float(tms[0]))
+            tracks = [("filter", tracked, (245, 245, 245)), ("reference time", timed, (90, 220, 90))]
             if speed_estimator is not None:
                 fed = tick % args.speed_every == 0
                 fed_bin = float(speed_estimator.bin_of(speed_estimator.step(
@@ -502,6 +513,7 @@ def cmd_infer(args: argparse.Namespace) -> None:
                     f"bin {int(round(predicted)) % n_bins}/{n_bins}",
                     f"err {error_m:5.2f} m / {error_ms:5.0f} ms",
                     f"filter err {filter_m[-1]:5.2f} m / {filter_ms[-1]:5.0f} ms",
+                    f"ref-time err {time_m[-1]:5.2f} m / {time_ms[-1]:5.0f} ms",
                 ] + ([f"+ speed err {fed_m[-1]:5.2f} m / {fed_ms[-1]:5.0f} ms"] if fed_m else []),
                 font_scale=0.6,
                 line_height=24,
@@ -544,6 +556,12 @@ def cmd_infer(args: argparse.Namespace) -> None:
         f"p90 {np.percentile(tracked, 90):.2f} m   worst {tracked.max():.2f} m   "
         f"over 100 ms {np.mean(np.array(filter_ms) > 100) * 100:.1f}%  (single-shot "
         f"{np.mean(np.array(errors_ms) > 100) * 100:.1f}%)"
+    )
+    timed = np.array(time_m)
+    print(
+        f"  ref time  median {np.median(timed):.2f} m / {np.median(time_ms):.0f} ms   "
+        f"p90 {np.percentile(timed, 90):.2f} m   worst {timed.max():.2f} m   "
+        f"over 100 ms {np.mean(np.array(time_ms) > 100) * 100:.1f}%  (filter in reference-lap time, no sensor)"
     )
     if fed_m:
         fed = np.array(fed_m)
