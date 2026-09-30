@@ -741,6 +741,8 @@ def cmd_stream(args: argparse.Namespace) -> None:
     print(f"\n{'':60}{'median':>17}{'p90':>9}{'>100 ms':>9}{'>10 m':>8}{'worst':>10}")
     for gate in scores:
         for kind in kinds:
+            if not scores[gate][kind][0]:  # e.g. no G1 laps when scoring the head-turn re-renders
+                continue
             m, ms = (np.concatenate(v) for v in scores[gate][kind])
             if m.size == 0:
                 continue
