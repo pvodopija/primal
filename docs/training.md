@@ -93,7 +93,10 @@ Each step:
    - per-frame flicker (±3%) and pixel noise (σ 0.012 on a 0-1 scale).
 6. **Targets:** the last frame's continuous bin, a **soft target** (a Gaussian of
    σ = 2 bins around it, wrapped at the lap end), and each clip frame's own bin
-   for per-frame supervision.
+   for per-frame supervision. `--target-at middle` localises the point halfway
+   between the two central frames instead: context on both sides, no pace-prior
+   lag. That is the lap aligner's setting for placing finished laps on each
+   other, not the live tracker's.
 
 ## 4. What the network computes
 
