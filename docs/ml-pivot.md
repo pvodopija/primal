@@ -1150,6 +1150,46 @@ confidence makes the speed-fed filter worse (about 20% -> 39-46%).
 the baseline looked better once speed was known. After it, the augmented models
 are about twice as good (6.4-6.9% against 13.3%).
 
+### The reference lap as the speed prior
+
+The tracker needed a speed sensor because it tracks in metres, where a kart's
+speed swings by 10 m/s within a second under braking. **The reference lap already
+knows where the driver brakes and accelerates.** Tracked in reference-lap time
+instead ("the point the reference reached after 23.41 s"), a driver moves at
+almost exactly one second per second. Only the difference drifts, slowly, and
+that difference is the delta itself.
+
+From the labels (all 95 v3 stream pairs), carrying the last second's rate one
+second ahead, error in delta milliseconds:
+
+| carried forward in | median | p90 | >100 ms | rate, 5-95% |
+|---|---|---|---|---|
+| metres (constant speed) | 41-44 ms | 166-219 ms | 16-19% | |
+| **reference time (constant rate)** | **11-14 ms** | **31-45 ms** | **0.1-1.1%** | 0.977-1.020 same car, 0.933-1.064 other car |
+
+The particle filter needs no new code for this: it is fed each bin's reference
+time instead of its position, so its "speed" becomes the rate (`REFERENCE_TIME`
+in `train/eval.py`, the "filter, reference time" row of `train.eval stream`).
+Rate noise and likelihood power were tuned on G1 only, over 0.003-0.2 and
+0.1-0.8; the chosen 0.01 and 0.15 sit inside the range. Whole laps, stride 2,
+pose + mirror recipe on `packed_ac_v3`, share of ticks over 100 ms:
+
+| | trained tracks | unseen | Silverstone | Lime Rock | Oulton | unseen, same car |
+|---|---|---|---|---|---|---|
+| filter in metres, camera only | 38.3% | 30.8% | 36.6% | 18.7% | 26.7% | 38.5% |
+| **filter in reference time, camera only** | **20.6%** | **12.2%** | **12.3%** | **8.3%** | **15.0%** | **5.3%** |
+| filter in metres, true speed | 13.7% | 2.3% | 2.3% | 0.6% | 3.8% | 2.4% |
+
+- **Camera-only error on unseen tracks falls by 60%, with no sensor and no
+  retraining.** When the reference was driven in the same car, as a driver's
+  own best lap always is, it reaches 5.3%, close to a true speed sensor's 2.4%.
+- **It is weakest where the pace differs from the reference.** Other-car pairs
+  run up to ±7% off the reference's rate, against ±2% for same-car pairs. A
+  driver's own laps should sit nearer the same-car numbers.
+- **A speed signal would still add something,** mostly where the driver departs
+  from the reference: a mistake, a different line, traffic. The road-flow lane
+  on Halo becomes a refinement, not a requirement.
+
 ### Where the speed can come from
 
 - **Not from the reference match.** Reading speed off the slope of the clip's
@@ -1666,8 +1706,11 @@ Recorded so they are not relitigated.
 
 ## Build order
 
-1. **Speed from the camera.** The product is camera-only (no GNSS indoors), so
-   the road-flow speed lane on the glasses is the speed plan: it works on AC
+1. **Speed from the camera.** Tracking in reference-lap time already gives most
+   of what a speed sensor gives (*The reference lap as the speed prior*: unseen
+   tracks 30.8% -> 12.2% of ticks over budget, 5.3% same car). A measured speed
+   is now a refinement for where the driver departs from the reference. The
+   road-flow speed lane on the glasses is the plan for it: it works on AC
    below about 0.28 m moved per frame, about 90 fps at a kart's top speed, and
    indoor karts are slower still. Slow-motion replays confirm fast straights;
    Halo's frame rate decides it. The filter's bias state is built; a

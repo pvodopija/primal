@@ -514,6 +514,11 @@ ACQUISITION_S = 2.0
 # temper vision hard; tuned on held-out laps of trained tracks with speed known
 # to +-2 m/s.
 SPEED_FED = dict(accel_noise=8.0, likelihood_power=0.2)
+# The filter run in reference-lap time instead of metres: its "speed" is the rate of
+# progress through the reference lap, near 1.0 wherever the driver brakes, because the
+# reference braked there too. The map is the speed prior; no sensor. Tuned on G1.
+REFERENCE_TIME = dict(accel_noise=0.01, likelihood_power=0.15, position_noise=0.01,
+                      speed_range=(0.6, 1.6), reinject_speed_sd=0.05, cluster_m=0.5)
 # The lag correction's memory: the running median of the forward-backward gap over the
 # last LAG_HISTORY_S of frames whose following clip has been seen, once LAG_MIN_S of them.
 LAG_HISTORY_S = 10.0
@@ -662,9 +667,13 @@ def _lag_corrected(stream: dict, bins: torch.Tensor, k: float) -> torch.Tensor:
 
 
 def _run_estimator(stream: dict, config: EstimatorConfig, speed: np.ndarray | None,
-                   speed_sigma: float | None, seed: int) -> torch.Tensor:
+                   speed_sigma: float | None, seed: int, reference_time: bool = False) -> torch.Tensor:
     g = stream["grid"]
-    est = ProgressEstimator(g.pos_m, g.track_length_m, config, seed=seed)
+    if reference_time:  # positions in reference seconds; a speed sensor would need converting
+        assert speed is None
+        est = ProgressEstimator(g.time_s, g.lap_time_s, config, seed=seed)
+    else:
+        est = ProgressEstimator(g.pos_m, g.track_length_m, config, seed=seed)
     dts = np.diff(stream["t"], prepend=stream["t"][0] - 1.0 / STREAM_HZ)
     out = np.empty(dts.size)
     for i, (belief, dt) in enumerate(zip(stream["belief"], dts)):
@@ -691,7 +700,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
     pairs = _stream_pairs(Path(args.data), axis, args.holdout_laps, look=args.look)
     rng = np.random.default_rng(args.seed)
 
-    kinds = ["single", "filter"] + (["filter + speed"] if args.speed_sigma else [])
+    kinds = ["single", "filter", "filter, reference time"] + (["filter + speed"] if args.speed_sigma else [])
     if args.lag_k is not None:
         kinds += [f"{k}, lag-corrected" for k in kinds if k != "single"]
     scores: dict[str, dict[str, list]] = {g: {k: [[], []] for k in kinds} for g in ("G1", "G2")}
@@ -701,6 +710,8 @@ def cmd_stream(args: argparse.Namespace) -> None:
         runs = {
             "single": stream["single"],
             "filter": _run_estimator(stream, EstimatorConfig(), None, None, args.seed),
+            "filter, reference time": _run_estimator(stream, EstimatorConfig(**REFERENCE_TIME), None, None,
+                                                     args.seed, reference_time=True),
         }
         if args.speed_sigma:
             speed = stream["speed"] * (1.0 + rng.normal(0.0, args.speed_noise, stream["speed"].size))
@@ -712,7 +723,11 @@ def cmd_stream(args: argparse.Namespace) -> None:
                          for k, b in list(runs.items()) if k != "single"})
         # Each unseen track is also scored on its own: they differ in how many
         # reference sessions they have, so pooling lets the biggest one decide.
+        # "same car" is the product's case: the reference is the driver's own
+        # vehicle, only another session.
         groups = [gate] + ([f"{gate} {live.track}"] if gate == "G2" else [])
+        if gate == "G2" and reference.car_model == live.car_model:
+            groups.append(f"{gate} same car")
         for group in groups:
             scores.setdefault(group, {k: [[], []] for k in kinds})
         for kind, bins in runs.items():

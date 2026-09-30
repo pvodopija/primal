@@ -58,7 +58,10 @@ Two things that result does *not* settle, and they are the next work:
   catastrophic errors under 1%. Most of what remained was a lag, the tracker
   trailing the kart by ~60 ms: runtime's clip stride sat at the fast edge of
   training's. At runtime stride 2, with speed, the augmented models reach 2.6-5.6%
-  of ticks over budget and a p90 under 100 ms on the unseen track. A *drifting* speed is worse than none, but the
+  of ticks over budget and a p90 under 100 ms on the unseen track. Without any
+  sensor, tracking in reference-lap time instead of metres (the reference already
+  knows where the driver brakes) takes the unseen tracks from 30.8% to 12.2%,
+  and 5.3% when the reference was driven in the same car. A *drifting* speed is worse than none, but the
   filter can now learn a sensor's scale. Speed read off the reference match,
   frame-to-frame motion at the packed 148x80, and the video encoder's own motion
   vectors at 720p are all not good enough; the encoder stops tracking the road
