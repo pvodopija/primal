@@ -1,0 +1,185 @@
+{
+  "checkpoint": "runs/lagfix_deg/best.pt",
+  "gates": {
+    "seen laps, seen tracks": {
+      "overall": {
+        "count": 320,
+        "median_m": 1.468994140625,
+        "p90_m": 4.466821193695068,
+        "worst_m": 18.94970703125,
+        "median_ms": 44.086456298828125,
+        "p90_ms": 140.0554656982422,
+        "worst_ms": 440.0177001953125,
+        "within_1_bin": 0.603125,
+        "within_5_bin": 0.990625
+      },
+      "entropy": 2.235421597957611,
+      "per_track": {
+        "ks_black_cat_county__layout_short": {
+          "count": 72,
+          "median_m": 2.414306640625,
+          "p90_m": 6.463427543640137,
+          "worst_m": 17.494140625,
+          "median_ms": 75.47760009765625,
+          "p90_ms": 193.79196166992188,
+          "worst_ms": 317.8863525390625,
+          "within_1_bin": 0.4166666666666667,
+          "within_5_bin": 0.9722222222222222
+        },
+        "ks_brands_hatch__indy": {
+          "count": 72,
+          "median_m": 0.652313232421875,
+          "p90_m": 1.809411644935608,
+          "worst_m": 2.836181640625,
+          "median_ms": 20.554542541503906,
+          "p90_ms": 46.92420959472656,
+          "worst_ms": 74.50485229492188,
+          "within_1_bin": 0.9305555555555556,
+          "within_5_bin": 1.0
+        },
+        "ks_red_bull_ring__layout_national": {
+          "count": 48,
+          "median_m": 1.968994140625,
+          "p90_m": 4.26116943359375,
+          "worst_m": 8.61181640625,
+          "median_ms": 54.978370666503906,
+          "p90_ms": 106.37931823730469,
+          "worst_ms": 184.71717834472656,
+          "within_1_bin": 0.5,
+          "within_5_bin": 1.0
+        },
+        "magione": {
+          "count": 64,
+          "median_m": 1.22576904296875,
+          "p90_m": 3.336962938308716,
+          "worst_m": 18.94970703125,
+          "median_ms": 42.65785217285156,
+          "p90_ms": 117.88101196289062,
+          "worst_ms": 440.0177001953125,
+          "within_1_bin": 0.640625,
+          "within_5_bin": 0.984375
+        },
+        "ks_vallelunga__club_circuit": {
+          "count": 64,
+          "median_m": 2.07415771484375,
+          "p90_m": 4.49761962890625,
+          "worst_m": 9.4532470703125,
+          "median_ms": 71.60758972167969,
+          "p90_ms": 170.13320922851562,
+          "worst_ms": 274.44647216796875,
+          "within_1_bin": 0.484375,
+          "within_5_bin": 1.0
+        }
+      }
+    },
+    "G1  held-out laps, seen tracks": {
+      "overall": {
+        "count": 320,
+        "median_m": 1.537384033203125,
+        "p90_m": 4.117041110992432,
+        "worst_m": 67.03125,
+        "median_ms": 48.66981506347656,
+        "p90_ms": 142.40188598632812,
+        "worst_ms": 1573.8258056640625,
+        "within_1_bin": 0.621875,
+        "within_5_bin": 0.996875
+      },
+      "entropy": 2.2369820833206178,
+      "per_track": {
+        "ks_vallelunga__club_circuit": {
+          "count": 88,
+          "median_m": 1.588409423828125,
+          "p90_m": 4.644842624664307,
+          "worst_m": 9.0830078125,
+          "median_ms": 59.734344482421875,
+          "p90_ms": 165.5687255859375,
+          "worst_ms": 286.123291015625,
+          "within_1_bin": 0.6363636363636364,
+          "within_5_bin": 1.0
+        },
+        "magione": {
+          "count": 56,
+          "median_m": 1.79290771484375,
+          "p90_m": 3.58282470703125,
+          "worst_m": 67.03125,
+          "median_ms": 70.07598876953125,
+          "p90_ms": 149.87945556640625,
+          "worst_ms": 1573.8258056640625,
+          "within_1_bin": 0.5357142857142857,
+          "within_5_bin": 0.9821428571428571
+        },
+        "ks_brands_hatch__indy": {
+          "count": 64,
+          "median_m": 0.955780029296875,
+          "p90_m": 2.386431932449341,
+          "worst_m": 4.0584716796875,
+          "median_ms": 28.84387969970703,
+          "p90_ms": 67.94681549072266,
+          "worst_ms": 97.59521484375,
+          "within_1_bin": 0.765625,
+          "within_5_bin": 1.0
+        },
+        "ks_red_bull_ring__layout_national": {
+          "count": 64,
+          "median_m": 1.599365234375,
+          "p90_m": 4.173730373382568,
+          "worst_m": 7.711669921875,
+          "median_ms": 42.499542236328125,
+          "p90_ms": 113.9434814453125,
+          "worst_ms": 210.58273315429688,
+          "within_1_bin": 0.625,
+          "within_5_bin": 1.0
+        },
+        "ks_black_cat_county__layout_short": {
+          "count": 48,
+          "median_m": 1.9390869140625,
+          "p90_m": 6.696069240570068,
+          "worst_m": 8.563720703125,
+          "median_ms": 52.43682861328125,
+          "p90_ms": 169.14215087890625,
+          "worst_ms": 357.76519775390625,
+          "within_1_bin": 0.5,
+          "within_5_bin": 1.0
+        }
+      }
+    },
+    "G2  held-out tracks": {
+      "overall": {
+        "count": 320,
+        "median_m": 3.139404296875,
+        "p90_m": 15.904321670532227,
+        "worst_m": 1141.9666748046875,
+        "median_ms": 80.10292053222656,
+        "p90_ms": 481.4002990722656,
+        "worst_ms": 31451.443359375,
+        "within_1_bin": 0.35,
+        "within_5_bin": 0.8375
+      },
+      "entropy": 2.6303940415382385,
+      "per_track": {
+        "ks_silverstone__national": {
+          "count": 320,
+          "median_m": 3.139404296875,
+          "p90_m": 15.904321670532227,
+          "worst_m": 1141.9666748046875,
+          "median_ms": 80.10292053222656,
+          "p90_ms": 481.4002990722656,
+          "worst_ms": 31451.443359375,
+          "within_1_bin": 0.35,
+          "within_5_bin": 0.8375
+        }
+      }
+    }
+  },
+  "controls": {
+    "wrong_reference": {
+      "matched_median_m": 1.24700927734375,
+      "wrong_median_m": 579.1904296875,
+      "matched_entropy": 2.2339535892009734,
+      "wrong_entropy": 3.413674650770245,
+      "chance_median_m": 1613.328857421875,
+      "uniform_entropy": 8.079308192051961,
+      "verdict": "PASS"
+    }
+  }
+}

@@ -33,6 +33,8 @@ trees with other (mostly closed) plans.
 | `train/` | Shared encoder, live↔reference correlation, dilated 1-D conv head, gates, synthetic renderer. |
 | `tests/` | Overlay wire format, fake-recording e2e, sampler invariants + a learning smoke test. |
 | `docs/ml-pivot.md` | Active system design. |
+| `results/INDEX.md` | Every training run: settings, controls, headline numbers; its result files next to it. |
+| `experiments/` | The scripts behind each finding, mapped in its README. |
 
 The network is given a live clip of K frames **and** one reference lap. It
 predicts which point of the reference the live clip is at. Track identity

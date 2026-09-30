@@ -1,0 +1,14 @@
+{
+  "chance_bins": 64.0,
+  "seen": {
+    "median_bins": 18.058517456054688,
+    "median_m": 455.223876953125,
+    "within_5_bins": 0.2515625
+  },
+  "held_out": {
+    "median_bins": 59.45176696777344,
+    "median_m": 603.8678588867188,
+    "within_5_bins": 0.075
+  },
+  "verdict": "PASS"
+}

@@ -1,0 +1,146 @@
+{
+  "G1 1 reference single": {
+    "median_m": 1.56695556640625,
+    "over_100ms": 0.27333831217326365,
+    "over_10m": 0.0074682598954443615,
+    "worst_m": 161.797119140625
+  },
+  "G1 1 reference filter": {
+    "median_m": 1.55706787109375,
+    "over_100ms": 0.2830470500373413,
+    "over_10m": 0.0037341299477221808,
+    "worst_m": 12.0587158203125
+  },
+  "G1 1 reference filter + speed": {
+    "median_m": 0.7315673828125,
+    "over_100ms": 0.06646751306945482,
+    "over_10m": 0.0,
+    "worst_m": 5.30419921875
+  },
+  "G1 5 references, labels single": {
+    "median_m": 1.357421875,
+    "over_100ms": 0.18707991038088126,
+    "over_10m": 0.0018670649738610904,
+    "worst_m": 107.5958251953125
+  },
+  "G1 5 references, labels filter": {
+    "median_m": 1.317626953125,
+    "over_100ms": 0.18259895444361463,
+    "over_10m": 0.0,
+    "worst_m": 8.5830078125
+  },
+  "G1 5 references, labels filter + speed": {
+    "median_m": 0.61370849609375,
+    "over_100ms": 0.02912621359223301,
+    "over_10m": 0.0,
+    "worst_m": 4.3704833984375
+  },
+  "G1 5 references, matcher single": {
+    "median_m": 1.589630126953125,
+    "over_100ms": 0.26176250933532486,
+    "over_10m": 0.0037341299477221808,
+    "worst_m": 108.5472412109375
+  },
+  "G1 5 references, matcher filter": {
+    "median_m": 1.58673095703125,
+    "over_100ms": 0.28192681105302464,
+    "over_10m": 0.0018670649738610904,
+    "worst_m": 11.6446533203125
+  },
+  "G1 5 references, matcher filter + speed": {
+    "median_m": 0.82159423828125,
+    "over_100ms": 0.05937266616878267,
+    "over_10m": 0.0,
+    "worst_m": 4.619873046875
+  },
+  "G1 5 references, aligner single": {
+    "median_m": 1.461151123046875,
+    "over_100ms": 0.20799103808812547,
+    "over_10m": 0.0014936519790888724,
+    "worst_m": 108.7265625
+  },
+  "G1 5 references, aligner filter": {
+    "median_m": 1.420623779296875,
+    "over_100ms": 0.21620612397311426,
+    "over_10m": 0.0,
+    "worst_m": 8.2747802734375
+  },
+  "G1 5 references, aligner filter + speed": {
+    "median_m": 0.655029296875,
+    "over_100ms": 0.036221060492905154,
+    "over_10m": 0.0,
+    "worst_m": 4.375732421875
+  },
+  "G2 1 reference single": {
+    "median_m": 2.3896484375,
+    "over_100ms": 0.3230558410414526,
+    "over_10m": 0.05173004453579993,
+    "worst_m": 1098.8607177734375
+  },
+  "G2 1 reference filter": {
+    "median_m": 2.2845458984375,
+    "over_100ms": 0.30318602261048305,
+    "over_10m": 0.04042480301473107,
+    "worst_m": 25.19970703125
+  },
+  "G2 1 reference filter + speed": {
+    "median_m": 0.985595703125,
+    "over_100ms": 0.0075368276807125725,
+    "over_10m": 0.0,
+    "worst_m": 4.6092529296875
+  },
+  "G2 5 references, labels single": {
+    "median_m": 1.8551025390625,
+    "over_100ms": 0.2069201781431997,
+    "over_10m": 0.01644398766700925,
+    "worst_m": 852.8892822265625
+  },
+  "G2 5 references, labels filter": {
+    "median_m": 1.74658203125,
+    "over_100ms": 0.17026378896882494,
+    "over_10m": 0.006851661527920521,
+    "worst_m": 15.69091796875
+  },
+  "G2 5 references, labels filter + speed": {
+    "median_m": 0.6337890625,
+    "over_100ms": 0.0,
+    "over_10m": 0.0,
+    "worst_m": 3.2451171875
+  },
+  "G2 5 references, matcher single": {
+    "median_m": 2.4127197265625,
+    "over_100ms": 0.3336759164097294,
+    "over_10m": 0.043850633778691334,
+    "worst_m": 1098.4803466796875
+  },
+  "G2 5 references, matcher filter": {
+    "median_m": 2.496826171875,
+    "over_100ms": 0.34772182254196643,
+    "over_10m": 0.041109969167523124,
+    "worst_m": 20.9703369140625
+  },
+  "G2 5 references, matcher filter + speed": {
+    "median_m": 0.815673828125,
+    "over_100ms": 0.010620075368276806,
+    "over_10m": 0.0,
+    "worst_m": 4.6331787109375
+  },
+  "G2 5 references, aligner single": {
+    "median_m": 2.3736572265625,
+    "over_100ms": 0.31449126413155193,
+    "over_10m": 0.04316546762589928,
+    "worst_m": 1099.1414794921875
+  },
+  "G2 5 references, aligner filter": {
+    "median_m": 2.424560546875,
+    "over_100ms": 0.30866735183281946,
+    "over_10m": 0.044193216855087356,
+    "worst_m": 26.677734375
+  },
+  "G2 5 references, aligner filter + speed": {
+    "median_m": 0.83740234375,
+    "over_100ms": 0.005481329222336417,
+    "over_10m": 0.0,
+    "worst_m": 5.4344482421875
+  }
+}

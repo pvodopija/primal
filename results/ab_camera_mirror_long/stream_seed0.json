@@ -1,0 +1,54 @@
+{
+  "checkpoint": "runs/ab_camera_mirror_long/best.pt",
+  "args": {
+    "cmd": "stream",
+    "data": "data/packed_ac_v2",
+    "checkpoint": "runs/ab_camera_mirror_long/best.pt",
+    "stride": 4,
+    "holdout_laps": 3,
+    "speed_sigma": null,
+    "speed_noise": 0.0,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/ab_camera_mirror_long/stream_seed0.json",
+    "device": "mps"
+  },
+  "report": {
+    "G1 single": {
+      "median_m": 2.41229248046875,
+      "median_ms": 84.49745178222656,
+      "p90_ms": 213.5852813720703,
+      "over_100ms": 0.420706501315295,
+      "over_10m": 0.03137918075911311,
+      "worst_m": 197.0247802734375,
+      "ticks": 5322
+    },
+    "G1 filter": {
+      "median_m": 2.449951171875,
+      "median_ms": 85.6771469116211,
+      "p90_ms": 221.12408447265625,
+      "over_100ms": 0.43348365276211953,
+      "over_10m": 0.027433295753476136,
+      "worst_m": 63.24957275390625,
+      "ticks": 5322
+    },
+    "G2 single": {
+      "median_m": 3.1273193359375,
+      "median_ms": 87.68272399902344,
+      "p90_ms": 230.00526428222656,
+      "over_100ms": 0.44557354460902515,
+      "over_10m": 0.07147778160523596,
+      "worst_m": 1070.7255859375,
+      "ticks": 5806
+    },
+    "G2 filter": {
+      "median_m": 2.8031005859375,
+      "median_ms": 79.50210571289062,
+      "p90_ms": 223.38485717773438,
+      "over_100ms": 0.4035480537375129,
+      "over_10m": 0.06820530485704444,
+      "worst_m": 24.1387939453125,
+      "ticks": 5806
+    }
+  }
+}

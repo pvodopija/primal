@@ -1,0 +1,142 @@
+{
+  "fits": {
+    "filter": {
+      "const": 4.23046875,
+      "conf": [
+        54.821840595954875,
+        -40.85106511649484
+      ],
+      "self": 0.143656251630853
+    },
+    "speed": {
+      "const": 8.431640625,
+      "conf": [
+        103.89363141646766,
+        -74.9969916431056
+      ],
+      "self": 0.5205302379462446
+    }
+  },
+  "report": {
+    "G1 filter none": {
+      "over_100ms": 0.30713218820014937,
+      "median_abs_ms": 59.5751953125,
+      "signed_ms": 4.23046875
+    },
+    "G1 filter constant": {
+      "over_100ms": 0.3086258401792382,
+      "median_abs_ms": 59.732421875,
+      "signed_ms": 0.0
+    },
+    "G1 filter confidence": {
+      "over_100ms": 0.309932785660941,
+      "median_abs_ms": 59.8563194701761,
+      "signed_ms": -0.8629875634362421
+    },
+    "G1 filter self (fwd/bwd)": {
+      "over_100ms": 0.30675877520537714,
+      "median_abs_ms": 59.235843357228376,
+      "signed_ms": 2.053888831712146
+    },
+    "G1 filter self, k=0.5": {
+      "over_100ms": 0.30657206870799103,
+      "median_abs_ms": 58.994384765625,
+      "signed_ms": -4.035400390625
+    },
+    "G1 filter oracle per lap": {
+      "over_100ms": 0.3056385362210605,
+      "median_abs_ms": 58.7177734375,
+      "signed_ms": 0.0
+    },
+    "G1 filter + speed none": {
+      "over_100ms": 0.06366691560866318,
+      "median_abs_ms": 28.658203125,
+      "signed_ms": 8.431640625
+    },
+    "G1 filter + speed constant": {
+      "over_100ms": 0.055825242718446605,
+      "median_abs_ms": 27.896484375,
+      "signed_ms": 0.0
+    },
+    "G1 filter + speed confidence": {
+      "over_100ms": 0.053958177744585514,
+      "median_abs_ms": 28.339960979012673,
+      "signed_ms": -3.6764816317367845
+    },
+    "G1 filter + speed self (fwd/bwd)": {
+      "over_100ms": 0.05227781926811053,
+      "median_abs_ms": 26.960861645849363,
+      "signed_ms": -1.0134128760615972
+    },
+    "G1 filter + speed self, k=0.5": {
+      "over_100ms": 0.05265123226288275,
+      "median_abs_ms": 26.91796875,
+      "signed_ms": -0.61279296875
+    },
+    "G1 filter + speed oracle per lap": {
+      "over_100ms": 0.049850634802091114,
+      "median_abs_ms": 26.3916015625,
+      "signed_ms": 0.0
+    },
+    "G2 filter none": {
+      "over_100ms": 0.37072972607067106,
+      "median_abs_ms": 69.583984375,
+      "signed_ms": -19.412109375
+    },
+    "G2 filter constant": {
+      "over_100ms": 0.37413691953608014,
+      "median_abs_ms": 70.04296875,
+      "signed_ms": -23.642578125
+    },
+    "G2 filter confidence": {
+      "over_100ms": 0.371429216119861,
+      "median_abs_ms": 69.65684289378716,
+      "signed_ms": -19.120248445937506
+    },
+    "G2 filter self (fwd/bwd)": {
+      "over_100ms": 0.3721061419739158,
+      "median_abs_ms": 69.89293310158473,
+      "signed_ms": -20.385079952710164
+    },
+    "G2 filter self, k=0.5": {
+      "over_100ms": 0.37587436256148743,
+      "median_abs_ms": 70.9599609375,
+      "signed_ms": -23.0712890625
+    },
+    "G2 filter oracle per lap": {
+      "over_100ms": 0.3619296899679588,
+      "median_abs_ms": 69.23046875,
+      "signed_ms": 0.0
+    },
+    "G2 filter + speed none": {
+      "over_100ms": 0.03675707387517487,
+      "median_abs_ms": 29.6484375,
+      "signed_ms": -18.75
+    },
+    "G2 filter + speed constant": {
+      "over_100ms": 0.049460715736269686,
+      "median_abs_ms": 33.314453125,
+      "signed_ms": -27.181640625
+    },
+    "G2 filter + speed confidence": {
+      "over_100ms": 0.03186064353084526,
+      "median_abs_ms": 30.424368525130653,
+      "signed_ms": -18.800899170204822
+    },
+    "G2 filter + speed self (fwd/bwd)": {
+      "over_100ms": 0.040412473487070714,
+      "median_abs_ms": 31.23622030956669,
+      "signed_ms": -22.083581021276988
+    },
+    "G2 filter + speed self, k=0.5": {
+      "over_100ms": 0.04016426734058396,
+      "median_abs_ms": 31.15380859375,
+      "signed_ms": -21.9853515625
+    },
+    "G2 filter + speed oracle per lap": {
+      "over_100ms": 0.010131323615686628,
+      "median_abs_ms": 22.431640625,
+      "signed_ms": 0.0
+    }
+  }
+}

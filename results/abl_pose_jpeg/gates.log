@@ -1,0 +1,38 @@
+====================================================================================================
+GATES
+====================================================================================================
+
+seen laps, seen tracks
+  n=320  median   2.29 m /   70.0 ms  p90    7.19 m /   204.6 ms  worst   205.89 m  within1  45.3%  within5  93.8%
+  mean predictive entropy 2.567 nats
+    ks_black_cat_county__layout_short n=72  median   3.09 m /   97.7 ms  p90   11.66 m /   257.6 ms  worst    22.19 m  within1  29.2%  within5  86.1%
+    ks_brands_hatch__indy    n=72  median   1.23 m /   36.2 ms  p90    2.75 m /    78.7 ms  worst     5.91 m  within1  72.2%  within5 100.0%
+    ks_red_bull_ring__layout_national n=48  median   2.35 m /   63.0 ms  p90    7.02 m /   178.5 ms  worst    18.79 m  within1  43.8%  within5  93.8%
+    ks_vallelunga__club_circuit n=64  median   2.83 m /  102.2 ms  p90    6.20 m /   213.9 ms  worst    12.38 m  within1  32.8%  within5  96.9%
+    magione                  n=64  median   2.46 m /   82.8 ms  p90    6.44 m /   200.1 ms  worst   205.89 m  within1  45.3%  within5  92.2%
+
+G1  held-out laps, seen tracks
+  n=320  median   2.34 m /   77.8 ms  p90    6.86 m /   205.0 ms  worst  2256.22 m  within1  44.4%  within5  96.2%
+  mean predictive entropy 2.531 nats
+    ks_black_cat_county__layout_short n=48  median   2.60 m /   79.6 ms  p90    8.30 m /   248.0 ms  worst  2256.22 m  within1  35.4%  within5  91.7%
+    ks_brands_hatch__indy    n=64  median   1.51 m /   44.7 ms  p90    4.36 m /   132.2 ms  worst    12.83 m  within1  60.9%  within5  98.4%
+    ks_red_bull_ring__layout_national n=64  median   2.66 m /   66.6 ms  p90    7.89 m /   237.9 ms  worst    20.39 m  within1  40.6%  within5  93.8%
+    ks_vallelunga__club_circuit n=88  median   2.72 m /   99.3 ms  p90    6.88 m /   223.3 ms  worst    15.74 m  within1  38.6%  within5  97.7%
+    magione                  n=56  median   2.12 m /   70.8 ms  p90    4.49 m /   149.6 ms  worst    81.58 m  within1  46.4%  within5  98.2%
+
+G2  held-out tracks
+  n=320  median   3.45 m /   87.1 ms  p90   17.73 m /   557.3 ms  worst  1079.74 m  within1  32.8%  within5  81.6%
+  mean predictive entropy 2.932 nats
+    ks_silverstone__national n=320  median   3.45 m /   87.1 ms  p90   17.73 m /   557.3 ms  worst  1079.74 m  within1  32.8%  within5  81.6%
+
+====================================================================================================
+NEGATIVE CONTROLS
+====================================================================================================
+
+wrong-reference control: live clips paired with another track's reference
+  matched reference   median    2.07 m   entropy 2.541 nats
+  wrong reference     median  585.82 m   entropy 3.727 nats
+  chance for 3227 bins at 2.00 m: 1613.3 m; uniform entropy 8.079 nats
+  PASS: error must collapse to chance when the reference is wrong
+
+wrote runs/abl_pose_jpeg/gates.json

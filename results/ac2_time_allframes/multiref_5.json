@@ -1,0 +1,182 @@
+{
+  "G1 1 reference single": {
+    "median_m": 1.56781005859375,
+    "over_100ms": 0.22435174746335965,
+    "over_10m": 0.0018789928598271326,
+    "worst_m": 110.3712158203125
+  },
+  "G1 1 reference filter": {
+    "median_m": 1.558837890625,
+    "over_100ms": 0.23675310033821872,
+    "over_10m": 0.0011273957158962795,
+    "worst_m": 11.6910400390625
+  },
+  "G1 1 reference filter + speed": {
+    "median_m": 1.1126708984375,
+    "over_100ms": 0.05486659150695227,
+    "over_10m": 0.0,
+    "worst_m": 5.40594482421875
+  },
+  "G1 3 references, mean single": {
+    "median_m": 1.508056640625,
+    "over_100ms": 0.19203307027433295,
+    "over_10m": 0.006388575723412251,
+    "worst_m": 109.2003173828125
+  },
+  "G1 3 references, mean filter": {
+    "median_m": 1.4996337890625,
+    "over_100ms": 0.2179631717399474,
+    "over_10m": 0.003757985719654265,
+    "worst_m": 12.1456298828125
+  },
+  "G1 3 references, mean filter + speed": {
+    "median_m": 1.1224365234375,
+    "over_100ms": 0.06275836151822622,
+    "over_10m": 0.0,
+    "worst_m": 5.42578125
+  },
+  "G1 3 references, product single": {
+    "median_m": 1.5084228515625,
+    "over_100ms": 0.19203307027433295,
+    "over_10m": 0.006764374295377677,
+    "worst_m": 109.1959228515625
+  },
+  "G1 3 references, product filter": {
+    "median_m": 1.484130859375,
+    "over_100ms": 0.21909056745584365,
+    "over_10m": 0.0033821871476888386,
+    "worst_m": 12.0152587890625
+  },
+  "G1 3 references, product filter + speed": {
+    "median_m": 1.07208251953125,
+    "over_100ms": 0.05787298008267568,
+    "over_10m": 0.0,
+    "worst_m": 5.20306396484375
+  },
+  "G1 5 references, mean single": {
+    "median_m": 1.3609619140625,
+    "over_100ms": 0.161217587373168,
+    "over_10m": 0.001503194287861706,
+    "worst_m": 108.912841796875
+  },
+  "G1 5 references, mean filter": {
+    "median_m": 1.3021240234375,
+    "over_100ms": 0.17662532882375048,
+    "over_10m": 0.001503194287861706,
+    "worst_m": 11.4073486328125
+  },
+  "G1 5 references, mean filter + speed": {
+    "median_m": 1.0548095703125,
+    "over_100ms": 0.05298759864712514,
+    "over_10m": 0.0,
+    "worst_m": 4.753662109375
+  },
+  "G1 5 references, product single": {
+    "median_m": 1.3609619140625,
+    "over_100ms": 0.16046599022923713,
+    "over_10m": 0.001503194287861706,
+    "worst_m": 108.81591796875
+  },
+  "G1 5 references, product filter": {
+    "median_m": 1.2938232421875,
+    "over_100ms": 0.17474633596392333,
+    "over_10m": 0.0018789928598271326,
+    "worst_m": 11.82421875
+  },
+  "G1 5 references, product filter + speed": {
+    "median_m": 0.94775390625,
+    "over_100ms": 0.03795565576850808,
+    "over_10m": 0.0,
+    "worst_m": 5.0546875
+  },
+  "G2 1 reference single": {
+    "median_m": 4.265869140625,
+    "over_100ms": 0.5625215294522907,
+    "over_10m": 0.21701687909059594,
+    "worst_m": 1272.0950927734375
+  },
+  "G2 1 reference filter": {
+    "median_m": 3.7652587890625,
+    "over_100ms": 0.5167068549776094,
+    "over_10m": 0.13606613847743712,
+    "worst_m": 1178.4022216796875
+  },
+  "G2 1 reference filter + speed": {
+    "median_m": 1.586181640625,
+    "over_100ms": 0.06992766104030314,
+    "over_10m": 0.0,
+    "worst_m": 6.5657958984375
+  },
+  "G2 3 references, mean single": {
+    "median_m": 3.75341796875,
+    "over_100ms": 0.5239407509472959,
+    "over_10m": 0.1567344126765415,
+    "worst_m": 1188.3135986328125
+  },
+  "G2 3 references, mean filter": {
+    "median_m": 3.4671630859375,
+    "over_100ms": 0.4784705477092663,
+    "over_10m": 0.06751636238374095,
+    "worst_m": 28.053466796875
+  },
+  "G2 3 references, mean filter + speed": {
+    "median_m": 1.47998046875,
+    "over_100ms": 0.099207716155701,
+    "over_10m": 0.0,
+    "worst_m": 8.3294677734375
+  },
+  "G2 3 references, product single": {
+    "median_m": 3.8707275390625,
+    "over_100ms": 0.5377196004133655,
+    "over_10m": 0.1643127798828798,
+    "worst_m": 1188.5330810546875
+  },
+  "G2 3 references, product filter": {
+    "median_m": 3.42578125,
+    "over_100ms": 0.4715811229762315,
+    "over_10m": 0.06579400620048226,
+    "worst_m": 21.2642822265625
+  },
+  "G2 3 references, product filter + speed": {
+    "median_m": 1.5367431640625,
+    "over_100ms": 0.061660351360661385,
+    "over_10m": 0.0,
+    "worst_m": 5.7203369140625
+  },
+  "G2 5 references, mean single": {
+    "median_m": 3.580322265625,
+    "over_100ms": 0.5074061315880124,
+    "over_10m": 0.1453668618670341,
+    "worst_m": 1279.8802490234375
+  },
+  "G2 5 references, mean filter": {
+    "median_m": 3.387451171875,
+    "over_100ms": 0.472270065449535,
+    "over_10m": 0.06234929383396486,
+    "worst_m": 23.5386962890625
+  },
+  "G2 5 references, mean filter + speed": {
+    "median_m": 1.540283203125,
+    "over_100ms": 0.08715122287289011,
+    "over_10m": 0.0,
+    "worst_m": 5.7432861328125
+  },
+  "G2 5 references, product single": {
+    "median_m": 3.7974853515625,
+    "over_100ms": 0.529107819497072,
+    "over_10m": 0.17258008956252152,
+    "worst_m": 1190.7615966796875
+  },
+  "G2 5 references, product filter": {
+    "median_m": 3.4312744140625,
+    "over_100ms": 0.4784705477092663,
+    "over_10m": 0.0775060282466414,
+    "worst_m": 1182.1209716796875
+  },
+  "G2 5 references, product filter + speed": {
+    "median_m": 1.588623046875,
+    "over_100ms": 0.07957285566655184,
+    "over_10m": 0.0,
+    "worst_m": 6.4493408203125
+  }
+}

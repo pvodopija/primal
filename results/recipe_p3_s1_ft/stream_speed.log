@@ -1,0 +1,20 @@
+  G1 ks_brands_hatch__indy        ref 171903Z  live 221531Z
+  G1 ks_brands_hatch__indy        ref 181357Z  live 221531Z
+  G1 ks_vallelunga__club_circuit  ref 220345Z  live 223945Z
+  G1 ks_vallelunga__club_circuit  ref 222513Z  live 223945Z
+  G1 magione                      ref 225059Z  live 231051Z
+  G1 magione                      ref 230023Z  live 231051Z
+  G2 ks_silverstone__national     ref 105441Z  live 104658Z
+  G2 ks_silverstone__national     ref 105442Z  live 104658Z
+  G2 ks_silverstone__national     ref 105441Z  live 104658Z
+  G2 ks_silverstone__national     ref 105442Z  live 104658Z
+  G2 ks_silverstone__national     ref 105441Z  live 104658Z
+  G2 ks_silverstone__national     ref 105442Z  live 104658Z
+
+                                               median      p90  >100 ms   >10 m     worst
+G1 single                               1.71 m   60 ms   164 ms    28.4%    0.7%    108.3 m
+G1 filter                               1.76 m   61 ms   176 ms    29.3%    0.6%     13.3 m
+G1 filter + speed                       1.08 m   39 ms    94 ms     8.4%    0.0%      5.2 m
+G2 single                               2.83 m   79 ms   269 ms    40.5%   10.4%   1205.1 m
+G2 filter                               2.85 m   79 ms   260 ms    39.3%    9.3%   1117.1 m
+G2 filter + speed                       1.95 m   54 ms   115 ms    15.4%    0.1%     10.6 m

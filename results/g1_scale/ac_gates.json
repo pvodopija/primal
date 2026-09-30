@@ -1,0 +1,70 @@
+{
+  "checkpoint": "runs/g1_scale/best.pt",
+  "gates": {
+    "seen laps, seen tracks": {
+      "overall": {
+        "count": 320,
+        "median_m": 359.62091064453125,
+        "p90_m": 857.75390625,
+        "worst_m": 954.8955688476562,
+        "median_ms": 11052.296875,
+        "p90_ms": 27696.3046875,
+        "worst_ms": 46732.296875,
+        "within_1_bin": 0.06875,
+        "within_5_bin": 0.171875
+      },
+      "entropy": 6.223342561721802,
+      "per_track": {
+        "ks_brands_hatch__indy": {
+          "count": 320,
+          "median_m": 359.62091064453125,
+          "p90_m": 857.75390625,
+          "worst_m": 954.8955688476562,
+          "median_ms": 11052.296875,
+          "p90_ms": 27696.3046875,
+          "worst_ms": 46732.296875,
+          "within_1_bin": 0.06875,
+          "within_5_bin": 0.171875
+        }
+      }
+    },
+    "G1  held-out laps, seen tracks": {
+      "overall": {
+        "count": 320,
+        "median_m": 464.2628173828125,
+        "p90_m": 816.3472900390625,
+        "worst_m": 957.5741577148438,
+        "median_ms": 12077.8994140625,
+        "p90_ms": 25829.0703125,
+        "worst_ms": 48175.73828125,
+        "within_1_bin": 0.05625,
+        "within_5_bin": 0.11875
+      },
+      "entropy": 5.389501756429672,
+      "per_track": {
+        "ks_brands_hatch__indy": {
+          "count": 320,
+          "median_m": 464.2628173828125,
+          "p90_m": 816.3472900390625,
+          "worst_m": 957.5741577148438,
+          "median_ms": 12077.8994140625,
+          "p90_ms": 25829.0703125,
+          "worst_ms": 48175.73828125,
+          "within_1_bin": 0.05625,
+          "within_5_bin": 0.11875
+        }
+      }
+    }
+  },
+  "controls": {
+    "wrong_reference": {
+      "matched_median_m": 362.109375,
+      "wrong_median_m": NaN,
+      "matched_entropy": 5.872246873378754,
+      "wrong_entropy": NaN,
+      "chance_median_m": 478.9465026855469,
+      "uniform_entropy": 6.86484777797086,
+      "verdict": "FAIL"
+    }
+  }
+}

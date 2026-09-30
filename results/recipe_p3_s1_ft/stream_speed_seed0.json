@@ -1,0 +1,73 @@
+{
+  "checkpoint": "runs/recipe_p3_s1_ft/best.pt",
+  "args": {
+    "cmd": "stream",
+    "data": "data/packed_ac_v2",
+    "checkpoint": "runs/recipe_p3_s1_ft/best.pt",
+    "stride": 4,
+    "holdout_laps": 3,
+    "speed_sigma": 2.0,
+    "speed_noise": 0.0,
+    "window": 8,
+    "lag_k": null,
+    "seed": 0,
+    "out": "runs/recipe_p3_s1_ft/stream_speed_seed0.json",
+    "device": "mps"
+  },
+  "report": {
+    "G1 single": {
+      "median_m": 1.712158203125,
+      "median_ms": 59.76104736328125,
+      "p90_ms": 163.82369995117188,
+      "over_100ms": 0.28447951897782786,
+      "over_10m": 0.007328072153325817,
+      "worst_m": 108.339599609375,
+      "ticks": 5322
+    },
+    "G1 filter": {
+      "median_m": 1.7615966796875,
+      "median_ms": 61.04469299316406,
+      "p90_ms": 175.6317138671875,
+      "over_100ms": 0.29293498684705,
+      "over_10m": 0.005636978579481398,
+      "worst_m": 13.28369140625,
+      "ticks": 5322
+    },
+    "G1 filter + speed": {
+      "median_m": 1.08251953125,
+      "median_ms": 38.626670837402344,
+      "p90_ms": 94.00215148925781,
+      "over_100ms": 0.08436677940623825,
+      "over_10m": 0.0,
+      "worst_m": 5.2281494140625,
+      "ticks": 5322
+    },
+    "G2 single": {
+      "median_m": 2.8302001953125,
+      "median_ms": 79.132080078125,
+      "p90_ms": 268.74542236328125,
+      "over_100ms": 0.40458146744746815,
+      "over_10m": 0.10420254908715122,
+      "worst_m": 1205.0618896484375,
+      "ticks": 5806
+    },
+    "G2 filter": {
+      "median_m": 2.8531494140625,
+      "median_ms": 78.59039306640625,
+      "p90_ms": 260.25579833984375,
+      "over_100ms": 0.39321391663796074,
+      "over_10m": 0.09317946951429555,
+      "worst_m": 1117.0955810546875,
+      "ticks": 5806
+    },
+    "G2 filter + speed": {
+      "median_m": 1.9486083984375,
+      "median_ms": 53.73382568359375,
+      "p90_ms": 114.90440368652344,
+      "over_100ms": 0.1544953496383052,
+      "over_10m": 0.0005167068549776093,
+      "worst_m": 10.58642578125,
+      "ticks": 5806
+    }
+  }
+}

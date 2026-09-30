@@ -1,0 +1,190 @@
+gate g1: held-out laps of seen tracks; full augmentation
+train tracks ['ks_red_bull_ring__layout_national'] (37 laps usable)
+eval  tracks ['ks_red_bull_ring__layout_national'], split=train
+held out as live-only: ['ks_red_bull_ring__layout_national__20260923T174436Z__lap15']
+frame 148x80, reference bins 1159
+model 0.67M params on mps
+
+step     1/3000  loss 10.3082 (ce  7.163 aux  6.291 ref 0.0000)  train median  911.76 m   0.94 s/step
+step    20/3000  loss  9.8143 (ce  7.371 aux  4.886 ref 0.0000)  train median  569.95 m   0.51 s/step
+step    40/3000  loss  9.4417 (ce  7.059 aux  4.765 ref 0.0000)  train median  756.53 m   0.49 s/step
+step    60/3000  loss  8.1460 (ce  6.102 aux  4.085 ref 0.0031)  train median   28.63 m   0.48 s/step
+step    80/3000  loss  6.4344 (ce  4.382 aux  4.102 ref 0.0035)  train median   11.28 m   0.47 s/step
+step   100/3000  loss  5.9950 (ce  3.951 aux  4.086 ref 0.0028)  train median    8.18 m   0.47 s/step
+step   120/3000  loss  5.6068 (ce  3.591 aux  4.029 ref 0.0027)  train median    8.72 m   0.47 s/step
+step   140/3000  loss  5.0682 (ce  3.365 aux  3.404 ref 0.0026)  train median    5.73 m   0.46 s/step
+step   160/3000  loss  4.9774 (ce  3.193 aux  3.566 ref 0.0020)  train median    5.51 m   0.46 s/step
+step   180/3000  loss  4.5681 (ce  2.918 aux  3.298 ref 0.0022)  train median    5.11 m   0.46 s/step
+step   200/3000  loss  4.2234 (ce  2.755 aux  2.934 ref 0.0022)  train median    2.98 m   0.46 s/step
+  eval  n=192  median   3.32 m /   89.6 ms  p90   12.44 m /   317.6 ms  worst    46.17 m  within1  34.9%  within5  87.0%
+        ks_red_bull_ring__layout_national n=192  median   3.32 m /   89.6 ms  p90   12.44 m /   317.6 ms  worst    46.17 m  within1  34.9%  within5  87.0%
+step   220/3000  loss  4.0644 (ce  2.564 aux  3.001 ref 0.0010)  train median    1.73 m   0.47 s/step
+step   240/3000  loss  4.3868 (ce  2.829 aux  3.113 ref 0.0019)  train median    3.17 m   0.47 s/step
+step   260/3000  loss  4.4085 (ce  2.779 aux  3.257 ref 0.0019)  train median    4.80 m   0.46 s/step
+step   280/3000  loss  4.7264 (ce  2.914 aux  3.624 ref 0.0019)  train median    3.44 m   0.46 s/step
+step   300/3000  loss  4.7291 (ce  3.048 aux  3.360 ref 0.0026)  train median    6.07 m   0.46 s/step
+step   320/3000  loss  4.7877 (ce  3.057 aux  3.457 ref 0.0032)  train median    8.05 m   0.46 s/step
+step   340/3000  loss  3.7221 (ce  2.312 aux  2.818 ref 0.0009)  train median    0.93 m   0.46 s/step
+step   360/3000  loss  4.0334 (ce  2.546 aux  2.974 ref 0.0014)  train median    2.64 m   0.46 s/step
+step   380/3000  loss  4.0692 (ce  2.584 aux  2.969 ref 0.0012)  train median    2.77 m   0.46 s/step
+step   400/3000  loss  4.3811 (ce  2.867 aux  3.026 ref 0.0020)  train median    4.54 m   0.46 s/step
+  eval  n=192  median   2.56 m /   67.5 ms  p90    8.24 m /   207.8 ms  worst    94.63 m  within1  38.0%  within5  95.3%
+        ks_red_bull_ring__layout_national n=192  median   2.56 m /   67.5 ms  p90    8.24 m /   207.8 ms  worst    94.63 m  within1  38.0%  within5  95.3%
+step   420/3000  loss  3.8067 (ce  2.439 aux  2.734 ref 0.0010)  train median    2.90 m   0.46 s/step
+step   440/3000  loss  3.7504 (ce  2.414 aux  2.671 ref 0.0014)  train median    2.85 m   0.46 s/step
+step   460/3000  loss  4.1070 (ce  2.644 aux  2.924 ref 0.0020)  train median    4.73 m   0.46 s/step
+step   480/3000  loss  3.9829 (ce  2.529 aux  2.907 ref 0.0016)  train median    4.81 m   0.46 s/step
+step   500/3000  loss  3.9955 (ce  2.676 aux  2.637 ref 0.0020)  train median    3.26 m   0.46 s/step
+step   520/3000  loss  4.1706 (ce  2.721 aux  2.898 ref 0.0017)  train median    2.88 m   0.46 s/step
+step   540/3000  loss  3.9056 (ce  2.502 aux  2.807 ref 0.0008)  train median    2.31 m   0.46 s/step
+step   560/3000  loss  4.7923 (ce  3.289 aux  3.004 ref 0.0024)  train median    6.90 m   0.46 s/step
+step   580/3000  loss  3.7355 (ce  2.455 aux  2.560 ref 0.0012)  train median    1.64 m   0.46 s/step
+step   600/3000  loss  3.8214 (ce  2.542 aux  2.557 ref 0.0014)  train median    2.10 m   0.46 s/step
+  eval  n=192  median   2.17 m /   54.5 ms  p90    6.08 m /   162.0 ms  worst    13.81 m  within1  45.8%  within5  96.4%
+        ks_red_bull_ring__layout_national n=192  median   2.17 m /   54.5 ms  p90    6.08 m /   162.0 ms  worst    13.81 m  within1  45.8%  within5  96.4%
+step   620/3000  loss  3.7121 (ce  2.391 aux  2.641 ref 0.0010)  train median    1.75 m   0.46 s/step
+step   640/3000  loss  3.7114 (ce  2.428 aux  2.566 ref 0.0012)  train median    3.40 m   0.46 s/step
+step   660/3000  loss  3.6213 (ce  2.321 aux  2.600 ref 0.0010)  train median    1.87 m   0.46 s/step
+step   680/3000  loss  3.8378 (ce  2.549 aux  2.576 ref 0.0012)  train median    1.92 m   0.46 s/step
+step   700/3000  loss  3.7133 (ce  2.397 aux  2.631 ref 0.0011)  train median    2.77 m   0.46 s/step
+step   720/3000  loss  3.5266 (ce  2.213 aux  2.627 ref 0.0005)  train median    1.51 m   0.46 s/step
+step   740/3000  loss  3.5769 (ce  2.352 aux  2.450 ref 0.0010)  train median    2.14 m   0.46 s/step
+step   760/3000  loss  4.0650 (ce  2.786 aux  2.555 ref 0.0021)  train median    3.91 m   0.46 s/step
+step   780/3000  loss  3.5830 (ce  2.256 aux  2.653 ref 0.0008)  train median    0.95 m   0.46 s/step
+step   800/3000  loss  3.6846 (ce  2.437 aux  2.495 ref 0.0013)  train median    2.76 m   0.46 s/step
+  eval  n=192  median   1.76 m /   46.4 ms  p90    4.81 m /   136.0 ms  worst    12.49 m  within1  58.3%  within5  99.0%
+        ks_red_bull_ring__layout_national n=192  median   1.76 m /   46.4 ms  p90    4.81 m /   136.0 ms  worst    12.49 m  within1  58.3%  within5  99.0%
+step   820/3000  loss  3.6387 (ce  2.350 aux  2.576 ref 0.0011)  train median    2.24 m   0.46 s/step
+step   840/3000  loss  3.4065 (ce  2.213 aux  2.386 ref 0.0006)  train median    1.06 m   0.46 s/step
+step   860/3000  loss  3.5128 (ce  2.277 aux  2.471 ref 0.0008)  train median    2.06 m   0.46 s/step
+step   880/3000  loss  3.5617 (ce  2.294 aux  2.535 ref 0.0010)  train median    2.09 m   0.46 s/step
+step   900/3000  loss  3.7329 (ce  2.447 aux  2.571 ref 0.0015)  train median    3.35 m   0.46 s/step
+step   920/3000  loss  3.4639 (ce  2.227 aux  2.473 ref 0.0004)  train median    0.87 m   0.46 s/step
+step   940/3000  loss  3.4643 (ce  2.233 aux  2.461 ref 0.0006)  train median    0.72 m   0.46 s/step
+step   960/3000  loss  3.5426 (ce  2.288 aux  2.508 ref 0.0008)  train median    1.61 m   0.46 s/step
+step   980/3000  loss  3.5090 (ce  2.272 aux  2.474 ref 0.0009)  train median    2.33 m   0.46 s/step
+step  1000/3000  loss  3.6948 (ce  2.400 aux  2.589 ref 0.0012)  train median    2.05 m   0.46 s/step
+  eval  n=192  median   2.73 m /   72.1 ms  p90    6.17 m /   166.0 ms  worst    13.59 m  within1  37.0%  within5  99.0%
+        ks_red_bull_ring__layout_national n=192  median   2.73 m /   72.1 ms  p90    6.17 m /   166.0 ms  worst    13.59 m  within1  37.0%  within5  99.0%
+step  1020/3000  loss  3.5366 (ce  2.317 aux  2.439 ref 0.0008)  train median    0.95 m   0.46 s/step
+step  1040/3000  loss  3.4718 (ce  2.272 aux  2.399 ref 0.0008)  train median    1.48 m   0.46 s/step
+step  1060/3000  loss  3.6552 (ce  2.423 aux  2.462 ref 0.0014)  train median    1.99 m   0.46 s/step
+step  1080/3000  loss  3.3649 (ce  2.216 aux  2.298 ref 0.0006)  train median    1.11 m   0.46 s/step
+step  1100/3000  loss  3.4432 (ce  2.276 aux  2.333 ref 0.0009)  train median    2.30 m   0.46 s/step
+step  1120/3000  loss  3.5148 (ce  2.341 aux  2.346 ref 0.0010)  train median    2.84 m   0.46 s/step
+step  1140/3000  loss  3.5398 (ce  2.338 aux  2.402 ref 0.0009)  train median    1.18 m   0.46 s/step
+step  1160/3000  loss  3.4231 (ce  2.233 aux  2.380 ref 0.0007)  train median    1.64 m   0.46 s/step
+step  1180/3000  loss  3.4797 (ce  2.296 aux  2.367 ref 0.0010)  train median    2.25 m   0.46 s/step
+step  1200/3000  loss  3.6682 (ce  2.444 aux  2.448 ref 0.0011)  train median    1.64 m   0.46 s/step
+  eval  n=192  median   1.39 m /   38.4 ms  p90    4.02 m /    93.9 ms  worst    15.72 m  within1  67.2%  within5  99.0%
+        ks_red_bull_ring__layout_national n=192  median   1.39 m /   38.4 ms  p90    4.02 m /    93.9 ms  worst    15.72 m  within1  67.2%  within5  99.0%
+step  1220/3000  loss  3.6783 (ce  2.412 aux  2.532 ref 0.0011)  train median    1.10 m   0.46 s/step
+step  1240/3000  loss  3.4504 (ce  2.273 aux  2.353 ref 0.0009)  train median    1.86 m   0.46 s/step
+step  1260/3000  loss  3.5747 (ce  2.352 aux  2.445 ref 0.0011)  train median    2.25 m   0.46 s/step
+step  1280/3000  loss  3.5407 (ce  2.328 aux  2.425 ref 0.0011)  train median    2.63 m   0.46 s/step
+step  1300/3000  loss  3.4677 (ce  2.228 aux  2.479 ref 0.0006)  train median    0.57 m   0.46 s/step
+step  1320/3000  loss  3.9141 (ce  2.642 aux  2.543 ref 0.0014)  train median    1.44 m   0.46 s/step
+step  1340/3000  loss  3.6606 (ce  2.385 aux  2.550 ref 0.0012)  train median    2.54 m   0.46 s/step
+step  1360/3000  loss  3.7136 (ce  2.468 aux  2.491 ref 0.0013)  train median    2.56 m   0.46 s/step
+step  1380/3000  loss  3.5974 (ce  2.388 aux  2.417 ref 0.0013)  train median    1.08 m   0.46 s/step
+step  1400/3000  loss  3.4295 (ce  2.255 aux  2.349 ref 0.0007)  train median    0.89 m   0.46 s/step
+  eval  n=192  median   1.30 m /   38.5 ms  p90    3.60 m /    92.5 ms  worst     6.48 m  within1  68.8%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   1.30 m /   38.5 ms  p90    3.60 m /    92.5 ms  worst     6.48 m  within1  68.8%  within5 100.0%
+step  1420/3000  loss  3.7362 (ce  2.434 aux  2.603 ref 0.0010)  train median    2.12 m   0.46 s/step
+step  1440/3000  loss  3.4429 (ce  2.245 aux  2.395 ref 0.0007)  train median    1.89 m   0.46 s/step
+step  1460/3000  loss  3.5334 (ce  2.324 aux  2.418 ref 0.0010)  train median    1.87 m   0.46 s/step
+step  1480/3000  loss  3.4336 (ce  2.266 aux  2.335 ref 0.0007)  train median    1.06 m   0.46 s/step
+step  1500/3000  loss  3.4892 (ce  2.300 aux  2.378 ref 0.0010)  train median    2.00 m   0.46 s/step
+step  1520/3000  loss  3.4387 (ce  2.246 aux  2.384 ref 0.0007)  train median    1.70 m   0.46 s/step
+step  1540/3000  loss  3.4727 (ce  2.277 aux  2.390 ref 0.0009)  train median    1.88 m   0.46 s/step
+step  1560/3000  loss  3.2581 (ce  2.148 aux  2.220 ref 0.0004)  train median    1.07 m   0.46 s/step
+step  1580/3000  loss  3.4347 (ce  2.273 aux  2.322 ref 0.0008)  train median    0.74 m   0.46 s/step
+step  1600/3000  loss  3.3488 (ce  2.172 aux  2.354 ref 0.0005)  train median    1.05 m   0.46 s/step
+  eval  n=192  median   1.05 m /   28.0 ms  p90    3.15 m /    76.2 ms  worst     6.11 m  within1  77.1%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   1.05 m /   28.0 ms  p90    3.15 m /    76.2 ms  worst     6.11 m  within1  77.1%  within5 100.0%
+step  1620/3000  loss  3.3869 (ce  2.247 aux  2.280 ref 0.0008)  train median    1.28 m   0.46 s/step
+step  1640/3000  loss  3.2767 (ce  2.140 aux  2.272 ref 0.0003)  train median    0.65 m   0.46 s/step
+step  1660/3000  loss  3.4169 (ce  2.241 aux  2.351 ref 0.0007)  train median    1.09 m   0.46 s/step
+step  1680/3000  loss  3.4171 (ce  2.253 aux  2.326 ref 0.0008)  train median    1.68 m   0.46 s/step
+step  1700/3000  loss  3.4516 (ce  2.279 aux  2.345 ref 0.0009)  train median    1.93 m   0.46 s/step
+step  1720/3000  loss  3.3772 (ce  2.234 aux  2.286 ref 0.0007)  train median    1.51 m   0.46 s/step
+step  1740/3000  loss  3.3716 (ce  2.201 aux  2.341 ref 0.0006)  train median    1.23 m   0.46 s/step
+step  1760/3000  loss  3.3157 (ce  2.181 aux  2.268 ref 0.0005)  train median    0.82 m   0.46 s/step
+step  1780/3000  loss  3.3736 (ce  2.244 aux  2.259 ref 0.0007)  train median    1.91 m   0.45 s/step
+step  1800/3000  loss  3.3646 (ce  2.199 aux  2.330 ref 0.0006)  train median    1.02 m   0.45 s/step
+  eval  n=192  median   1.09 m /   27.5 ms  p90    3.18 m /    78.1 ms  worst     5.79 m  within1  79.7%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   1.09 m /   27.5 ms  p90    3.18 m /    78.1 ms  worst     5.79 m  within1  79.7%  within5 100.0%
+step  1820/3000  loss  3.3137 (ce  2.173 aux  2.281 ref 0.0005)  train median    1.52 m   0.46 s/step
+step  1840/3000  loss  3.2660 (ce  2.138 aux  2.255 ref 0.0003)  train median    0.39 m   0.46 s/step
+step  1860/3000  loss  3.3628 (ce  2.202 aux  2.322 ref 0.0007)  train median    1.81 m   0.46 s/step
+step  1880/3000  loss  3.2445 (ce  2.141 aux  2.206 ref 0.0003)  train median    0.79 m   0.46 s/step
+step  1900/3000  loss  3.3019 (ce  2.183 aux  2.237 ref 0.0005)  train median    0.95 m   0.45 s/step
+step  1920/3000  loss  3.3245 (ce  2.189 aux  2.271 ref 0.0005)  train median    1.17 m   0.45 s/step
+step  1940/3000  loss  3.3855 (ce  2.232 aux  2.307 ref 0.0006)  train median    0.79 m   0.45 s/step
+step  1960/3000  loss  3.3098 (ce  2.181 aux  2.258 ref 0.0005)  train median    1.25 m   0.45 s/step
+step  1980/3000  loss  3.4898 (ce  2.324 aux  2.330 ref 0.0010)  train median    1.83 m   0.45 s/step
+step  2000/3000  loss  3.3264 (ce  2.193 aux  2.266 ref 0.0005)  train median    0.64 m   0.45 s/step
+  eval  n=192  median   1.01 m /   26.4 ms  p90    2.33 m /    63.8 ms  worst     6.57 m  within1  87.0%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   1.01 m /   26.4 ms  p90    2.33 m /    63.8 ms  worst     6.57 m  within1  87.0%  within5 100.0%
+step  2020/3000  loss  3.2670 (ce  2.149 aux  2.237 ref 0.0003)  train median    0.53 m   0.45 s/step
+step  2040/3000  loss  3.5045 (ce  2.349 aux  2.309 ref 0.0011)  train median    2.27 m   0.45 s/step
+step  2060/3000  loss  3.3382 (ce  2.205 aux  2.265 ref 0.0006)  train median    1.43 m   0.45 s/step
+step  2080/3000  loss  3.3195 (ce  2.189 aux  2.261 ref 0.0006)  train median    1.33 m   0.45 s/step
+step  2100/3000  loss  3.3528 (ce  2.239 aux  2.227 ref 0.0007)  train median    1.33 m   0.45 s/step
+step  2120/3000  loss  3.2517 (ce  2.151 aux  2.200 ref 0.0003)  train median    0.52 m   0.45 s/step
+step  2140/3000  loss  3.4249 (ce  2.288 aux  2.274 ref 0.0006)  train median    0.83 m   0.45 s/step
+step  2160/3000  loss  3.5019 (ce  2.334 aux  2.334 ref 0.0009)  train median    1.32 m   0.45 s/step
+step  2180/3000  loss  3.2678 (ce  2.157 aux  2.220 ref 0.0004)  train median    0.54 m   0.45 s/step
+step  2200/3000  loss  3.2726 (ce  2.155 aux  2.235 ref 0.0004)  train median    0.89 m   0.45 s/step
+  eval  n=192  median   0.84 m /   23.3 ms  p90    2.24 m /    63.6 ms  worst     5.16 m  within1  85.9%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   0.84 m /   23.3 ms  p90    2.24 m /    63.6 ms  worst     5.16 m  within1  85.9%  within5 100.0%
+step  2220/3000  loss  3.4013 (ce  2.234 aux  2.333 ref 0.0007)  train median    1.62 m   0.45 s/step
+step  2240/3000  loss  3.2433 (ce  2.127 aux  2.232 ref 0.0002)  train median    0.30 m   0.45 s/step
+step  2260/3000  loss  3.2666 (ce  2.154 aux  2.226 ref 0.0003)  train median    0.33 m   0.45 s/step
+step  2280/3000  loss  3.2454 (ce  2.146 aux  2.198 ref 0.0003)  train median    0.57 m   0.45 s/step
+step  2300/3000  loss  3.2840 (ce  2.150 aux  2.267 ref 0.0004)  train median    0.86 m   0.45 s/step
+step  2320/3000  loss  3.2527 (ce  2.151 aux  2.202 ref 0.0004)  train median    1.00 m   0.45 s/step
+step  2340/3000  loss  3.2426 (ce  2.147 aux  2.190 ref 0.0004)  train median    0.97 m   0.45 s/step
+step  2360/3000  loss  3.2697 (ce  2.170 aux  2.200 ref 0.0004)  train median    0.56 m   0.45 s/step
+step  2380/3000  loss  3.3900 (ce  2.237 aux  2.305 ref 0.0008)  train median    1.27 m   0.45 s/step
+step  2400/3000  loss  3.2671 (ce  2.163 aux  2.209 ref 0.0005)  train median    1.03 m   0.45 s/step
+  eval  n=192  median   0.85 m /   23.6 ms  p90    2.33 m /    63.0 ms  worst     4.35 m  within1  86.5%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   0.85 m /   23.6 ms  p90    2.33 m /    63.0 ms  worst     4.35 m  within1  86.5%  within5 100.0%
+step  2420/3000  loss  3.3484 (ce  2.228 aux  2.239 ref 0.0008)  train median    1.79 m   0.45 s/step
+step  2440/3000  loss  3.2834 (ce  2.157 aux  2.252 ref 0.0004)  train median    0.90 m   0.45 s/step
+step  2460/3000  loss  3.2415 (ce  2.146 aux  2.190 ref 0.0003)  train median    0.58 m   0.45 s/step
+step  2480/3000  loss  3.3080 (ce  2.198 aux  2.219 ref 0.0006)  train median    1.26 m   0.45 s/step
+step  2500/3000  loss  3.2548 (ce  2.142 aux  2.226 ref 0.0003)  train median    0.71 m   0.45 s/step
+step  2520/3000  loss  3.2751 (ce  2.180 aux  2.190 ref 0.0004)  train median    0.55 m   0.45 s/step
+step  2540/3000  loss  3.2219 (ce  2.123 aux  2.198 ref 0.0002)  train median    0.39 m   0.45 s/step
+step  2560/3000  loss  3.2618 (ce  2.154 aux  2.216 ref 0.0004)  train median    0.72 m   0.45 s/step
+step  2580/3000  loss  3.2486 (ce  2.132 aux  2.233 ref 0.0002)  train median    0.36 m   0.45 s/step
+step  2600/3000  loss  3.2550 (ce  2.149 aux  2.211 ref 0.0004)  train median    0.88 m   0.45 s/step
+  eval  n=192  median   0.76 m /   20.6 ms  p90    2.02 m /    58.0 ms  worst     4.25 m  within1  89.1%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   0.76 m /   20.6 ms  p90    2.02 m /    58.0 ms  worst     4.25 m  within1  89.1%  within5 100.0%
+step  2620/3000  loss  3.2572 (ce  2.138 aux  2.238 ref 0.0002)  train median    0.47 m   0.45 s/step
+step  2640/3000  loss  3.2593 (ce  2.156 aux  2.206 ref 0.0004)  train median    0.98 m   0.45 s/step
+step  2660/3000  loss  3.2364 (ce  2.138 aux  2.198 ref 0.0003)  train median    0.71 m   0.45 s/step
+step  2680/3000  loss  3.2577 (ce  2.151 aux  2.213 ref 0.0004)  train median    0.58 m   0.45 s/step
+step  2700/3000  loss  3.2447 (ce  2.152 aux  2.186 ref 0.0004)  train median    0.68 m   0.45 s/step
+step  2720/3000  loss  3.2971 (ce  2.182 aux  2.229 ref 0.0005)  train median    1.06 m   0.45 s/step
+step  2740/3000  loss  3.2068 (ce  2.127 aux  2.160 ref 0.0002)  train median    0.42 m   0.45 s/step
+step  2760/3000  loss  3.2496 (ce  2.143 aux  2.213 ref 0.0003)  train median    0.48 m   0.45 s/step
+step  2780/3000  loss  3.2644 (ce  2.161 aux  2.206 ref 0.0004)  train median    0.66 m   0.45 s/step
+step  2800/3000  loss  3.2553 (ce  2.166 aux  2.179 ref 0.0005)  train median    0.94 m   0.45 s/step
+  eval  n=192  median   0.73 m /   20.0 ms  p90    1.88 m /    51.1 ms  worst     3.70 m  within1  92.2%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   0.73 m /   20.0 ms  p90    1.88 m /    51.1 ms  worst     3.70 m  within1  92.2%  within5 100.0%
+step  2820/3000  loss  3.2180 (ce  2.132 aux  2.172 ref 0.0003)  train median    0.47 m   0.45 s/step
+step  2840/3000  loss  3.2393 (ce  2.148 aux  2.183 ref 0.0004)  train median    0.56 m   0.45 s/step
+step  2860/3000  loss  3.2439 (ce  2.139 aux  2.210 ref 0.0003)  train median    0.53 m   0.45 s/step
+step  2880/3000  loss  3.2765 (ce  2.157 aux  2.239 ref 0.0004)  train median    0.55 m   0.45 s/step
+step  2900/3000  loss  3.2593 (ce  2.152 aux  2.215 ref 0.0004)  train median    0.92 m   0.45 s/step
+step  2920/3000  loss  3.3457 (ce  2.221 aux  2.248 ref 0.0006)  train median    0.85 m   0.45 s/step
+step  2940/3000  loss  3.2360 (ce  2.137 aux  2.198 ref 0.0003)  train median    0.57 m   0.45 s/step
+step  2960/3000  loss  3.2388 (ce  2.143 aux  2.191 ref 0.0004)  train median    0.86 m   0.45 s/step
+step  2980/3000  loss  3.2217 (ce  2.134 aux  2.176 ref 0.0002)  train median    0.30 m   0.45 s/step
+step  3000/3000  loss  3.2711 (ce  2.160 aux  2.222 ref 0.0004)  train median    0.99 m   0.45 s/step
+  eval  n=192  median   0.73 m /   19.3 ms  p90    1.89 m /    49.7 ms  worst     3.70 m  within1  92.7%  within5 100.0%
+        ks_red_bull_ring__layout_national n=192  median   0.73 m /   19.3 ms  p90    1.89 m /    49.7 ms  worst     3.70 m  within1  92.7%  within5 100.0%
+
+best eval median 0.73 m; artifacts in /Users/pvodopija/code/primal/runs/lc1b

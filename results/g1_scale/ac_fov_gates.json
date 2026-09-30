@@ -1,0 +1,70 @@
+{
+  "checkpoint": "runs/g1_scale/best.pt",
+  "gates": {
+    "seen laps, seen tracks": {
+      "overall": {
+        "count": 320,
+        "median_m": 331.02947998046875,
+        "p90_m": 864.0111694335938,
+        "worst_m": 955.8057250976562,
+        "median_ms": 9219.8310546875,
+        "p90_ms": 26214.1015625,
+        "worst_ms": 47632.62890625,
+        "within_1_bin": 0.103125,
+        "within_5_bin": 0.228125
+      },
+      "entropy": 6.123694252967835,
+      "per_track": {
+        "ks_brands_hatch__indy": {
+          "count": 320,
+          "median_m": 331.02947998046875,
+          "p90_m": 864.0111694335938,
+          "worst_m": 955.8057250976562,
+          "median_ms": 9219.8310546875,
+          "p90_ms": 26214.1015625,
+          "worst_ms": 47632.62890625,
+          "within_1_bin": 0.103125,
+          "within_5_bin": 0.228125
+        }
+      }
+    },
+    "G1  held-out laps, seen tracks": {
+      "overall": {
+        "count": 320,
+        "median_m": 427.37432861328125,
+        "p90_m": 829.6471557617188,
+        "worst_m": 954.2647094726562,
+        "median_ms": 11674.6796875,
+        "p90_ms": 28312.431640625,
+        "worst_ms": 62705.58984375,
+        "within_1_bin": 0.075,
+        "within_5_bin": 0.128125
+      },
+      "entropy": 5.089501219987869,
+      "per_track": {
+        "ks_brands_hatch__indy": {
+          "count": 320,
+          "median_m": 427.37432861328125,
+          "p90_m": 829.6471557617188,
+          "worst_m": 954.2647094726562,
+          "median_ms": 11674.6796875,
+          "p90_ms": 28312.431640625,
+          "worst_ms": 62705.58984375,
+          "within_1_bin": 0.075,
+          "within_5_bin": 0.128125
+        }
+      }
+    }
+  },
+  "controls": {
+    "wrong_reference": {
+      "matched_median_m": 334.72906494140625,
+      "wrong_median_m": NaN,
+      "matched_entropy": 5.781928133964539,
+      "wrong_entropy": NaN,
+      "chance_median_m": 478.9465026855469,
+      "uniform_entropy": 6.86484777797086,
+      "verdict": "FAIL"
+    }
+  }
+}

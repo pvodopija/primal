@@ -7,3 +7,7 @@ This repo is **PRIMAL**: visual sequence-alignment against a **reference lap**.
 The `locamotif` IMU crate, motif matching, and absolute-`s` regression are closed
 paths. Do not import them. Do not train without the wrong-reference and
 leakage controls described in the docs.
+
+Measured results live in `results/` (look up `results/INDEX.md` before re-running
+anything); the scripts behind them in `experiments/`. After new runs, refresh both with
+`python -m experiments.index_runs`.

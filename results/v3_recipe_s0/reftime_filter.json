@@ -1,0 +1,60 @@
+{
+  "best": [
+    0.02,
+    0.3,
+    0.01
+  ],
+  "results": {
+    "metre filter, no speed": {
+      "G1": 0.38251020525498763,
+      "G1 ks_black_cat_county__layout_short": 0.40320284697508896,
+      "G1 ks_brands_hatch__indy": 0.12923076923076923,
+      "G1 ks_highlands__layout_short": 0.3550446998722861,
+      "G1 ks_laguna_seca": 0.478231748158071,
+      "G1 ks_monza66__junior": 0.17964071856287425,
+      "G1 ks_nurburgring__layout_sprint_a": 0.4230271668822768,
+      "G1 ks_red_bull_ring__layout_national": 0.31022727272727274,
+      "G1 ks_vallelunga__club_circuit": 0.5145278450363197,
+      "G1 magione": 0.4272046589018303,
+      "G2": 0.3080235896640025,
+      "G2 ks_silverstone__national": 0.3655173969944492,
+      "G2 same car": 0.3845051150061901,
+      "G2 rt_lime_rock_park__no_chicane": 0.18654950996958433,
+      "G2 rt_oulton_park__fosters": 0.26679114723488384
+    },
+    "metre filter, true speed": {
+      "G1": 0.1365491864543207,
+      "G1 ks_black_cat_county__layout_short": 0.14323843416370108,
+      "G1 ks_brands_hatch__indy": 0.005384615384615384,
+      "G1 ks_highlands__layout_short": 0.12643678160919541,
+      "G1 ks_laguna_seca": 0.06697923643670463,
+      "G1 ks_monza66__junior": 0.019161676646706587,
+      "G1 ks_nurburgring__layout_sprint_a": 0.23091849935316947,
+      "G1 ks_red_bull_ring__layout_national": 0.10738636363636364,
+      "G1 ks_vallelunga__club_circuit": 0.1864406779661017,
+      "G1 magione": 0.20549084858569053,
+      "G2": 0.023434468844572048,
+      "G2 ks_silverstone__national": 0.023308813574619794,
+      "G2 same car": 0.023848309115788103,
+      "G2 rt_lime_rock_park__no_chicane": 0.00588036498817168,
+      "G2 rt_oulton_park__fosters": 0.03800318523806909
+    },
+    "reference-time filter (0.02, 0.3, 0.01), no speed": {
+      "G1": 0.23601448858736274,
+      "G1 ks_black_cat_county__layout_short": 0.22295373665480428,
+      "G1 ks_brands_hatch__indy": 0.06230769230769231,
+      "G1 ks_highlands__layout_short": 0.30268199233716475,
+      "G1 ks_laguna_seca": 0.33690555927662424,
+      "G1 ks_monza66__junior": 0.07664670658682635,
+      "G1 ks_nurburgring__layout_sprint_a": 0.3292367399741268,
+      "G1 ks_red_bull_ring__layout_national": 0.16193181818181818,
+      "G1 ks_vallelunga__club_circuit": 0.2711864406779661,
+      "G1 magione": 0.30158069883527455,
+      "G2": 0.1375417086986886,
+      "G2 ks_silverstone__national": 0.15246626652827294,
+      "G2 same car": 0.12425881279728937,
+      "G2 rt_lime_rock_park__no_chicane": 0.08577222034471105,
+      "G2 rt_oulton_park__fosters": 0.14328079521115933
+    }
+  }
+}

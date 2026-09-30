@@ -1808,6 +1808,8 @@ docs/
 capture/              AC + OBS + timecode overlay (Windows-only), encoder motion vectors, flow speed
 train/                encoder, correlation head, reference grid, estimator, gates, synthetic renderer
 npu/                  int8 TensorFlow Lite export and Vela estimate for Halo's NPU
+experiments/          the scripts behind each finding (README maps finding -> script)
+results/              every run's settings and measured results, INDEX.md to look them up
 tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, lag correction,
                       motion vectors, flow speed
 ```

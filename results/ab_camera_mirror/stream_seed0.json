@@ -1,0 +1,54 @@
+{
+  "checkpoint": "runs/ab_camera_mirror/best.pt",
+  "args": {
+    "cmd": "stream",
+    "data": "data/packed_ac_v2",
+    "checkpoint": "runs/ab_camera_mirror/best.pt",
+    "stride": 4,
+    "holdout_laps": 3,
+    "speed_sigma": null,
+    "speed_noise": 0.0,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/ab_camera_mirror/stream_seed0.json",
+    "device": "mps"
+  },
+  "report": {
+    "G1 single": {
+      "median_m": 2.5054931640625,
+      "median_ms": 88.226318359375,
+      "p90_ms": 245.92971801757812,
+      "over_100ms": 0.4464487034949267,
+      "over_10m": 0.053363397219090565,
+      "worst_m": 212.98065185546875,
+      "ticks": 5322
+    },
+    "G1 filter": {
+      "median_m": 2.543548583984375,
+      "median_ms": 89.87808227539062,
+      "p90_ms": 228.01132202148438,
+      "over_100ms": 0.4458850056369786,
+      "over_10m": 0.03457346862081924,
+      "worst_m": 51.281005859375,
+      "ticks": 5322
+    },
+    "G2 single": {
+      "median_m": 3.132080078125,
+      "median_ms": 86.64131164550781,
+      "p90_ms": 235.35919189453125,
+      "over_100ms": 0.4419565966241819,
+      "over_10m": 0.0752669652084051,
+      "worst_m": 1075.994140625,
+      "ticks": 5806
+    },
+    "G2 filter": {
+      "median_m": 2.7916259765625,
+      "median_ms": 77.38494873046875,
+      "p90_ms": 217.03338623046875,
+      "over_100ms": 0.40303134688253534,
+      "over_10m": 0.0535652772993455,
+      "worst_m": 21.7938232421875,
+      "ticks": 5806
+    }
+  }
+}

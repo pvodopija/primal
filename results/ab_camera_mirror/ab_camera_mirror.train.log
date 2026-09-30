@@ -1,0 +1,250 @@
+gate g1: held-out laps of seen tracks; full augmentation
+train tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'] (111 laps usable)
+eval  tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'], split=train
+held out as live-only: ['ks_black_cat_county__layout_short__20260923T183526Z__lap08', 'ks_brands_hatch__indy__20260921T221531Z__lap02', 'ks_red_bull_ring__layout_national__20260923T174436Z__lap15', 'ks_vallelunga__club_circuit__20260922T223945Z__lap07', 'magione__default__20260922T231051Z__lap06']
+frame 148x80, reference bins 3227
+model 0.67M params on mps
+
+step     1/3000  loss 10.5273 (ce  7.176 aux  6.703 ref 0.0000)  train median  627.95 m   1.77 s/step
+step    20/3000  loss 10.1797 (ce  6.913 aux  6.533 ref 0.0000)  train median  378.01 m   0.43 s/step
+step    40/3000  loss 10.0512 (ce  7.173 aux  5.756 ref 0.0000)  train median  495.75 m   0.37 s/step
+step    60/3000  loss  9.7552 (ce  6.714 aux  6.081 ref 0.0003)  train median   72.82 m   0.36 s/step
+step    80/3000  loss 10.2313 (ce  6.660 aux  7.143 ref 0.0000)  train median  242.84 m   0.36 s/step
+step   100/3000  loss 10.0488 (ce  6.919 aux  6.257 ref 0.0022)  train median  170.43 m   0.37 s/step
+step   120/3000  loss  9.4730 (ce  6.263 aux  6.420 ref 0.0005)  train median  126.18 m   0.38 s/step
+step   140/3000  loss  8.4820 (ce  5.653 aux  5.652 ref 0.0047)  train median  629.18 m   0.37 s/step
+step   160/3000  loss  7.1836 (ce  4.792 aux  4.779 ref 0.0032)  train median   41.41 m   0.38 s/step
+step   180/3000  loss 10.7004 (ce  7.029 aux  7.342 ref 0.0000)  train median 1280.00 m   0.38 s/step
+step   200/3000  loss  6.9037 (ce  4.510 aux  4.786 ref 0.0016)  train median   17.99 m   0.38 s/step
+  eval  n=192  median   7.82 m /  283.0 ms  p90  209.81 m /  6710.9 ms  worst  1024.92 m  within1  15.1%  within5  55.2%
+        ks_black_cat_county__layout_short n=32  median   6.49 m /  176.7 ms  p90   24.47 m /   544.0 ms  worst   512.35 m  within1  21.9%  within5  71.9%
+        ks_brands_hatch__indy    n=32  median  12.90 m /  325.9 ms  p90  143.95 m /  3474.2 ms  worst   215.42 m  within1  15.6%  within5  43.8%
+        ks_red_bull_ring__layout_national n=24  median   6.49 m /  179.5 ms  p90   33.72 m /   815.7 ms  worst  1024.92 m  within1  16.7%  within5  66.7%
+        ks_vallelunga__club_circuit n=48  median   9.59 m /  321.3 ms  p90  734.67 m / 23487.9 ms  worst   836.75 m  within1  12.5%  within5  50.0%
+        magione                  n=56  median   7.84 m /  329.1 ms  p90  198.43 m /  6982.5 ms  worst   834.06 m  within1  12.5%  within5  51.8%
+step   220/3000  loss  8.8928 (ce  5.838 aux  6.105 ref 0.0040)  train median  289.28 m   0.41 s/step
+step   240/3000  loss  7.7441 (ce  4.999 aux  5.489 ref 0.0024)  train median   37.30 m   0.41 s/step
+step   260/3000  loss  7.4778 (ce  5.022 aux  4.911 ref 0.0011)  train median   89.38 m   0.42 s/step
+step   280/3000  loss  7.3154 (ce  4.769 aux  5.090 ref 0.0026)  train median    9.21 m   0.41 s/step
+step   300/3000  loss  6.8878 (ce  4.428 aux  4.917 ref 0.0021)  train median    5.28 m   0.41 s/step
+step   320/3000  loss  7.6648 (ce  5.117 aux  5.091 ref 0.0052)  train median   37.58 m   0.42 s/step
+step   340/3000  loss  7.0342 (ce  4.614 aux  4.837 ref 0.0041)  train median   12.53 m   0.43 s/step
+step   360/3000  loss  7.4718 (ce  4.968 aux  5.005 ref 0.0021)  train median   22.02 m   0.42 s/step
+step   380/3000  loss  7.6748 (ce  5.147 aux  5.055 ref 0.0003)  train median  219.62 m   0.43 s/step
+step   400/3000  loss  8.0499 (ce  5.544 aux  5.008 ref 0.0036)  train median   21.28 m   0.42 s/step
+  eval  n=192  median   4.28 m /  132.3 ms  p90   97.51 m /  2719.0 ms  worst  1129.17 m  within1  32.3%  within5  74.5%
+        ks_black_cat_county__layout_short n=32  median   3.98 m /  132.3 ms  p90   58.66 m /  1092.3 ms  worst   273.21 m  within1  28.1%  within5  75.0%
+        ks_brands_hatch__indy    n=32  median   5.69 m /  144.4 ms  p90  121.98 m /  2673.3 ms  worst   743.49 m  within1  21.9%  within5  68.8%
+        ks_red_bull_ring__layout_national n=24  median   4.81 m /  133.7 ms  p90   12.25 m /   288.1 ms  worst    86.64 m  within1  20.8%  within5  79.2%
+        ks_vallelunga__club_circuit n=48  median   2.96 m /  118.1 ms  p90   61.03 m /  2519.8 ms  worst   767.99 m  within1  39.6%  within5  79.2%
+        magione                  n=56  median   3.46 m /  112.2 ms  p90  115.77 m /  3561.0 ms  worst  1129.17 m  within1  39.3%  within5  71.4%
+step   420/3000  loss  6.7281 (ce  4.304 aux  4.846 ref 0.0019)  train median   12.06 m   0.43 s/step
+step   440/3000  loss  6.4076 (ce  4.156 aux  4.501 ref 0.0022)  train median   13.32 m   0.43 s/step
+step   460/3000  loss  5.6827 (ce  3.401 aux  4.562 ref 0.0023)  train median    2.26 m   0.44 s/step
+step   480/3000  loss  5.4126 (ce  3.356 aux  4.112 ref 0.0016)  train median    3.36 m   0.43 s/step
+step   500/3000  loss  7.8207 (ce  5.144 aux  5.351 ref 0.0030)  train median   68.60 m   0.43 s/step
+step   520/3000  loss  8.2114 (ce  5.520 aux  5.383 ref 0.0004)  train median  240.67 m   0.43 s/step
+step   540/3000  loss  6.9772 (ce  4.651 aux  4.649 ref 0.0039)  train median   12.57 m   0.42 s/step
+step   560/3000  loss  7.2415 (ce  4.506 aux  5.470 ref 0.0012)  train median  168.40 m   0.42 s/step
+step   580/3000  loss  5.2451 (ce  3.355 aux  3.778 ref 0.0019)  train median    3.19 m   0.42 s/step
+step   600/3000  loss  6.9169 (ce  4.556 aux  4.719 ref 0.0025)  train median    6.37 m   0.42 s/step
+  eval  n=192  median   3.93 m /  120.0 ms  p90   49.31 m /  1371.9 ms  worst   984.42 m  within1  30.7%  within5  78.6%
+        ks_black_cat_county__layout_short n=32  median   4.24 m /  137.4 ms  p90   90.48 m /  2355.3 ms  worst   485.61 m  within1  21.9%  within5  68.8%
+        ks_brands_hatch__indy    n=32  median   3.30 m /   96.0 ms  p90    8.31 m /   212.8 ms  worst   130.30 m  within1  37.5%  within5  90.6%
+        ks_red_bull_ring__layout_national n=24  median   4.14 m /  110.9 ms  p90    9.88 m /   269.4 ms  worst    30.66 m  within1  33.3%  within5  87.5%
+        ks_vallelunga__club_circuit n=48  median   4.43 m /  149.0 ms  p90   50.25 m /  2150.6 ms  worst   806.19 m  within1  29.2%  within5  79.2%
+        magione                  n=56  median   4.04 m /  144.0 ms  p90   80.21 m /  2061.9 ms  worst   984.42 m  within1  32.1%  within5  73.2%
+step   620/3000  loss 10.1374 (ce  6.732 aux  6.811 ref 0.0005)  train median  592.90 m   0.43 s/step
+step   640/3000  loss  6.4634 (ce  3.996 aux  4.930 ref 0.0050)  train median   26.18 m   0.43 s/step
+step   660/3000  loss  6.1298 (ce  3.964 aux  4.328 ref 0.0029)  train median   11.59 m   0.43 s/step
+step   680/3000  loss  6.2442 (ce  4.096 aux  4.294 ref 0.0029)  train median   19.74 m   0.43 s/step
+step   700/3000  loss  6.5565 (ce  4.282 aux  4.547 ref 0.0017)  train median   19.96 m   0.43 s/step
+step   720/3000  loss  6.2990 (ce  4.048 aux  4.499 ref 0.0025)  train median    7.64 m   0.43 s/step
+step   740/3000  loss  7.3527 (ce  4.708 aux  5.288 ref 0.0009)  train median   42.30 m   0.43 s/step
+step   760/3000  loss  8.3296 (ce  5.364 aux  5.932 ref 0.0003)  train median  927.64 m   0.43 s/step
+step   780/3000  loss  7.2226 (ce  4.427 aux  5.590 ref 0.0010)  train median    9.97 m   0.43 s/step
+step   800/3000  loss  8.2910 (ce  5.443 aux  5.694 ref 0.0017)  train median  436.62 m   0.44 s/step
+  eval  n=192  median   3.40 m /  109.7 ms  p90   19.98 m /   451.5 ms  worst   790.55 m  within1  33.9%  within5  83.9%
+        ks_black_cat_county__layout_short n=32  median   3.62 m /  135.6 ms  p90   21.11 m /   451.5 ms  worst   484.59 m  within1  21.9%  within5  78.1%
+        ks_brands_hatch__indy    n=32  median   3.39 m /   91.1 ms  p90   10.95 m /   276.5 ms  worst   132.96 m  within1  37.5%  within5  81.2%
+        ks_red_bull_ring__layout_national n=24  median   4.25 m /  132.0 ms  p90    8.08 m /   194.3 ms  worst    11.87 m  within1  29.2%  within5  95.8%
+        ks_vallelunga__club_circuit n=48  median   3.06 m /  112.0 ms  p90    9.32 m /   368.8 ms  worst   470.76 m  within1  39.6%  within5  89.6%
+        magione                  n=56  median   3.39 m /  120.4 ms  p90   37.93 m /  1109.7 ms  worst   790.55 m  within1  35.7%  within5  78.6%
+step   820/3000  loss  5.2640 (ce  3.272 aux  3.982 ref 0.0026)  train median    5.26 m   0.45 s/step
+step   840/3000  loss  5.6735 (ce  3.640 aux  4.064 ref 0.0023)  train median   13.01 m   0.45 s/step
+step   860/3000  loss  4.8805 (ce  3.104 aux  3.552 ref 0.0018)  train median    3.68 m   0.45 s/step
+step   880/3000  loss  5.4432 (ce  3.295 aux  4.294 ref 0.0026)  train median    3.11 m   0.45 s/step
+step   900/3000  loss  6.0760 (ce  3.931 aux  4.289 ref 0.0015)  train median    4.84 m   0.45 s/step
+step   920/3000  loss  6.4075 (ce  4.169 aux  4.474 ref 0.0023)  train median    8.73 m   0.44 s/step
+step   940/3000  loss  7.3213 (ce  4.689 aux  5.264 ref 0.0007)  train median   17.29 m   0.44 s/step
+step   960/3000  loss  5.0310 (ce  3.176 aux  3.709 ref 0.0010)  train median    2.92 m   0.44 s/step
+step   980/3000  loss  6.2711 (ce  3.928 aux  4.686 ref 0.0011)  train median    6.81 m   0.44 s/step
+step  1000/3000  loss  4.8929 (ce  3.043 aux  3.698 ref 0.0018)  train median    6.24 m   0.44 s/step
+  eval  n=192  median   3.67 m /  120.1 ms  p90   20.76 m /   719.6 ms  worst   165.77 m  within1  32.3%  within5  82.3%
+        ks_black_cat_county__layout_short n=32  median   5.10 m /  155.0 ms  p90   28.42 m /   552.1 ms  worst   165.77 m  within1  31.2%  within5  75.0%
+        ks_brands_hatch__indy    n=32  median   3.84 m /  115.2 ms  p90   18.81 m /   470.8 ms  worst   130.51 m  within1  18.8%  within5  81.2%
+        ks_red_bull_ring__layout_national n=24  median   4.52 m /  121.1 ms  p90    9.31 m /   249.9 ms  worst    30.12 m  within1  29.2%  within5  87.5%
+        ks_vallelunga__club_circuit n=48  median   2.55 m /   84.7 ms  p90   13.13 m /   373.1 ms  worst    42.51 m  within1  43.8%  within5  87.5%
+        magione                  n=56  median   3.54 m /  143.7 ms  p90   39.01 m /  1209.0 ms  worst    89.19 m  within1  32.1%  within5  80.4%
+step  1020/3000  loss  6.3194 (ce  3.957 aux  4.725 ref 0.0008)  train median    7.16 m   0.45 s/step
+step  1040/3000  loss  5.9561 (ce  3.772 aux  4.367 ref 0.0014)  train median   17.16 m   0.45 s/step
+step  1060/3000  loss  8.0851 (ce  5.357 aux  5.455 ref 0.0011)  train median   16.75 m   0.45 s/step
+step  1080/3000  loss  4.8750 (ce  3.097 aux  3.553 ref 0.0021)  train median    2.78 m   0.45 s/step
+step  1100/3000  loss  7.4444 (ce  4.676 aux  5.537 ref 0.0009)  train median   19.06 m   0.45 s/step
+step  1120/3000  loss  6.4218 (ce  4.215 aux  4.410 ref 0.0031)  train median   27.30 m   0.45 s/step
+step  1140/3000  loss  5.1021 (ce  3.233 aux  3.736 ref 0.0016)  train median    2.59 m   0.45 s/step
+step  1160/3000  loss  4.9197 (ce  2.905 aux  4.027 ref 0.0019)  train median    3.71 m   0.45 s/step
+step  1180/3000  loss  6.4079 (ce  3.940 aux  4.933 ref 0.0024)  train median    9.98 m   0.44 s/step
+step  1200/3000  loss  4.0485 (ce  2.422 aux  3.252 ref 0.0013)  train median    2.35 m   0.44 s/step
+  eval  n=192  median   3.53 m /  116.0 ms  p90   40.78 m /  1267.5 ms  worst   791.23 m  within1  31.2%  within5  81.8%
+        ks_black_cat_county__layout_short n=32  median   4.28 m /  148.8 ms  p90   69.47 m /  1349.0 ms  worst   485.19 m  within1  15.6%  within5  71.9%
+        ks_brands_hatch__indy    n=32  median   3.70 m /  106.7 ms  p90    9.18 m /   207.6 ms  worst    35.20 m  within1  25.0%  within5  96.9%
+        ks_red_bull_ring__layout_national n=24  median   3.81 m /  124.6 ms  p90   11.32 m /   355.3 ms  worst    85.36 m  within1  29.2%  within5  87.5%
+        ks_vallelunga__club_circuit n=48  median   3.11 m /  111.7 ms  p90   67.38 m /  3897.2 ms  worst   789.63 m  within1  43.8%  within5  79.2%
+        magione                  n=56  median   3.28 m /  108.3 ms  p90   53.20 m /  1625.3 ms  worst   791.23 m  within1  33.9%  within5  78.6%
+step  1220/3000  loss  4.0110 (ce  2.552 aux  2.917 ref 0.0018)  train median    2.22 m   0.45 s/step
+step  1240/3000  loss  7.8112 (ce  5.066 aux  5.489 ref 0.0010)  train median   68.39 m   0.45 s/step
+step  1260/3000  loss  5.9971 (ce  3.794 aux  4.405 ref 0.0017)  train median    4.97 m   0.45 s/step
+step  1280/3000  loss  5.1745 (ce  3.243 aux  3.861 ref 0.0027)  train median    5.47 m   0.45 s/step
+step  1300/3000  loss  4.3203 (ce  2.644 aux  3.351 ref 0.0009)  train median    0.95 m   0.45 s/step
+step  1320/3000  loss  6.3243 (ce  3.810 aux  5.029 ref 0.0005)  train median    3.44 m   0.45 s/step
+step  1340/3000  loss  5.5814 (ce  3.591 aux  3.980 ref 0.0021)  train median    8.37 m   0.45 s/step
+step  1360/3000  loss  7.4937 (ce  5.130 aux  4.724 ref 0.0032)  train median    9.70 m   0.45 s/step
+step  1380/3000  loss  6.2299 (ce  4.002 aux  4.453 ref 0.0025)  train median   23.16 m   0.45 s/step
+step  1400/3000  loss  4.6393 (ce  3.038 aux  3.199 ref 0.0028)  train median    7.83 m   0.45 s/step
+  eval  n=192  median   3.13 m /   99.3 ms  p90   18.71 m /   446.2 ms  worst   708.63 m  within1  33.9%  within5  83.9%
+        ks_black_cat_county__layout_short n=32  median   4.19 m /  123.2 ms  p90   20.96 m /   408.2 ms  worst   156.81 m  within1  28.1%  within5  71.9%
+        ks_brands_hatch__indy    n=32  median   3.91 m /   98.6 ms  p90    7.94 m /   268.9 ms  worst    49.35 m  within1  28.1%  within5  93.8%
+        ks_red_bull_ring__layout_national n=24  median   2.24 m /   76.8 ms  p90   10.69 m /   253.7 ms  worst    85.67 m  within1  41.7%  within5  87.5%
+        ks_vallelunga__club_circuit n=48  median   2.94 m /   96.5 ms  p90   14.49 m /   461.2 ms  worst   708.63 m  within1  39.6%  within5  87.5%
+        magione                  n=56  median   2.89 m /  104.5 ms  p90   25.31 m /   955.3 ms  worst   180.98 m  within1  32.1%  within5  80.4%
+step  1420/3000  loss  4.8741 (ce  3.014 aux  3.718 ref 0.0013)  train median    2.30 m   0.45 s/step
+step  1440/3000  loss  6.3123 (ce  4.168 aux  4.287 ref 0.0023)  train median   22.44 m   0.45 s/step
+step  1460/3000  loss  6.0708 (ce  3.702 aux  4.736 ref 0.0005)  train median    8.22 m   0.45 s/step
+step  1480/3000  loss  4.5759 (ce  2.765 aux  3.618 ref 0.0032)  train median    4.78 m   0.45 s/step
+step  1500/3000  loss  7.0254 (ce  4.583 aux  4.884 ref 0.0003)  train median   24.06 m   0.45 s/step
+step  1520/3000  loss  5.0533 (ce  3.175 aux  3.754 ref 0.0016)  train median    4.25 m   0.45 s/step
+step  1540/3000  loss  4.9315 (ce  3.182 aux  3.498 ref 0.0015)  train median    4.60 m   0.45 s/step
+step  1560/3000  loss  6.6900 (ce  4.370 aux  4.635 ref 0.0046)  train median    8.27 m   0.45 s/step
+step  1580/3000  loss  4.1851 (ce  2.686 aux  2.996 ref 0.0017)  train median    3.56 m   0.45 s/step
+step  1600/3000  loss  5.0470 (ce  3.058 aux  3.975 ref 0.0029)  train median    5.77 m   0.45 s/step
+  eval  n=192  median   3.09 m /  104.9 ms  p90   11.15 m /   348.2 ms  worst   178.73 m  within1  30.7%  within5  87.5%
+        ks_black_cat_county__layout_short n=32  median   4.28 m /  121.5 ms  p90   20.57 m /   450.2 ms  worst   159.88 m  within1  31.2%  within5  81.2%
+        ks_brands_hatch__indy    n=32  median   3.65 m /  106.6 ms  p90    9.92 m /   246.1 ms  worst    14.71 m  within1  28.1%  within5  90.6%
+        ks_red_bull_ring__layout_national n=24  median   3.52 m /   88.9 ms  p90    6.77 m /   219.5 ms  worst    11.12 m  within1  25.0%  within5  91.7%
+        ks_vallelunga__club_circuit n=48  median   2.63 m /  102.2 ms  p90   10.17 m /   292.4 ms  worst    20.66 m  within1  33.3%  within5  89.6%
+        magione                  n=56  median   2.72 m /  104.2 ms  p90   14.51 m /   495.6 ms  worst   178.73 m  within1  32.1%  within5  85.7%
+step  1620/3000  loss  5.6083 (ce  3.331 aux  4.553 ref 0.0011)  train median    8.77 m   0.45 s/step
+step  1640/3000  loss  5.2665 (ce  3.221 aux  4.089 ref 0.0016)  train median    4.80 m   0.45 s/step
+step  1660/3000  loss  4.2677 (ce  2.721 aux  3.092 ref 0.0020)  train median    2.39 m   0.45 s/step
+step  1680/3000  loss  5.9851 (ce  3.771 aux  4.425 ref 0.0022)  train median    6.47 m   0.45 s/step
+step  1700/3000  loss  4.8170 (ce  3.064 aux  3.505 ref 0.0013)  train median    3.04 m   0.45 s/step
+step  1720/3000  loss  4.2995 (ce  2.611 aux  3.377 ref 0.0009)  train median    2.18 m   0.45 s/step
+step  1740/3000  loss  5.2850 (ce  3.356 aux  3.856 ref 0.0032)  train median    8.57 m   0.45 s/step
+step  1760/3000  loss  4.1240 (ce  2.642 aux  2.962 ref 0.0012)  train median    1.55 m   0.45 s/step
+step  1780/3000  loss  4.3378 (ce  2.790 aux  3.094 ref 0.0016)  train median    2.39 m   0.45 s/step
+step  1800/3000  loss  5.4322 (ce  3.277 aux  4.307 ref 0.0028)  train median    5.23 m   0.45 s/step
+  eval  n=192  median   2.40 m /   80.6 ms  p90   11.62 m /   361.6 ms  worst   791.39 m  within1  42.7%  within5  89.1%
+        ks_black_cat_county__layout_short n=32  median   3.03 m /  108.0 ms  p90   19.38 m /   387.8 ms  worst   157.27 m  within1  31.2%  within5  84.4%
+        ks_brands_hatch__indy    n=32  median   2.40 m /   72.3 ms  p90    5.45 m /   147.7 ms  worst     9.27 m  within1  37.5%  within5 100.0%
+        ks_red_bull_ring__layout_national n=24  median   2.04 m /   74.6 ms  p90    8.56 m /   220.1 ms  worst    85.67 m  within1  50.0%  within5  95.8%
+        ks_vallelunga__club_circuit n=48  median   2.13 m /   71.7 ms  p90   10.46 m /   333.3 ms  worst    24.02 m  within1  47.9%  within5  89.6%
+        magione                  n=56  median   2.43 m /   87.4 ms  p90   15.52 m /   659.7 ms  worst   791.39 m  within1  44.6%  within5  82.1%
+step  1820/3000  loss  6.5747 (ce  4.076 aux  4.998 ref 0.0004)  train median    5.33 m   0.45 s/step
+step  1840/3000  loss  3.9531 (ce  2.474 aux  2.956 ref 0.0016)  train median    2.03 m   0.45 s/step
+step  1860/3000  loss  7.1812 (ce  4.299 aux  5.762 ref 0.0012)  train median   11.04 m   0.45 s/step
+step  1880/3000  loss  5.1245 (ce  3.340 aux  3.566 ref 0.0030)  train median    4.39 m   0.45 s/step
+step  1900/3000  loss  5.9070 (ce  3.511 aux  4.791 ref 0.0010)  train median    3.65 m   0.45 s/step
+step  1920/3000  loss  6.0895 (ce  3.854 aux  4.469 ref 0.0021)  train median    5.07 m   0.45 s/step
+step  1940/3000  loss  7.5424 (ce  4.936 aux  5.210 ref 0.0032)  train median   39.42 m   0.45 s/step
+step  1960/3000  loss  5.1828 (ce  3.404 aux  3.555 ref 0.0030)  train median    5.06 m   0.45 s/step
+step  1980/3000  loss  5.4670 (ce  3.558 aux  3.817 ref 0.0013)  train median    3.95 m   0.45 s/step
+step  2000/3000  loss  5.0716 (ce  3.261 aux  3.619 ref 0.0026)  train median    6.03 m   0.45 s/step
+  eval  n=192  median   2.68 m /   87.3 ms  p90   10.58 m /   336.8 ms  worst    83.38 m  within1  41.7%  within5  89.1%
+        ks_black_cat_county__layout_short n=32  median   3.46 m /  102.2 ms  p90   12.18 m /   334.0 ms  worst    28.91 m  within1  28.1%  within5  87.5%
+        ks_brands_hatch__indy    n=32  median   2.91 m /   82.6 ms  p90    6.35 m /   161.9 ms  worst     9.17 m  within1  37.5%  within5 100.0%
+        ks_red_bull_ring__layout_national n=24  median   3.25 m /   98.8 ms  p90   11.83 m /   274.2 ms  worst    83.38 m  within1  41.7%  within5  87.5%
+        ks_vallelunga__club_circuit n=48  median   1.71 m /   64.0 ms  p90   10.15 m /   337.2 ms  worst    55.50 m  within1  52.1%  within5  89.6%
+        magione                  n=56  median   2.38 m /   95.7 ms  p90   15.61 m /   493.7 ms  worst    39.98 m  within1  42.9%  within5  83.9%
+step  2020/3000  loss  4.5725 (ce  2.814 aux  3.515 ref 0.0025)  train median    3.14 m   0.45 s/step
+step  2040/3000  loss  4.8731 (ce  3.048 aux  3.650 ref 0.0013)  train median    3.61 m   0.45 s/step
+step  2060/3000  loss  4.2513 (ce  2.601 aux  3.301 ref 0.0006)  train median    1.10 m   0.45 s/step
+step  2080/3000  loss  5.1845 (ce  3.247 aux  3.873 ref 0.0024)  train median    5.30 m   0.45 s/step
+step  2100/3000  loss  4.8898 (ce  3.122 aux  3.533 ref 0.0014)  train median    3.34 m   0.45 s/step
+step  2120/3000  loss  5.3418 (ce  3.461 aux  3.758 ref 0.0032)  train median    5.83 m   0.45 s/step
+step  2140/3000  loss  5.1176 (ce  3.208 aux  3.817 ref 0.0019)  train median    5.36 m   0.45 s/step
+step  2160/3000  loss  4.7577 (ce  3.108 aux  3.298 ref 0.0012)  train median    3.91 m   0.45 s/step
+step  2180/3000  loss  4.0653 (ce  2.509 aux  3.112 ref 0.0015)  train median    2.69 m   0.45 s/step
+step  2200/3000  loss  4.2165 (ce  2.634 aux  3.163 ref 0.0022)  train median    2.25 m   0.45 s/step
+  eval  n=192  median   2.53 m /   84.6 ms  p90    9.77 m /   308.6 ms  worst    64.95 m  within1  43.8%  within5  90.1%
+        ks_black_cat_county__layout_short n=32  median   3.35 m /  123.5 ms  p90   17.07 m /   333.6 ms  worst    36.13 m  within1  31.2%  within5  84.4%
+        ks_brands_hatch__indy    n=32  median   2.30 m /   66.9 ms  p90    4.38 m /   118.9 ms  worst     5.02 m  within1  43.8%  within5 100.0%
+        ks_red_bull_ring__layout_national n=24  median   2.23 m /   74.5 ms  p90    9.03 m /   243.3 ms  worst    14.04 m  within1  50.0%  within5  91.7%
+        ks_vallelunga__club_circuit n=48  median   1.91 m /   72.1 ms  p90    9.25 m /   328.7 ms  worst    64.95 m  within1  52.1%  within5  89.6%
+        magione                  n=56  median   2.71 m /  104.1 ms  p90   11.11 m /   390.7 ms  worst    37.78 m  within1  41.1%  within5  87.5%
+step  2220/3000  loss  6.2267 (ce  3.851 aux  4.750 ref 0.0007)  train median   11.54 m   0.45 s/step
+step  2240/3000  loss  5.8133 (ce  3.650 aux  4.324 ref 0.0014)  train median    5.95 m   0.45 s/step
+step  2260/3000  loss  6.1790 (ce  3.719 aux  4.919 ref 0.0009)  train median    7.47 m   0.45 s/step
+step  2280/3000  loss  5.1585 (ce  3.152 aux  4.010 ref 0.0026)  train median    2.96 m   0.45 s/step
+step  2300/3000  loss  4.7129 (ce  2.738 aux  3.949 ref 0.0011)  train median    1.70 m   0.45 s/step
+step  2320/3000  loss  6.0303 (ce  4.033 aux  3.993 ref 0.0017)  train median   16.04 m   0.45 s/step
+step  2340/3000  loss  5.9465 (ce  3.907 aux  4.077 ref 0.0017)  train median    4.33 m   0.45 s/step
+step  2360/3000  loss  5.4531 (ce  3.400 aux  4.106 ref 0.0007)  train median    4.27 m   0.45 s/step
+step  2380/3000  loss  5.9859 (ce  3.868 aux  4.232 ref 0.0033)  train median   11.24 m   0.45 s/step
+step  2400/3000  loss  4.5081 (ce  2.764 aux  3.487 ref 0.0010)  train median    2.27 m   0.45 s/step
+  eval  n=192  median   2.28 m /   76.9 ms  p90    8.52 m /   272.6 ms  worst    59.53 m  within1  46.9%  within5  91.1%
+        ks_black_cat_county__layout_short n=32  median   2.59 m /   95.4 ms  p90   11.17 m /   306.0 ms  worst    28.36 m  within1  25.0%  within5  87.5%
+        ks_brands_hatch__indy    n=32  median   2.06 m /   66.6 ms  p90    4.31 m /   107.9 ms  worst     6.53 m  within1  50.0%  within5 100.0%
+        ks_red_bull_ring__layout_national n=24  median   2.59 m /   86.0 ms  p90    7.89 m /   218.0 ms  worst    12.19 m  within1  41.7%  within5  91.7%
+        ks_vallelunga__club_circuit n=48  median   1.83 m /   66.4 ms  p90   10.87 m /   345.5 ms  worst    59.53 m  within1  52.1%  within5  87.5%
+        magione                  n=56  median   1.88 m /   79.8 ms  p90    9.24 m /   321.0 ms  worst    41.11 m  within1  55.4%  within5  91.1%
+step  2420/3000  loss  4.4254 (ce  2.714 aux  3.422 ref 0.0012)  train median    3.22 m   0.45 s/step
+step  2440/3000  loss  5.5943 (ce  3.313 aux  4.561 ref 0.0008)  train median    4.35 m   0.45 s/step
+step  2460/3000  loss  5.1701 (ce  3.365 aux  3.607 ref 0.0033)  train median    7.15 m   0.45 s/step
+step  2480/3000  loss  4.6188 (ce  2.822 aux  3.592 ref 0.0012)  train median    2.89 m   0.45 s/step
+step  2500/3000  loss  5.3669 (ce  3.352 aux  4.030 ref 0.0007)  train median    3.27 m   0.45 s/step
+step  2520/3000  loss  4.7633 (ce  3.007 aux  3.511 ref 0.0025)  train median    4.99 m   0.45 s/step
+step  2540/3000  loss  5.0700 (ce  3.286 aux  3.565 ref 0.0023)  train median    6.08 m   0.45 s/step
+step  2560/3000  loss  5.7200 (ce  3.809 aux  3.818 ref 0.0031)  train median    7.59 m   0.45 s/step
+step  2580/3000  loss 10.6311 (ce  7.078 aux  7.105 ref 0.0009)  train median 1095.47 m   0.45 s/step
+step  2600/3000  loss  4.2320 (ce  2.586 aux  3.289 ref 0.0017)  train median    4.20 m   0.45 s/step
+  eval  n=192  median   2.41 m /   83.8 ms  p90    9.04 m /   295.0 ms  worst    56.56 m  within1  41.7%  within5  91.1%
+        ks_black_cat_county__layout_short n=32  median   3.33 m /  100.1 ms  p90   10.93 m /   302.3 ms  worst    29.70 m  within1  28.1%  within5  87.5%
+        ks_brands_hatch__indy    n=32  median   2.69 m /   72.9 ms  p90    5.49 m /   123.0 ms  worst     7.36 m  within1  43.8%  within5 100.0%
+        ks_red_bull_ring__layout_national n=24  median   2.96 m /   82.6 ms  p90    7.11 m /   203.4 ms  worst    13.58 m  within1  37.5%  within5  91.7%
+        ks_vallelunga__club_circuit n=48  median   2.26 m /   81.8 ms  p90   10.82 m /   328.7 ms  worst    56.56 m  within1  43.8%  within5  87.5%
+        magione                  n=56  median   2.04 m /   88.3 ms  p90    9.61 m /   315.3 ms  worst    41.53 m  within1  48.2%  within5  91.1%
+step  2620/3000  loss  4.9281 (ce  3.119 aux  3.616 ref 0.0019)  train median    4.11 m   0.45 s/step
+step  2640/3000  loss  5.0314 (ce  3.124 aux  3.813 ref 0.0017)  train median    5.19 m   0.45 s/step
+step  2660/3000  loss  3.9966 (ce  2.489 aux  3.013 ref 0.0018)  train median    3.42 m   0.45 s/step
+step  2680/3000  loss  4.3483 (ce  2.767 aux  3.160 ref 0.0025)  train median    2.81 m   0.45 s/step
+step  2700/3000  loss  3.9107 (ce  2.454 aux  2.912 ref 0.0015)  train median    1.83 m   0.45 s/step
+step  2720/3000  loss  3.8945 (ce  2.394 aux  3.000 ref 0.0013)  train median    1.40 m   0.45 s/step
+step  2740/3000  loss  4.1311 (ce  2.627 aux  3.006 ref 0.0023)  train median    3.77 m   0.45 s/step
+step  2760/3000  loss  4.9703 (ce  3.157 aux  3.625 ref 0.0025)  train median    2.65 m   0.45 s/step
+step  2780/3000  loss  5.2212 (ce  3.368 aux  3.705 ref 0.0020)  train median    8.19 m   0.45 s/step
+step  2800/3000  loss  5.6807 (ce  3.502 aux  4.355 ref 0.0028)  train median    9.66 m   0.45 s/step
+  eval  n=192  median   2.17 m /   76.1 ms  p90    8.79 m /   295.2 ms  worst    57.94 m  within1  46.9%  within5  91.1%
+        ks_black_cat_county__layout_short n=32  median   2.82 m /   89.2 ms  p90   11.20 m /   310.3 ms  worst    28.65 m  within1  31.2%  within5  87.5%
+        ks_brands_hatch__indy    n=32  median   2.36 m /   64.7 ms  p90    4.58 m /   113.9 ms  worst     6.39 m  within1  46.9%  within5 100.0%
+        ks_red_bull_ring__layout_national n=24  median   2.25 m /   85.8 ms  p90    7.56 m /   209.0 ms  worst    14.26 m  within1  45.8%  within5  95.8%
+        ks_vallelunga__club_circuit n=48  median   1.87 m /   67.4 ms  p90   11.40 m /   334.4 ms  worst    57.94 m  within1  54.2%  within5  87.5%
+        magione                  n=56  median   2.00 m /   80.4 ms  p90    9.56 m /   328.6 ms  worst    40.94 m  within1  50.0%  within5  89.3%
+step  2820/3000  loss  5.0871 (ce  3.078 aux  4.017 ref 0.0019)  train median    2.88 m   0.45 s/step
+step  2840/3000  loss  4.8531 (ce  3.084 aux  3.537 ref 0.0020)  train median    4.47 m   0.45 s/step
+step  2860/3000  loss  5.7319 (ce  3.738 aux  3.985 ref 0.0024)  train median    9.33 m   0.45 s/step
+step  2880/3000  loss  4.8827 (ce  3.173 aux  3.417 ref 0.0015)  train median    3.96 m   0.45 s/step
+step  2900/3000  loss  5.2025 (ce  3.467 aux  3.470 ref 0.0007)  train median   11.50 m   0.45 s/step
+step  2920/3000  loss  6.9655 (ce  4.630 aux  4.671 ref 0.0005)  train median   20.22 m   0.45 s/step
+step  2940/3000  loss  4.8377 (ce  3.241 aux  3.191 ref 0.0016)  train median    3.81 m   0.45 s/step
+step  2960/3000  loss  4.9448 (ce  3.160 aux  3.568 ref 0.0013)  train median    2.38 m   0.45 s/step
+step  2980/3000  loss  4.5738 (ce  2.843 aux  3.459 ref 0.0024)  train median    5.61 m   0.45 s/step
+step  3000/3000  loss  4.2810 (ce  2.666 aux  3.228 ref 0.0024)  train median    5.57 m   0.45 s/step
+  eval  n=192  median   2.21 m /   78.1 ms  p90    8.80 m /   294.6 ms  worst    57.92 m  within1  46.9%  within5  91.1%
+        ks_black_cat_county__layout_short n=32  median   2.78 m /   90.5 ms  p90   11.13 m /   308.2 ms  worst    28.62 m  within1  31.2%  within5  87.5%
+        ks_brands_hatch__indy    n=32  median   2.39 m /   64.3 ms  p90    4.58 m /   113.9 ms  worst     6.33 m  within1  46.9%  within5 100.0%
+        ks_red_bull_ring__layout_national n=24  median   2.28 m /   85.7 ms  p90    8.29 m /   210.4 ms  worst    14.31 m  within1  45.8%  within5  95.8%
+        ks_vallelunga__club_circuit n=48  median   1.88 m /   67.2 ms  p90   11.29 m /   331.6 ms  worst    57.92 m  within1  54.2%  within5  87.5%
+        magione                  n=56  median   2.00 m /   80.1 ms  p90    9.55 m /   330.1 ms  worst    40.87 m  within1  50.0%  within5  89.3%
+
+best eval median 2.17 m; artifacts in /Users/pvodopija/code/primal/runs/ab_camera_mirror

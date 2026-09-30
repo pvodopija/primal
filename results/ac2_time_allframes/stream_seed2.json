@@ -1,0 +1,72 @@
+{
+  "checkpoint": "runs/ac2_time_allframes/best.pt",
+  "args": {
+    "cmd": "stream",
+    "data": "data/packed_ac_v2",
+    "checkpoint": "runs/ac2_time_allframes/best.pt",
+    "stride": 4,
+    "holdout_laps": 3,
+    "speed_sigma": 2.0,
+    "speed_noise": 0.0,
+    "window": 8,
+    "seed": 2,
+    "out": "runs/ac2_time_allframes/stream_seed2.json",
+    "device": "mps"
+  },
+  "report": {
+    "G1 single": {
+      "median_m": 1.65924072265625,
+      "median_ms": 58.76350402832031,
+      "p90_ms": 150.84017944335938,
+      "over_100ms": 0.2519729425028185,
+      "over_10m": 0.00751597143930853,
+      "worst_m": 110.3712158203125,
+      "ticks": 5322
+    },
+    "G1 filter": {
+      "median_m": 1.62847900390625,
+      "median_ms": 57.58380889892578,
+      "p90_ms": 158.16001892089844,
+      "over_100ms": 0.262119503945885,
+      "over_10m": 0.0069522735813603905,
+      "worst_m": 37.0535888671875,
+      "ticks": 5322
+    },
+    "G1 filter + speed": {
+      "median_m": 1.107940673828125,
+      "median_ms": 38.54942321777344,
+      "p90_ms": 88.93623352050781,
+      "over_100ms": 0.060879368658399095,
+      "over_10m": 0.0,
+      "worst_m": 4.7708740234375,
+      "ticks": 5322
+    },
+    "G2 single": {
+      "median_m": 4.5997314453125,
+      "median_ms": 125.08010864257812,
+      "p90_ms": 1558.431640625,
+      "over_100ms": 0.5947295900792284,
+      "over_10m": 0.22080606269376507,
+      "worst_m": 1272.0950927734375,
+      "ticks": 5806
+    },
+    "G2 filter": {
+      "median_m": 4.2879638671875,
+      "median_ms": 116.3330078125,
+      "p90_ms": 309.4234619140625,
+      "over_100ms": 0.5685497760936962,
+      "over_10m": 0.15638994143988977,
+      "worst_m": 1179.3006591796875,
+      "ticks": 5806
+    },
+    "G2 filter + speed": {
+      "median_m": 1.86358642578125,
+      "median_ms": 51.639556884765625,
+      "p90_ms": 109.32731628417969,
+      "over_100ms": 0.12400964519462625,
+      "over_10m": 0.0,
+      "worst_m": 7.7347412109375,
+      "ticks": 5806
+    }
+  }
+}

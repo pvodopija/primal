@@ -1,0 +1,602 @@
+[
+  {
+    "track": "synth00",
+    "reference": "synth00__lap00",
+    "live": "synth00__lap01",
+    "separation_m": 1.8970610360307358,
+    "median_m": 0.3258209228515625,
+    "p90_m": 0.9784820675849915,
+    "within_1_bin": 1.0,
+    "entropy": 2.1300351917743683
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap00",
+    "live": "synth00__lap02",
+    "separation_m": 3.211842853880271,
+    "median_m": 0.335418701171875,
+    "p90_m": 0.8893066644668579,
+    "within_1_bin": 1.0,
+    "entropy": 2.120093822479248
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap00",
+    "live": "synth00__lap03",
+    "separation_m": 3.6603079895812014,
+    "median_m": 0.3646240234375,
+    "p90_m": 0.7738677859306335,
+    "within_1_bin": 1.0,
+    "entropy": 2.1290758848190308
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap00",
+    "live": "synth00__lap04",
+    "separation_m": 4.907994793255517,
+    "median_m": 1.723663330078125,
+    "p90_m": 5.277533054351807,
+    "within_1_bin": 0.53125,
+    "entropy": 2.177542597055435
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap01",
+    "live": "synth00__lap00",
+    "separation_m": 1.8970610360307358,
+    "median_m": 0.436370849609375,
+    "p90_m": 1.0268768072128296,
+    "within_1_bin": 1.0,
+    "entropy": 2.1192290782928467
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap01",
+    "live": "synth00__lap02",
+    "separation_m": 1.3147818178495347,
+    "median_m": 0.2796478271484375,
+    "p90_m": 0.920544445514679,
+    "within_1_bin": 1.0,
+    "entropy": 2.1172609329223633
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap01",
+    "live": "synth00__lap03",
+    "separation_m": 1.7632469535504658,
+    "median_m": 0.3421630859375,
+    "p90_m": 0.729296863079071,
+    "within_1_bin": 1.0,
+    "entropy": 2.127256691455841
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap01",
+    "live": "synth00__lap04",
+    "separation_m": 3.0109337572247803,
+    "median_m": 1.79248046875,
+    "p90_m": 4.5037994384765625,
+    "within_1_bin": 0.53125,
+    "entropy": 2.146012842655182
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap02",
+    "live": "synth00__lap00",
+    "separation_m": 3.211842853880271,
+    "median_m": 0.30645751953125,
+    "p90_m": 0.8765045404434204,
+    "within_1_bin": 1.0,
+    "entropy": 2.115427553653717
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap02",
+    "live": "synth00__lap01",
+    "separation_m": 1.3147818178495347,
+    "median_m": 0.4658660888671875,
+    "p90_m": 0.985455334186554,
+    "within_1_bin": 1.0,
+    "entropy": 2.12610125541687
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap02",
+    "live": "synth00__lap03",
+    "separation_m": 0.44846513570093094,
+    "median_m": 0.318328857421875,
+    "p90_m": 0.8016632199287415,
+    "within_1_bin": 1.0,
+    "entropy": 2.117918908596039
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap02",
+    "live": "synth00__lap04",
+    "separation_m": 1.6961519393752456,
+    "median_m": 1.826873779296875,
+    "p90_m": 4.851977348327637,
+    "within_1_bin": 0.59375,
+    "entropy": 2.154289960861206
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap03",
+    "live": "synth00__lap00",
+    "separation_m": 3.6603079895812014,
+    "median_m": 0.349945068359375,
+    "p90_m": 0.957171618938446,
+    "within_1_bin": 1.0,
+    "entropy": 2.122393935918808
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap03",
+    "live": "synth00__lap01",
+    "separation_m": 1.7632469535504658,
+    "median_m": 0.328857421875,
+    "p90_m": 0.9496795535087585,
+    "within_1_bin": 1.0,
+    "entropy": 2.124811887741089
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap03",
+    "live": "synth00__lap02",
+    "separation_m": 0.44846513570093094,
+    "median_m": 0.350433349609375,
+    "p90_m": 0.82000732421875,
+    "within_1_bin": 1.0,
+    "entropy": 2.110725909471512
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap03",
+    "live": "synth00__lap04",
+    "separation_m": 1.2476868036743147,
+    "median_m": 1.58258056640625,
+    "p90_m": 4.882208347320557,
+    "within_1_bin": 0.5625,
+    "entropy": 2.158478409051895
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap04",
+    "live": "synth00__lap00",
+    "separation_m": 4.907994793255517,
+    "median_m": 2.1712493896484375,
+    "p90_m": 5.646276950836182,
+    "within_1_bin": 0.46875,
+    "entropy": 2.200617730617523
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap04",
+    "live": "synth00__lap01",
+    "separation_m": 3.0109337572247803,
+    "median_m": 2.317138671875,
+    "p90_m": 4.830142021179199,
+    "within_1_bin": 0.4375,
+    "entropy": 2.1616598069667816
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap04",
+    "live": "synth00__lap02",
+    "separation_m": 1.6961519393752456,
+    "median_m": 2.1624755859375,
+    "p90_m": 4.94586181640625,
+    "within_1_bin": 0.484375,
+    "entropy": 2.146494686603546
+  },
+  {
+    "track": "synth00",
+    "reference": "synth00__lap04",
+    "live": "synth00__lap03",
+    "separation_m": 1.2476868036743147,
+    "median_m": 2.3954010009765625,
+    "p90_m": 6.179650783538818,
+    "within_1_bin": 0.4375,
+    "entropy": 2.1556236743927
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap00",
+    "live": "synth01__lap01",
+    "separation_m": 1.661415221494231,
+    "median_m": 0.322113037109375,
+    "p90_m": 0.8303130865097046,
+    "within_1_bin": 1.0,
+    "entropy": 2.1231944859027863
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap00",
+    "live": "synth01__lap02",
+    "separation_m": 2.6014423117567387,
+    "median_m": 0.3973541259765625,
+    "p90_m": 1.1134612560272217,
+    "within_1_bin": 0.984375,
+    "entropy": 2.124285936355591
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap00",
+    "live": "synth01__lap03",
+    "separation_m": 3.6649884111642796,
+    "median_m": 0.3586883544921875,
+    "p90_m": 0.943389892578125,
+    "within_1_bin": 1.0,
+    "entropy": 2.129673033952713
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap00",
+    "live": "synth01__lap04",
+    "separation_m": 4.823829958750456,
+    "median_m": 1.76397705078125,
+    "p90_m": 5.241152763366699,
+    "within_1_bin": 0.53125,
+    "entropy": 2.164675623178482
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap01",
+    "live": "synth01__lap00",
+    "separation_m": 1.661415221494231,
+    "median_m": 0.37103271484375,
+    "p90_m": 1.0807586908340454,
+    "within_1_bin": 1.0,
+    "entropy": 2.1327447593212128
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap01",
+    "live": "synth01__lap02",
+    "separation_m": 0.9400270902625076,
+    "median_m": 0.34619140625,
+    "p90_m": 0.7973602414131165,
+    "within_1_bin": 1.0,
+    "entropy": 2.1201155483722687
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap01",
+    "live": "synth01__lap03",
+    "separation_m": 2.003573189670049,
+    "median_m": 0.3386383056640625,
+    "p90_m": 0.872601330280304,
+    "within_1_bin": 1.0,
+    "entropy": 2.1309818029403687
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap01",
+    "live": "synth01__lap04",
+    "separation_m": 3.162414737256225,
+    "median_m": 2.3089752197265625,
+    "p90_m": 4.884124755859375,
+    "within_1_bin": 0.46875,
+    "entropy": 2.1511676609516144
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap02",
+    "live": "synth01__lap00",
+    "separation_m": 2.6014423117567387,
+    "median_m": 0.4099578857421875,
+    "p90_m": 0.897875964641571,
+    "within_1_bin": 0.984375,
+    "entropy": 2.1298714578151703
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap02",
+    "live": "synth01__lap01",
+    "separation_m": 0.9400270902625076,
+    "median_m": 0.3450469970703125,
+    "p90_m": 0.7880828976631165,
+    "within_1_bin": 1.0,
+    "entropy": 2.1164036095142365
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap02",
+    "live": "synth01__lap03",
+    "separation_m": 1.063546099407541,
+    "median_m": 0.4189910888671875,
+    "p90_m": 1.026513695716858,
+    "within_1_bin": 1.0,
+    "entropy": 2.1272899210453033
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap02",
+    "live": "synth01__lap04",
+    "separation_m": 2.222387646993717,
+    "median_m": 1.98382568359375,
+    "p90_m": 4.969424247741699,
+    "within_1_bin": 0.515625,
+    "entropy": 2.1532351076602936
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap03",
+    "live": "synth01__lap00",
+    "separation_m": 3.6649884111642796,
+    "median_m": 0.482635498046875,
+    "p90_m": 1.161260962486267,
+    "within_1_bin": 1.0,
+    "entropy": 2.143371045589447
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap03",
+    "live": "synth01__lap01",
+    "separation_m": 2.003573189670049,
+    "median_m": 0.321258544921875,
+    "p90_m": 0.838702380657196,
+    "within_1_bin": 1.0,
+    "entropy": 2.13107967376709
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap03",
+    "live": "synth01__lap02",
+    "separation_m": 1.063546099407541,
+    "median_m": 0.432037353515625,
+    "p90_m": 0.8442718386650085,
+    "within_1_bin": 1.0,
+    "entropy": 2.133136570453644
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap03",
+    "live": "synth01__lap04",
+    "separation_m": 1.1588415475861762,
+    "median_m": 2.14801025390625,
+    "p90_m": 5.350424289703369,
+    "within_1_bin": 0.484375,
+    "entropy": 2.1477622389793396
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap04",
+    "live": "synth01__lap00",
+    "separation_m": 4.823829958750456,
+    "median_m": 2.067352294921875,
+    "p90_m": 3.5853209495544434,
+    "within_1_bin": 0.484375,
+    "entropy": 2.1917236745357513
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap04",
+    "live": "synth01__lap01",
+    "separation_m": 3.162414737256225,
+    "median_m": 2.2337799072265625,
+    "p90_m": 3.952136278152466,
+    "within_1_bin": 0.40625,
+    "entropy": 2.189899504184723
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap04",
+    "live": "synth01__lap02",
+    "separation_m": 2.222387646993717,
+    "median_m": 1.89947509765625,
+    "p90_m": 3.660125732421875,
+    "within_1_bin": 0.546875,
+    "entropy": 2.171604812145233
+  },
+  {
+    "track": "synth01",
+    "reference": "synth01__lap04",
+    "live": "synth01__lap03",
+    "separation_m": 1.1588415475861762,
+    "median_m": 2.1988067626953125,
+    "p90_m": 3.979012966156006,
+    "within_1_bin": 0.4375,
+    "entropy": 2.1555413007736206
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap00",
+    "live": "synth02__lap01",
+    "separation_m": 0.852586292385009,
+    "median_m": 0.39715576171875,
+    "p90_m": 0.9479919672012329,
+    "within_1_bin": 1.0,
+    "entropy": 2.131135195493698
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap00",
+    "live": "synth02__lap02",
+    "separation_m": 2.248192264239906,
+    "median_m": 0.29034423828125,
+    "p90_m": 1.1343291997909546,
+    "within_1_bin": 0.953125,
+    "entropy": 2.1387447714805603
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap00",
+    "live": "synth02__lap03",
+    "separation_m": 3.024424804808964,
+    "median_m": 0.3874053955078125,
+    "p90_m": 0.850128173828125,
+    "within_1_bin": 0.984375,
+    "entropy": 2.1302575767040253
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap00",
+    "live": "synth02__lap04",
+    "separation_m": 4.403539419908706,
+    "median_m": 2.68719482421875,
+    "p90_m": 7.414126396179199,
+    "within_1_bin": 0.375,
+    "entropy": 2.245382636785507
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap01",
+    "live": "synth02__lap00",
+    "separation_m": 0.852586292385009,
+    "median_m": 0.3001708984375,
+    "p90_m": 0.8355499505996704,
+    "within_1_bin": 1.0,
+    "entropy": 2.130047231912613
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap01",
+    "live": "synth02__lap02",
+    "separation_m": 1.3956059718548968,
+    "median_m": 0.36383056640625,
+    "p90_m": 0.7693206667900085,
+    "within_1_bin": 0.984375,
+    "entropy": 2.1232118010520935
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap01",
+    "live": "synth02__lap03",
+    "separation_m": 2.171838512423955,
+    "median_m": 0.34478759765625,
+    "p90_m": 0.852587878704071,
+    "within_1_bin": 1.0,
+    "entropy": 2.1271060407161713
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap01",
+    "live": "synth02__lap04",
+    "separation_m": 3.550953127523697,
+    "median_m": 2.931915283203125,
+    "p90_m": 8.903582572937012,
+    "within_1_bin": 0.390625,
+    "entropy": 2.2720776200294495
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap02",
+    "live": "synth02__lap00",
+    "separation_m": 2.248192264239906,
+    "median_m": 0.367095947265625,
+    "p90_m": 1.051727294921875,
+    "within_1_bin": 1.0,
+    "entropy": 2.139609068632126
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap02",
+    "live": "synth02__lap01",
+    "separation_m": 1.3956059718548968,
+    "median_m": 0.2941131591796875,
+    "p90_m": 0.952972412109375,
+    "within_1_bin": 1.0,
+    "entropy": 2.1287436485290527
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap02",
+    "live": "synth02__lap03",
+    "separation_m": 0.776232540569058,
+    "median_m": 0.3316802978515625,
+    "p90_m": 0.785736083984375,
+    "within_1_bin": 1.0,
+    "entropy": 2.131898820400238
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap02",
+    "live": "synth02__lap04",
+    "separation_m": 2.1553471556688004,
+    "median_m": 2.6800537109375,
+    "p90_m": 9.356058120727539,
+    "within_1_bin": 0.390625,
+    "entropy": 2.273611932992935
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap03",
+    "live": "synth02__lap00",
+    "separation_m": 3.024424804808964,
+    "median_m": 0.38275146484375,
+    "p90_m": 0.9861053228378296,
+    "within_1_bin": 1.0,
+    "entropy": 2.1335949897766113
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap03",
+    "live": "synth02__lap01",
+    "separation_m": 2.171838512423955,
+    "median_m": 0.3267364501953125,
+    "p90_m": 1.12774658203125,
+    "within_1_bin": 1.0,
+    "entropy": 2.128383070230484
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap03",
+    "live": "synth02__lap02",
+    "separation_m": 0.776232540569058,
+    "median_m": 0.3577880859375,
+    "p90_m": 0.7914336919784546,
+    "within_1_bin": 1.0,
+    "entropy": 2.1280494332313538
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap03",
+    "live": "synth02__lap04",
+    "separation_m": 1.3791146150997422,
+    "median_m": 3.235626220703125,
+    "p90_m": 6.533959865570068,
+    "within_1_bin": 0.390625,
+    "entropy": 2.223089188337326
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap04",
+    "live": "synth02__lap00",
+    "separation_m": 4.403539419908706,
+    "median_m": 2.4084625244140625,
+    "p90_m": 4.446325778961182,
+    "within_1_bin": 0.375,
+    "entropy": 2.304880827665329
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap04",
+    "live": "synth02__lap01",
+    "separation_m": 3.550953127523697,
+    "median_m": 2.433380126953125,
+    "p90_m": 4.80108642578125,
+    "within_1_bin": 0.40625,
+    "entropy": 2.23813396692276
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap04",
+    "live": "synth02__lap02",
+    "separation_m": 2.1553471556688004,
+    "median_m": 2.516693115234375,
+    "p90_m": 5.506152153015137,
+    "within_1_bin": 0.421875,
+    "entropy": 2.280185967683792
+  },
+  {
+    "track": "synth02",
+    "reference": "synth02__lap04",
+    "live": "synth02__lap03",
+    "separation_m": 1.3791146150997422,
+    "median_m": 2.10516357421875,
+    "p90_m": 5.522531032562256,
+    "within_1_bin": 0.484375,
+    "entropy": 2.247098386287689
+  }
+]

@@ -1,0 +1,54 @@
+{
+  "checkpoint": "runs/ab_long/best.pt",
+  "args": {
+    "cmd": "stream",
+    "data": "data/packed_ac_v2",
+    "checkpoint": "runs/ab_long/best.pt",
+    "stride": 4,
+    "holdout_laps": 3,
+    "speed_sigma": null,
+    "speed_noise": 0.0,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/ab_long/stream_seed0.json",
+    "device": "mps"
+  },
+  "report": {
+    "G1 single": {
+      "median_m": 1.22491455078125,
+      "median_ms": 42.91725158691406,
+      "p90_ms": 116.6299819946289,
+      "over_100ms": 0.14374295377677565,
+      "over_10m": 0.002066892145809846,
+      "worst_m": 58.68359375,
+      "ticks": 5322
+    },
+    "G1 filter": {
+      "median_m": 1.2767333984375,
+      "median_ms": 44.83604431152344,
+      "p90_ms": 124.58724975585938,
+      "over_100ms": 0.16647876738068396,
+      "over_10m": 0.0016910935738444193,
+      "worst_m": 22.5712890625,
+      "ticks": 5322
+    },
+    "G2 single": {
+      "median_m": 3.69580078125,
+      "median_ms": 102.50473022460938,
+      "p90_ms": 421.17120361328125,
+      "over_100ms": 0.5103341370995522,
+      "over_10m": 0.1687909059593524,
+      "worst_m": 1284.2269287109375,
+      "ticks": 5806
+    },
+    "G2 filter": {
+      "median_m": 3.7529296875,
+      "median_ms": 105.4229736328125,
+      "p90_ms": 297.8267822265625,
+      "over_100ms": 0.5201515673441268,
+      "over_10m": 0.13382707543920083,
+      "worst_m": 1181.8641357421875,
+      "ticks": 5806
+    }
+  }
+}

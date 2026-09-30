@@ -1,0 +1,146 @@
+{
+  "G1 1 reference single": {
+    "median_m": 1.61737060546875,
+    "over_100ms": 0.2815533980582524,
+    "over_10m": 0.014563106796116505,
+    "worst_m": 99.99169921875
+  },
+  "G1 1 reference filter": {
+    "median_m": 1.56927490234375,
+    "over_100ms": 0.28192681105302464,
+    "over_10m": 0.011202389843166542,
+    "worst_m": 56.3651123046875
+  },
+  "G1 1 reference filter + speed": {
+    "median_m": 0.764251708984375,
+    "over_100ms": 0.06945481702763256,
+    "over_10m": 0.0,
+    "worst_m": 5.12823486328125
+  },
+  "G1 5 references, labels single": {
+    "median_m": 1.3154296875,
+    "over_100ms": 0.1919342793129201,
+    "over_10m": 0.005227781926811053,
+    "worst_m": 40.446533203125
+  },
+  "G1 5 references, labels filter": {
+    "median_m": 1.29266357421875,
+    "over_100ms": 0.1796116504854369,
+    "over_10m": 0.002987303958177745,
+    "worst_m": 11.5833740234375
+  },
+  "G1 5 references, labels filter + speed": {
+    "median_m": 0.658935546875,
+    "over_100ms": 0.03286034353995519,
+    "over_10m": 0.0,
+    "worst_m": 4.495849609375
+  },
+  "G1 5 references, model single": {
+    "median_m": 1.63690185546875,
+    "over_100ms": 0.28230022404779687,
+    "over_10m": 0.0074682598954443615,
+    "worst_m": 40.4881591796875
+  },
+  "G1 5 references, model filter": {
+    "median_m": 1.716766357421875,
+    "over_100ms": 0.28454070201643017,
+    "over_10m": 0.005601194921583271,
+    "worst_m": 13.1143798828125
+  },
+  "G1 5 references, model filter + speed": {
+    "median_m": 0.79388427734375,
+    "over_100ms": 0.06273338312173264,
+    "over_10m": 0.0,
+    "worst_m": 5.2850341796875
+  },
+  "G1 5 references, model both ways single": {
+    "median_m": 1.613189697265625,
+    "over_100ms": 0.2703510082150859,
+    "over_10m": 0.005601194921583271,
+    "worst_m": 40.1748046875
+  },
+  "G1 5 references, model both ways filter": {
+    "median_m": 1.68389892578125,
+    "over_100ms": 0.26997759522031367,
+    "over_10m": 0.0037341299477221808,
+    "worst_m": 12.3057861328125
+  },
+  "G1 5 references, model both ways filter + speed": {
+    "median_m": 0.84881591796875,
+    "over_100ms": 0.05974607916355489,
+    "over_10m": 0.0,
+    "worst_m": 5.567626953125
+  },
+  "G2 1 reference single": {
+    "median_m": 2.3682861328125,
+    "over_100ms": 0.32579650565262075,
+    "over_10m": 0.08393285371702638,
+    "worst_m": 1130.2991943359375
+  },
+  "G2 1 reference filter": {
+    "median_m": 2.29736328125,
+    "over_100ms": 0.31414868105515587,
+    "over_10m": 0.05584104145255225,
+    "worst_m": 881.1331787109375
+  },
+  "G2 1 reference filter + speed": {
+    "median_m": 1.0238037109375,
+    "over_100ms": 0.008221993833504625,
+    "over_10m": 0.0,
+    "worst_m": 4.2362060546875
+  },
+  "G2 5 references, labels single": {
+    "median_m": 1.7584228515625,
+    "over_100ms": 0.20006851661527922,
+    "over_10m": 0.0171291538198013,
+    "worst_m": 1046.2015380859375
+  },
+  "G2 5 references, labels filter": {
+    "median_m": 1.688720703125,
+    "over_100ms": 0.14936622130866736,
+    "over_10m": 0.007194244604316547,
+    "worst_m": 18.62109375
+  },
+  "G2 5 references, labels filter + speed": {
+    "median_m": 0.6978759765625,
+    "over_100ms": 0.0010277492291880781,
+    "over_10m": 0.0,
+    "worst_m": 4.429931640625
+  },
+  "G2 5 references, model single": {
+    "median_m": 2.3494873046875,
+    "over_100ms": 0.31243576567317577,
+    "over_10m": 0.040082219938335044,
+    "worst_m": 1128.8680419921875
+  },
+  "G2 5 references, model filter": {
+    "median_m": 2.43212890625,
+    "over_100ms": 0.30421377183967113,
+    "over_10m": 0.0407673860911271,
+    "worst_m": 21.8857421875
+  },
+  "G2 5 references, model filter + speed": {
+    "median_m": 0.9404296875,
+    "over_100ms": 0.01986981843096951,
+    "over_10m": 0.0,
+    "worst_m": 6.2655029296875
+  },
+  "G2 5 references, model both ways single": {
+    "median_m": 2.306640625,
+    "over_100ms": 0.30181569030489896,
+    "over_10m": 0.03836930455635491,
+    "worst_m": 1128.4676513671875
+  },
+  "G2 5 references, model both ways filter": {
+    "median_m": 2.3802490234375,
+    "over_100ms": 0.29838985954093866,
+    "over_10m": 0.041795135320315174,
+    "worst_m": 22.474609375
+  },
+  "G2 5 references, model both ways filter + speed": {
+    "median_m": 0.818115234375,
+    "over_100ms": 0.011305241521068859,
+    "over_10m": 0.0,
+    "worst_m": 6.52880859375
+  }
+}

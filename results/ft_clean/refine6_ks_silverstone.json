@@ -1,0 +1,30 @@
+{
+  "anchor only": {
+    "median_m": 3.03656005859375,
+    "over_100ms": 0.42513182767883795,
+    "over_10m": 0.10541239677644015
+  },
+  "blend, labels": {
+    "median_m": 2.5950927734375,
+    "over_100ms": 0.3518057904686101,
+    "over_10m": 0.048303651377972344
+  },
+  "blend, speed filter": {
+    "median_m": 3.9124755859375,
+    "over_100ms": 0.5518853845388518,
+    "over_10m": 0.07680827778330514
+  },
+  "blend, speed filter, lag-corrected": {
+    "median_m": 3.1270751953125,
+    "over_100ms": 0.43781713262361954,
+    "over_10m": 0.05676052134116008
+  },
+  "placement speed filter": {
+    "median_m": 2.6222492539247924,
+    "over_10m": 0.0010237796081716227
+  },
+  "placement speed filter, lag-corrected": {
+    "median_m": 1.250654956463677,
+    "over_10m": 0.0010237796081716227
+  }
+}

@@ -1,0 +1,26 @@
+gate g1: held-out laps of seen tracks; full augmentation
+train tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'] (111 laps usable)
+eval  tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'], split=train
+held out as live-only: ['ks_black_cat_county__layout_short__20260923T183526Z__lap08', 'ks_brands_hatch__indy__20260921T221531Z__lap02', 'ks_red_bull_ring__layout_national__20260923T174436Z__lap15', 'ks_vallelunga__club_circuit__20260922T223945Z__lap07', 'magione__default__20260922T231051Z__lap06']
+frame 148x80, reference bins 3227
+model 0.67M params on mps
+
+step     1/200  loss 10.4107 (ce  7.193 aux  6.436 ref 0.0000)  train median  419.80 m   1.52 s/step
+step    20/200  loss  8.4891 (ce  6.341 aux  4.290 ref 0.0055)  train median   23.92 m   0.37 s/step
+step    40/200  loss  6.1583 (ce  4.129 aux  4.056 ref 0.0030)  train median    8.99 m   0.34 s/step
+step    60/200  loss  5.6963 (ce  3.570 aux  4.251 ref 0.0026)  train median    5.12 m   0.34 s/step
+step    80/200  loss  5.5457 (ce  3.631 aux  3.825 ref 0.0038)  train median    6.41 m   0.35 s/step
+step   100/200  loss  6.8271 (ce  4.426 aux  4.801 ref 0.0013)  train median   15.96 m   0.36 s/step
+step   120/200  loss  5.5227 (ce  3.353 aux  4.339 ref 0.0011)  train median    6.91 m   0.36 s/step
+step   140/200  loss  4.7925 (ce  3.025 aux  3.533 ref 0.0020)  train median    6.04 m   0.35 s/step
+step   160/200  loss  4.7248 (ce  3.060 aux  3.328 ref 0.0021)  train median    2.87 m   0.37 s/step
+step   180/200  loss  5.6255 (ce  3.551 aux  4.148 ref 0.0004)  train median    2.83 m   0.36 s/step
+step   200/200  loss  4.6720 (ce  3.021 aux  3.298 ref 0.0037)  train median    8.88 m   0.37 s/step
+  eval  n=192  median   3.61 m /  124.1 ms  p90   30.25 m /   799.8 ms  worst   858.54 m  within1  26.6%  within5  75.0%
+        ks_black_cat_county__layout_short n=32  median   3.63 m /  102.0 ms  p90   27.65 m /   547.7 ms  worst    57.03 m  within1  31.2%  within5  81.2%
+        ks_brands_hatch__indy    n=32  median  16.56 m /  432.1 ms  p90  463.73 m / 13402.1 ms  worst   858.54 m  within1   9.4%  within5  31.2%
+        ks_red_bull_ring__layout_national n=24  median   3.49 m /   98.9 ms  p90   10.30 m /   270.6 ms  worst    22.19 m  within1  25.0%  within5  87.5%
+        ks_vallelunga__club_circuit n=48  median   2.36 m /   91.4 ms  p90   12.54 m /   360.4 ms  worst    64.54 m  within1  39.6%  within5  85.4%
+        magione                  n=56  median   3.14 m /  120.0 ms  p90   15.95 m /   644.5 ms  worst   164.46 m  within1  23.2%  within5  83.9%
+
+best eval median 3.61 m; artifacts in /Users/pvodopija/code/primal/runs/timing_workers3
