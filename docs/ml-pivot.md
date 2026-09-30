@@ -211,8 +211,11 @@ cost the same time as from SRAM, with the MRAM timing assumed:
 | **head, 958 bins, no GroupNorm** | **12.9 ms** | **19% at 15 Hz** | nothing | 209 + 100 KiB |
 
 - **GroupNorm is the only operator the NPU cannot run.** GELU runs on it and
-  costs the same as ReLU, so a model ready for the glasses needs only
-  GroupNorm removed and a retrain. Accuracy without it is untested.
+  costs the same as ReLU. Simply removing GroupNorm costs accuracy, though:
+  on v3's unseen circuits it goes from 13.9% to 16.6% of ticks over budget with
+  the reference-time tracker, one seed (*Nine training circuits*). The model
+  for the glasses needs a normalisation the NPU can run, such as BatchNorm with
+  frozen statistics folded into the weights.
 - **Standalone fits:** 27-34% of the NPU, about 0.3 MB of the 2 MB SRAM, and
   0.64 MB of weights in the 1.8 MB MRAM, which the ~0.6 MB firmware also uses.
 - **The head's large dilations are paid in full.** The NPU handles dilation up
@@ -981,6 +984,20 @@ the three unseen circuits, both controls passing for every model. Share of ticks
 - **Head turns still cost a lot.** On Lime Rock, looking into corners takes the
   metre filter from 18.7% to 43%. The augmentation's ±4° of yaw does not cover
   the renders' turns of up to ~24°.
+- **Two single-seed variants of that recipe:**
+
+  | | trained tracks | unseen, metres | unseen, reference time | same car | true speed | head turns, metres / reference time |
+  |---|---|---|---|---|---|---|
+  | without GroupNorm (what Halo's NPU can run) | 41.3% | 36.7% | 16.6% | 14.5% | 4.5% | 39.7% / 21.9% |
+  | yaw augmentation widened from ±4° to ±10° | 29.5% | 30.4% | 13.0% | 5.7% | 1.3% | 29.1% / 14.9% |
+
+  - **Dropping GroupNorm costs accuracy everywhere,** mostly outside the seed
+    range. The NPU-ready model needs a replacement normalisation, not none.
+    Candidates: BatchNorm with frozen statistics, which folds into the weights
+    for free; or training the model without norms to copy the current one.
+  - **Wider yaw helps head turns by ~5 points** (29.1% against the recipe's
+    33.9% mean) and is level or better everywhere else. Two more seeds, and
+    ±15°, are running.
 - **"Same car" is 16 pairs, all on Silverstone.** Lime Rock and Oulton have one
   session per car. The bot drives near-identical laps within 0.1 s, so same-car
   pairs flatter the reference-time filter. A human driver's pace varies more,
@@ -1812,8 +1829,10 @@ Recorded so they are not relitigated.
    closed.
 2. **Hardware feasibility on Halo.** The Vela estimate is done: 8-bit costs
    nothing, and without GroupNorm the model uses 27-34% of the NPU (~15% with a
-   windowed head). Next, retrain without GroupNorm and check it against today's
-   gates; then on hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
+   windowed head). Removing GroupNorm costs accuracy (16.6% against 13.9% on
+   unseen circuits), so next is a normalisation the NPU can run: BatchNorm with
+   frozen statistics, or distillation into a model without norms. Then on
+   hardware: continuous capture rate, encoder latency on the NPU, Bluetooth
    throughput, 25-minute power and temperature, helmet fit. AC footage at
    Halo's field of view once it is chosen.
 3. **More and more varied data.** Unseen tracks are still well behind known

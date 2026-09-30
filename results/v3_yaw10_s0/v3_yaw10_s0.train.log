@@ -1,0 +1,166 @@
+started from runs/v3_yaw10_s0_base/best.pt
+gate g1: held-out laps of seen tracks; full augmentation
+train tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_highlands__layout_short', 'ks_laguna_seca', 'ks_monza66__junior', 'ks_nurburgring__layout_sprint_a', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'] (284 laps usable)
+eval  tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_highlands__layout_short', 'ks_laguna_seca', 'ks_monza66__junior', 'ks_nurburgring__layout_sprint_a', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'], split=train
+held out as live-only: ['ks_black_cat_county__layout_short__20260923T183526Z__lap07', 'ks_brands_hatch__indy__20260921T221531Z__lap02', 'ks_highlands__layout_short__20260928T005654Z__lap54', 'ks_laguna_seca__default__20260928T123110Z__lap12', 'ks_monza66__junior__20260928T093530Z__lap14', 'ks_nurburgring__layout_sprint_a__20260928T103410Z__lap12', 'ks_red_bull_ring__layout_national__20260923T174436Z__lap11', 'ks_vallelunga__club_circuit__20260922T223945Z__lap07', 'magione__default__20260922T231051Z__lap06']
+frame 148x80, reference bins 3227
+model 0.67M params on mps
+
+step     1/1500  loss  3.7241 (ce  2.397 aux  2.652 ref 0.0012)  train median    0.87 m   1.50 s/step
+step    20/1500  loss  3.7200 (ce  2.338 aux  2.763 ref 0.0007)  train median    2.31 m   0.40 s/step
+step    40/1500  loss  4.1919 (ce  2.656 aux  3.070 ref 0.0010)  train median    2.61 m   0.38 s/step
+step    60/1500  loss  4.0934 (ce  2.637 aux  2.912 ref 0.0013)  train median    4.61 m   0.37 s/step
+step    80/1500  loss  3.9652 (ce  2.508 aux  2.913 ref 0.0014)  train median    2.42 m   0.38 s/step
+step   100/1500  loss  4.1193 (ce  2.512 aux  3.214 ref 0.0004)  train median    0.59 m   0.38 s/step
+step   120/1500  loss  3.5820 (ce  2.279 aux  2.604 ref 0.0009)  train median    1.33 m   0.39 s/step
+step   140/1500  loss  3.6563 (ce  2.358 aux  2.596 ref 0.0010)  train median    1.56 m   0.38 s/step
+step   160/1500  loss  3.7910 (ce  2.415 aux  2.751 ref 0.0008)  train median    2.16 m   0.39 s/step
+step   180/1500  loss  3.5571 (ce  2.271 aux  2.572 ref 0.0010)  train median    1.89 m   0.39 s/step
+step   200/1500  loss  3.4709 (ce  2.244 aux  2.452 ref 0.0007)  train median    1.27 m   0.39 s/step
+  eval  n=192  median   2.17 m /   65.6 ms  p90    6.60 m /   209.2 ms  worst   450.14 m  within1  46.9%  within5  95.8%
+        ks_black_cat_county__layout_short n=24  median   2.33 m /   55.3 ms  p90    5.38 m /   139.3 ms  worst   450.14 m  within1  41.7%  within5  91.7%
+        ks_brands_hatch__indy    n=16  median   1.58 m /   58.1 ms  p90    7.00 m /   165.0 ms  worst    10.80 m  within1  56.2%  within5  93.8%
+        ks_highlands__layout_short n=16  median   2.08 m /   67.8 ms  p90    3.62 m /   152.5 ms  worst     5.09 m  within1  43.8%  within5 100.0%
+        ks_laguna_seca           n=16  median   1.94 m /   58.0 ms  p90    5.58 m /   176.3 ms  worst    11.45 m  within1  56.2%  within5  93.8%
+        ks_monza66__junior       n=8  median   0.90 m /   26.1 ms  p90    2.98 m /    73.7 ms  worst     3.00 m  within1  75.0%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   2.48 m /   77.4 ms  p90    9.68 m /   291.4 ms  worst    21.41 m  within1  45.8%  within5  91.7%
+        ks_red_bull_ring__layout_national n=16  median   3.05 m /   83.7 ms  p90    4.30 m /   149.3 ms  worst    14.06 m  within1  31.2%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   2.36 m /   76.8 ms  p90    7.11 m /   172.2 ms  worst    10.22 m  within1  43.8%  within5  96.9%
+        magione                  n=40  median   2.10 m /   76.4 ms  p90    5.73 m /   226.1 ms  worst     8.14 m  within1  47.5%  within5 100.0%
+step   220/1500  loss  3.9297 (ce  2.623 aux  2.610 ref 0.0025)  train median    4.30 m   0.41 s/step
+step   240/1500  loss  3.5775 (ce  2.281 aux  2.592 ref 0.0011)  train median    2.02 m   0.41 s/step
+step   260/1500  loss  3.8149 (ce  2.335 aux  2.958 ref 0.0009)  train median    0.87 m   0.41 s/step
+step   280/1500  loss  3.6057 (ce  2.296 aux  2.620 ref 0.0007)  train median    1.39 m   0.41 s/step
+step   300/1500  loss  3.6715 (ce  2.326 aux  2.690 ref 0.0012)  train median    1.48 m   0.41 s/step
+step   320/1500  loss  3.9215 (ce  2.523 aux  2.795 ref 0.0016)  train median    3.69 m   0.41 s/step
+step   340/1500  loss  3.6677 (ce  2.272 aux  2.791 ref 0.0011)  train median    1.70 m   0.41 s/step
+step   360/1500  loss  3.6300 (ce  2.344 aux  2.570 ref 0.0014)  train median    1.64 m   0.40 s/step
+step   380/1500  loss  4.3078 (ce  2.776 aux  3.060 ref 0.0025)  train median    5.89 m   0.40 s/step
+step   400/1500  loss  3.9567 (ce  2.596 aux  2.719 ref 0.0012)  train median    1.61 m   0.39 s/step
+  eval  n=192  median   2.24 m /   73.1 ms  p90    6.21 m /   203.3 ms  worst   448.55 m  within1  48.4%  within5  96.4%
+        ks_black_cat_county__layout_short n=24  median   2.36 m /   64.9 ms  p90    6.13 m /   163.2 ms  worst   448.55 m  within1  45.8%  within5  91.7%
+        ks_brands_hatch__indy    n=16  median   2.58 m /   80.3 ms  p90    6.88 m /   156.8 ms  worst    11.61 m  within1  43.8%  within5  93.8%
+        ks_highlands__layout_short n=16  median   1.55 m /   51.9 ms  p90    3.57 m /   137.0 ms  worst     4.27 m  within1  62.5%  within5 100.0%
+        ks_laguna_seca           n=16  median   3.14 m /  102.7 ms  p90    5.72 m /   158.3 ms  worst     6.73 m  within1  31.2%  within5 100.0%
+        ks_monza66__junior       n=8  median   1.13 m /   33.3 ms  p90    2.76 m /    70.4 ms  worst     2.96 m  within1  62.5%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   2.82 m /   95.9 ms  p90    8.66 m /   315.9 ms  worst    25.18 m  within1  37.5%  within5  91.7%
+        ks_red_bull_ring__layout_national n=16  median   2.93 m /   76.1 ms  p90    4.30 m /   147.3 ms  worst    12.15 m  within1  31.2%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   1.52 m /   58.1 ms  p90    6.28 m /   145.6 ms  worst    10.72 m  within1  56.2%  within5  96.9%
+        magione                  n=40  median   1.68 m /   63.3 ms  p90    5.76 m /   206.2 ms  worst     6.92 m  within1  57.5%  within5 100.0%
+step   420/1500  loss  4.0676 (ce  2.451 aux  3.233 ref 0.0009)  train median    2.80 m   0.41 s/step
+step   440/1500  loss  4.2921 (ce  2.759 aux  3.065 ref 0.0022)  train median    4.09 m   0.41 s/step
+step   460/1500  loss  3.7833 (ce  2.428 aux  2.709 ref 0.0012)  train median    1.58 m   0.41 s/step
+step   480/1500  loss  3.6221 (ce  2.296 aux  2.650 ref 0.0014)  train median    2.70 m   0.41 s/step
+step   500/1500  loss  3.6086 (ce  2.382 aux  2.453 ref 0.0012)  train median    1.97 m   0.41 s/step
+step   520/1500  loss  4.2948 (ce  2.802 aux  2.985 ref 0.0006)  train median    2.12 m   0.41 s/step
+step   540/1500  loss  3.8571 (ce  2.561 aux  2.591 ref 0.0015)  train median    2.85 m   0.41 s/step
+step   560/1500  loss  4.0738 (ce  2.605 aux  2.937 ref 0.0009)  train median    2.93 m   0.41 s/step
+step   580/1500  loss  3.3901 (ce  2.212 aux  2.356 ref 0.0007)  train median    1.13 m   0.41 s/step
+step   600/1500  loss  3.6735 (ce  2.352 aux  2.642 ref 0.0006)  train median    1.18 m   0.41 s/step
+  eval  n=192  median   2.29 m /   70.4 ms  p90    6.52 m /   196.5 ms  worst  2499.97 m  within1  45.3%  within5  95.8%
+        ks_black_cat_county__layout_short n=24  median   2.46 m /   74.8 ms  p90    6.72 m /   151.2 ms  worst  2499.97 m  within1  41.7%  within5  95.8%
+        ks_brands_hatch__indy    n=16  median   1.48 m /   52.0 ms  p90    5.34 m /   135.9 ms  worst    14.45 m  within1  62.5%  within5  93.8%
+        ks_highlands__layout_short n=16  median   1.96 m /   65.3 ms  p90    3.60 m /   141.2 ms  worst     4.04 m  within1  50.0%  within5 100.0%
+        ks_laguna_seca           n=16  median   3.16 m /   95.4 ms  p90    6.18 m /   176.7 ms  worst    11.94 m  within1  18.8%  within5  93.8%
+        ks_monza66__junior       n=8  median   0.82 m /   25.1 ms  p90    2.91 m /    60.8 ms  worst     3.26 m  within1  75.0%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   4.29 m /  111.6 ms  p90   10.15 m /   268.3 ms  worst   439.67 m  within1  37.5%  within5  87.5%
+        ks_red_bull_ring__layout_national n=16  median   2.74 m /   79.0 ms  p90    4.22 m /   139.4 ms  worst    12.89 m  within1   6.2%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   1.33 m /   51.9 ms  p90    6.87 m /   223.2 ms  worst    12.28 m  within1  62.5%  within5  96.9%
+        magione                  n=40  median   1.94 m /   66.7 ms  p90    5.99 m /   197.7 ms  worst     8.67 m  within1  50.0%  within5 100.0%
+step   620/1500  loss  4.3692 (ce  2.809 aux  3.121 ref 0.0004)  train median    3.73 m   0.42 s/step
+step   640/1500  loss  4.2636 (ce  2.813 aux  2.900 ref 0.0008)  train median    1.47 m   0.43 s/step
+step   660/1500  loss  4.0370 (ce  2.642 aux  2.789 ref 0.0012)  train median    3.94 m   0.43 s/step
+step   680/1500  loss  3.7527 (ce  2.432 aux  2.640 ref 0.0009)  train median    2.84 m   0.42 s/step
+step   700/1500  loss  4.2814 (ce  2.792 aux  2.978 ref 0.0011)  train median    1.85 m   0.42 s/step
+step   720/1500  loss  3.9002 (ce  2.434 aux  2.932 ref 0.0012)  train median    2.99 m   0.42 s/step
+step   740/1500  loss  4.4805 (ce  2.798 aux  3.364 ref 0.0005)  train median    3.10 m   0.43 s/step
+step   760/1500  loss  3.4535 (ce  2.213 aux  2.480 ref 0.0006)  train median    0.71 m   0.43 s/step
+step   780/1500  loss  4.0380 (ce  2.465 aux  3.145 ref 0.0005)  train median    2.25 m   0.44 s/step
+step   800/1500  loss  3.4773 (ce  2.221 aux  2.511 ref 0.0008)  train median    0.82 m   0.44 s/step
+  eval  n=192  median   2.04 m /   63.6 ms  p90    6.05 m /   221.9 ms  worst  2499.78 m  within1  50.0%  within5  96.9%
+        ks_black_cat_county__layout_short n=24  median   2.00 m /   57.1 ms  p90    5.30 m /   136.5 ms  worst  2499.78 m  within1  50.0%  within5  91.7%
+        ks_brands_hatch__indy    n=16  median   2.78 m /   81.4 ms  p90    5.46 m /   133.6 ms  worst     9.20 m  within1  37.5%  within5 100.0%
+        ks_highlands__layout_short n=16  median   1.74 m /   56.8 ms  p90    3.35 m /   117.5 ms  worst     3.39 m  within1  50.0%  within5 100.0%
+        ks_laguna_seca           n=16  median   2.98 m /  102.6 ms  p90    5.36 m /   160.2 ms  worst     6.19 m  within1  43.8%  within5 100.0%
+        ks_monza66__junior       n=8  median   1.00 m /   30.6 ms  p90    2.06 m /    42.5 ms  worst     2.99 m  within1  87.5%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   4.43 m /  124.4 ms  p90   11.71 m /   316.9 ms  worst  1221.27 m  within1  33.3%  within5  87.5%
+        ks_red_bull_ring__layout_national n=16  median   2.56 m /   73.7 ms  p90    3.70 m /   140.1 ms  worst    13.33 m  within1  25.0%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   1.63 m /   56.0 ms  p90    4.79 m /   151.5 ms  worst     9.46 m  within1  62.5%  within5 100.0%
+        magione                  n=40  median   1.70 m /   68.8 ms  p90    5.85 m /   226.6 ms  worst     7.95 m  within1  60.0%  within5 100.0%
+step   820/1500  loss  3.8850 (ce  2.438 aux  2.894 ref 0.0009)  train median    2.26 m   0.45 s/step
+step   840/1500  loss  3.4386 (ce  2.222 aux  2.433 ref 0.0007)  train median    1.56 m   0.45 s/step
+step   860/1500  loss  3.6574 (ce  2.382 aux  2.548 ref 0.0017)  train median    2.35 m   0.45 s/step
+step   880/1500  loss  4.0506 (ce  2.627 aux  2.846 ref 0.0007)  train median    3.80 m   0.45 s/step
+step   900/1500  loss  3.5459 (ce  2.323 aux  2.446 ref 0.0008)  train median    0.93 m   0.45 s/step
+step   920/1500  loss  3.8428 (ce  2.495 aux  2.694 ref 0.0014)  train median    2.07 m   0.45 s/step
+step   940/1500  loss  3.4291 (ce  2.209 aux  2.440 ref 0.0006)  train median    0.90 m   0.44 s/step
+step   960/1500  loss  3.7665 (ce  2.354 aux  2.824 ref 0.0010)  train median    2.73 m   0.44 s/step
+step   980/1500  loss  4.8006 (ce  3.010 aux  3.580 ref 0.0005)  train median    4.95 m   0.44 s/step
+step  1000/1500  loss  3.6270 (ce  2.321 aux  2.612 ref 0.0009)  train median    1.37 m   0.44 s/step
+  eval  n=192  median   1.85 m /   63.2 ms  p90    5.81 m /   208.6 ms  worst    92.04 m  within1  52.6%  within5  97.4%
+        ks_black_cat_county__layout_short n=24  median   2.13 m /   51.2 ms  p90    4.42 m /   106.8 ms  worst    92.04 m  within1  50.0%  within5  95.8%
+        ks_brands_hatch__indy    n=16  median   2.56 m /   71.2 ms  p90    5.82 m /   147.4 ms  worst     7.84 m  within1  43.8%  within5 100.0%
+        ks_highlands__layout_short n=16  median   1.80 m /   50.2 ms  p90    2.86 m /   119.2 ms  worst     4.91 m  within1  56.2%  within5 100.0%
+        ks_laguna_seca           n=16  median   2.20 m /   64.4 ms  p90    4.23 m /   133.7 ms  worst     7.36 m  within1  43.8%  within5 100.0%
+        ks_monza66__junior       n=8  median   0.84 m /   25.6 ms  p90    1.80 m /    44.4 ms  worst     3.34 m  within1  87.5%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   4.39 m /  122.1 ms  p90    9.95 m /   285.9 ms  worst    16.45 m  within1  41.7%  within5  87.5%
+        ks_red_bull_ring__layout_national n=16  median   2.10 m /   57.3 ms  p90    3.83 m /   114.1 ms  worst    12.30 m  within1  50.0%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   1.28 m /   42.8 ms  p90    5.54 m /   150.0 ms  worst     8.81 m  within1  59.4%  within5 100.0%
+        magione                  n=40  median   1.85 m /   69.8 ms  p90    5.82 m /   219.6 ms  worst     7.30 m  within1  55.0%  within5 100.0%
+step  1020/1500  loss  3.5155 (ce  2.268 aux  2.494 ref 0.0008)  train median    0.23 m   0.44 s/step
+step  1040/1500  loss  3.4110 (ce  2.219 aux  2.384 ref 0.0006)  train median    1.09 m   0.44 s/step
+step  1060/1500  loss  3.4716 (ce  2.287 aux  2.368 ref 0.0009)  train median    1.23 m   0.44 s/step
+step  1080/1500  loss  4.1405 (ce  2.735 aux  2.809 ref 0.0012)  train median    3.13 m   0.44 s/step
+step  1100/1500  loss  3.7610 (ce  2.308 aux  2.907 ref 0.0003)  train median    1.89 m   0.44 s/step
+step  1120/1500  loss  3.8964 (ce  2.648 aux  2.496 ref 0.0016)  train median    3.26 m   0.44 s/step
+step  1140/1500  loss  4.0609 (ce  2.626 aux  2.868 ref 0.0009)  train median    1.15 m   0.44 s/step
+step  1160/1500  loss  3.6622 (ce  2.390 aux  2.543 ref 0.0015)  train median    1.86 m   0.44 s/step
+step  1180/1500  loss  3.7605 (ce  2.397 aux  2.725 ref 0.0012)  train median    2.78 m   0.43 s/step
+step  1200/1500  loss  3.7601 (ce  2.378 aux  2.764 ref 0.0013)  train median    1.60 m   0.44 s/step
+  eval  n=192  median   2.00 m /   63.5 ms  p90    6.32 m /   191.2 ms  worst  1221.70 m  within1  50.5%  within5  96.9%
+        ks_black_cat_county__layout_short n=24  median   2.30 m /   58.7 ms  p90    4.34 m /   136.3 ms  worst    92.27 m  within1  45.8%  within5  95.8%
+        ks_brands_hatch__indy    n=16  median   2.62 m /   75.9 ms  p90    7.33 m /   149.2 ms  worst     7.92 m  within1  37.5%  within5 100.0%
+        ks_highlands__layout_short n=16  median   1.42 m /   42.4 ms  p90    3.37 m /   125.2 ms  worst     3.96 m  within1  68.8%  within5 100.0%
+        ks_laguna_seca           n=16  median   2.42 m /   75.0 ms  p90    6.08 m /   165.2 ms  worst     7.08 m  within1  43.8%  within5 100.0%
+        ks_monza66__junior       n=8  median   0.96 m /   28.1 ms  p90    2.14 m /    58.8 ms  worst     2.91 m  within1  87.5%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   4.27 m /  118.6 ms  p90   11.51 m /   293.2 ms  worst  1221.70 m  within1  37.5%  within5  87.5%
+        ks_red_bull_ring__layout_national n=16  median   2.49 m /   65.3 ms  p90    3.70 m /   116.4 ms  worst    12.56 m  within1  43.8%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   1.41 m /   50.8 ms  p90    4.53 m /   144.1 ms  worst    10.81 m  within1  59.4%  within5  96.9%
+        magione                  n=40  median   2.07 m /   68.4 ms  p90    5.21 m /   203.7 ms  worst     8.62 m  within1  50.0%  within5 100.0%
+step  1220/1500  loss  4.4511 (ce  2.933 aux  3.036 ref 0.0006)  train median    2.82 m   0.44 s/step
+step  1240/1500  loss  4.6274 (ce  2.785 aux  3.684 ref 0.0005)  train median    1.56 m   0.44 s/step
+step  1260/1500  loss  3.4112 (ce  2.197 aux  2.428 ref 0.0006)  train median    1.22 m   0.44 s/step
+step  1280/1500  loss  4.1637 (ce  2.606 aux  3.114 ref 0.0009)  train median    2.56 m   0.44 s/step
+step  1300/1500  loss  3.6472 (ce  2.314 aux  2.665 ref 0.0012)  train median    1.70 m   0.44 s/step
+step  1320/1500  loss  4.2712 (ce  2.600 aux  3.342 ref 0.0005)  train median    2.93 m   0.44 s/step
+step  1340/1500  loss  4.3827 (ce  2.890 aux  2.983 ref 0.0017)  train median    4.61 m   0.44 s/step
+step  1360/1500  loss  3.6601 (ce  2.341 aux  2.637 ref 0.0009)  train median    0.99 m   0.44 s/step
+step  1380/1500  loss  3.9626 (ce  2.599 aux  2.726 ref 0.0010)  train median    3.74 m   0.44 s/step
+step  1400/1500  loss  3.4902 (ce  2.224 aux  2.531 ref 0.0007)  train median    0.59 m   0.44 s/step
+  eval  n=192  median   1.91 m /   62.4 ms  p90    6.32 m /   204.2 ms  worst  1221.96 m  within1  51.6%  within5  96.9%
+        ks_black_cat_county__layout_short n=24  median   2.10 m /   52.3 ms  p90    4.55 m /   125.7 ms  worst    91.93 m  within1  50.0%  within5  95.8%
+        ks_brands_hatch__indy    n=16  median   2.47 m /   72.9 ms  p90    6.88 m /   139.7 ms  worst     7.58 m  within1  50.0%  within5 100.0%
+        ks_highlands__layout_short n=16  median   1.44 m /   41.9 ms  p90    3.35 m /   121.8 ms  worst     3.94 m  within1  56.2%  within5 100.0%
+        ks_laguna_seca           n=16  median   2.32 m /   78.7 ms  p90    5.67 m /   154.9 ms  worst     7.72 m  within1  50.0%  within5 100.0%
+        ks_monza66__junior       n=8  median   0.76 m /   23.1 ms  p90    1.93 m /    51.3 ms  worst     3.15 m  within1  87.5%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   4.18 m /  116.1 ms  p90   12.03 m /   309.2 ms  worst  1221.96 m  within1  37.5%  within5  87.5%
+        ks_red_bull_ring__layout_national n=16  median   2.30 m /   63.4 ms  p90    3.26 m /   106.2 ms  worst    12.51 m  within1  43.8%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   1.38 m /   45.9 ms  p90    4.30 m /   149.3 ms  worst    10.25 m  within1  59.4%  within5  96.9%
+        magione                  n=40  median   2.03 m /   68.8 ms  p90    5.21 m /   211.5 ms  worst     7.55 m  within1  47.5%  within5 100.0%
+step  1420/1500  loss  3.8603 (ce  2.521 aux  2.677 ref 0.0005)  train median    0.87 m   0.44 s/step
+step  1440/1500  loss  3.5561 (ce  2.263 aux  2.586 ref 0.0009)  train median    1.08 m   0.44 s/step
+step  1460/1500  loss  3.5384 (ce  2.239 aux  2.597 ref 0.0008)  train median    0.91 m   0.44 s/step
+step  1480/1500  loss  3.6295 (ce  2.331 aux  2.597 ref 0.0005)  train median    1.42 m   0.44 s/step
+step  1500/1500  loss  3.3708 (ce  2.196 aux  2.350 ref 0.0006)  train median    0.85 m   0.44 s/step
+  eval  n=192  median   1.91 m /   62.3 ms  p90    6.33 m /   204.6 ms  worst  1221.95 m  within1  52.1%  within5  96.9%
+        ks_black_cat_county__layout_short n=24  median   2.10 m /   52.7 ms  p90    4.55 m /   125.9 ms  worst    91.93 m  within1  50.0%  within5  95.8%
+        ks_brands_hatch__indy    n=16  median   2.46 m /   72.7 ms  p90    6.90 m /   140.3 ms  worst     7.53 m  within1  50.0%  within5 100.0%
+        ks_highlands__layout_short n=16  median   1.43 m /   41.8 ms  p90    3.35 m /   121.3 ms  worst     3.93 m  within1  62.5%  within5 100.0%
+        ks_laguna_seca           n=16  median   2.32 m /   79.1 ms  p90    5.69 m /   155.4 ms  worst     7.72 m  within1  50.0%  within5 100.0%
+        ks_monza66__junior       n=8  median   0.77 m /   23.3 ms  p90    1.91 m /    50.9 ms  worst     3.15 m  within1  87.5%  within5 100.0%
+        ks_nurburgring__layout_sprint_a n=24  median   4.18 m /  116.1 ms  p90   10.91 m /   297.7 ms  worst  1221.95 m  within1  37.5%  within5  87.5%
+        ks_red_bull_ring__layout_national n=16  median   2.29 m /   63.5 ms  p90    3.26 m /   106.3 ms  worst    12.54 m  within1  43.8%  within5  93.8%
+        ks_vallelunga__club_circuit n=32  median   1.40 m /   46.6 ms  p90    4.38 m /   152.7 ms  worst    10.23 m  within1  59.4%  within5  96.9%
+        magione                  n=40  median   2.01 m /   68.7 ms  p90    5.21 m /   212.2 ms  worst     7.53 m  within1  50.0%  within5 100.0%
+
+best eval median 1.85 m; artifacts in /Users/pvodopija/code/primal/runs/v3_yaw10_s0
