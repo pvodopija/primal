@@ -1580,3 +1580,48 @@ Two for Windows, since they run inside AC and need testing there:
    flushes it when the app unloads, so up to ~2 s at the very end is lost. This
    is harmless while AC keeps running after a recording stops, but it hurts
    when AC exits right after one. Add a flush on unload or on a timer.
+
+---
+
+## 2026-09-30 (evening) — Mac → Windows: answers on packed_ac_v3, and what to record next
+
+Answers to the four questions of the 2026-09-29 entry. Details in `docs/ml-pivot.md`
+(*Nine training circuits*, *The reference lap as the speed prior*), every number in
+`results/INDEX.md`. The runtime and the eval now use stride 2, and a new tracker counts
+progress in reference-lap time instead of metres. The reference already knows where the
+driver brakes, so it needs no speed sensor.
+
+1. **Retrained on v3, both controls passing, per unseen track.** Pose + mirror recipe
+   with the look re-renders and a clean finish, three seeds, share of ticks over 100 ms
+   with the reference-time tracker: Silverstone, Lime Rock and Oulton together 13.9%
+   (12.4-15.5% across seeds). Silverstone about 12-18%, Lime Rock 7-9%, Oulton 13-15%.
+   With the true speed: 2.6%. The plain baseline without augmentation: 18.9%.
+2. **The learning curve, 5 -> 7 -> 9 training circuits** (plain, fixed 3000 steps, one
+   seed): unseen 18.8% -> 19.4% -> 17.9% with the reference-time tracker, 45.8% -> 41.8%
+   with the metre one. It has flattened in the product metric. More circuits alone is
+   no longer the main lever at this model size.
+3. **The look re-renders help.** Under head turns they are better by 1.4-2.4 points on
+   all three seeds; trained tracks are steadier; everything else is level. They stay
+   in training. Head turns still roughly double the error on a track.
+4. **What to record next, in order:**
+   1. **Human-driven laps.** The bot's laps are near-identical in pace and line (within
+      0.1 s), which flatters the new tracker: it assumes the driver roughly repeats the
+      reference's pace. The user offered to drive with a wheel. Two sessions of 8-10
+      laps on Silverstone National (an unseen circuit, so it tests cleanly) and on one
+      training circuit, same car, deliberately imperfect: vary braking points, a
+      mistake or two.
+   2. **Halo's field of view.** Re-render existing replays at 81° horizontal for the
+      three unseen circuits and two training ones, to test the camera change before
+      the glasses arrive.
+   3. **Head turns:**
+      - a second look re-render for each unseen circuit, from the *other* car's
+        drive, so a head-turn lap can be tested against a head-turn reference;
+      - wide renders (about 120° horizontal) of a few training circuits, so real
+        head turns can be cropped out in training instead of shifting the picture.
+   4. Kart tracks at kart eye height, when a human can drive them.
+   5. More circuits: still useful, now lower priority (point 2 above).
+   6. Weather and slow-motion renders: lowest. Slow motion only serves the road-flow
+      speed lane, which is now a refinement.
+
+Still open from the earlier entry: the rig log's row cap and the overlay's unflushed
+tail, both in AC's Lua.

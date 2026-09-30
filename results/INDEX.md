@@ -11,15 +11,20 @@ run's folder; what each experiment tested is in `experiments/README.md` and
 
 | run | finished | data | training | seed | wrong-ref control | protocol | G1 | G2 metres | G2 ref. time | G2 + speed | other results |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| v3_look_s1_base | 2026-09-30 15:15 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 1 |  |  |  |  |  |  |  |
+| v3_look_s2 | 2026-09-30 17:43 | packed_ac_v3 | lr=0.0001, with_look, init v3_look_s2_base, 1500 steps | 2 | PASS | v3, stride 2, 3 unseen tracks | 32.4% | 32.1% | 13.7% | 2.3% | gates_v3.json, stream_look.json, stream_v3.json |
+| v3_look_s2_base | 2026-09-30 17:30 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 2 |  |  |  |  |  |  |  |
+| v3_recipe_s2 | 2026-09-30 16:45 | packed_ac_v3 | lr=0.0001, init v3_recipe_s2_base, 1500 steps | 2 | PASS | v3, stride 2, 3 unseen tracks | 32.0% | 30.5% | 13.8% | 1.8% | gates_v3.json, stream_look.json, stream_v3.json |
+| v3_recipe_s2_base | 2026-09-30 16:32 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, 6000 steps | 2 |  |  |  |  |  |  |  |
+| v3_look_s1 | 2026-09-30 15:45 | packed_ac_v3 | lr=0.0001, with_look, init v3_look_s1_base, 1500 steps | 1 | PASS | v3, stride 2, 3 unseen tracks | 31.3% | 30.5% | 15.5% | 3.7% | gates_v3.json, stream_look.json, stream_v3.json |
+| v3_look_s1_base | 2026-09-30 15:31 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 1 |  |  |  |  |  |  |  |
 | v3_recipe_s1 | 2026-09-30 14:48 | packed_ac_v3 | lr=0.0001, init v3_recipe_s1_base, 1500 steps | 1 | PASS | v3, stride 2, 3 unseen tracks | 31.9% | 31.4% | 14.7% | 3.1% | gates_v3.json, stream_look.json, stream_v3.json |
 | v3_recipe_s1_base | 2026-09-30 14:34 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, 6000 steps | 1 |  |  |  |  |  |  |  |
-| v3_curve_k9 | 2026-09-30 13:44 | packed_ac_v3 | 9 tracks, 3000 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 36.3% | 41.8% |  | 6.2% | gates_v3.json, stream_v3.json |
-| v3_curve_k7 | 2026-09-30 13:24 | packed_ac_v3 | 7 tracks, 3000 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 36.2% | 45.0% |  | 6.7% | gates_v3.json, stream_v3.json |
-| v3_curve_k5 | 2026-09-30 12:57 | packed_ac_v3 | 5 tracks, 3000 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 38.4% | 45.8% |  | 6.5% | gates_v3.json, stream_v3.json |
-| v3_look_s0 | 2026-09-30 12:34 | packed_ac_v3 | lr=0.0001, with_look, init v3_look_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 31.4% | 29.3% |  | 1.8% | gates_v3.json, stream_look.json, stream_v3.json |
+| v3_curve_k9 | 2026-09-30 13:44 | packed_ac_v3 | 9 tracks, 3000 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 36.3% | 41.8% | 17.9% | 6.2% | gates_v3.json, stream_v3.json |
+| v3_curve_k7 | 2026-09-30 13:24 | packed_ac_v3 | 7 tracks, 3000 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 36.2% | 45.0% | 19.4% | 6.7% | gates_v3.json, stream_v3.json |
+| v3_curve_k5 | 2026-09-30 12:57 | packed_ac_v3 | 5 tracks, 3000 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 38.4% | 45.8% | 18.8% | 6.5% | gates_v3.json, stream_v3.json |
+| v3_look_s0 | 2026-09-30 12:34 | packed_ac_v3 | lr=0.0001, with_look, init v3_look_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 31.4% | 29.3% | 12.4% | 1.8% | gates_v3.json, stream_look.json, stream_v3.json |
 | v3_look_s0_base | 2026-09-30 12:20 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
-| v3_base_s0 | 2026-09-30 11:36 | packed_ac_v3 | lr=0.0001, init v3_base_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 26.2% | 41.5% |  | 6.0% | gates_v3.json, stream_look.json, stream_v3.json |
+| v3_base_s0 | 2026-09-30 11:36 | packed_ac_v3 | lr=0.0001, init v3_base_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 26.2% | 41.5% | 18.9% | 6.0% | gates_v3.json, stream_look.json, stream_v3.json |
 | v3_base_s0_base | 2026-09-30 11:28 | packed_ac_v3 | 6000 steps | 0 |  |  |  |  |  |  |  |
 | v3_recipe_s0 | 2026-09-30 10:42 | packed_ac_v3 | lr=0.0001, init v3_recipe_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 38.3% | 30.8% | 12.2% | 2.3% | gates_v3.json, reftime_filter.json, reftime_filter_wide.json, stream_look.json, stream_v3.json, stream_v3_reftime.json |
 | v3_recipe_s0_base | 2026-09-30 10:34 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, 6000 steps | 0 |  |  |  |  |  |  |  |
@@ -73,3 +78,4 @@ run's folder; what each experiment tested is in `experiments/README.md` and
 | g1_yaw | 2026-09-20 18:34 | packed_yaw | None steps | 0 | PASS |  |  |  |  |  | ac_fov_gates.json, ac_gates.json, ac_lines.json, cmp_yaw_primal.json, cmp_yaw_seqslam.json, gates.json, lines.json, lines_yaw.json |
 | g1_scale | 2026-09-20 18:20 | packed_scale | None steps | 0 | PASS |  |  |  |  |  | ac_fov_gates.json, ac_gates.json, ac_lines.json, ac_lines_seqslam.json, cmp_line_primal.json, cmp_line_seqslam.json, gates.json, lines.json, lines_yaw_on_yawdata.json |
 | g1_lines | 2026-09-20 16:26 | packed_lines | None steps | 0 | PASS |  |  |  |  |  | gates.json, lines.json |
+| v3_nonorm_s0_base |  | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |

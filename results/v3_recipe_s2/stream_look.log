@@ -1,0 +1,20 @@
+  G2 rt_lime_rock_park__no_chican ref 143440Z  live 205006Z
+  G2 rt_lime_rock_park__no_chican ref 143440Z  live 205006Z
+  G2 rt_lime_rock_park__no_chican ref 143440Z  live 205006Z
+  G2 rt_oulton_park__fosters      ref 195157Z  live 205804Z
+  G2 rt_oulton_park__fosters      ref 195157Z  live 205804Z
+  G2 rt_oulton_park__fosters      ref 195157Z  live 205804Z
+
+                                                                       median      p90  >100 ms   >10 m     worst
+G2 single                                                       2.35 m   63 ms   236 ms    34.5%    5.8%    615.6 m
+G2 filter                                                       2.37 m   65 ms   237 ms    34.4%    5.4%     56.0 m
+G2 filter, reference time                                       1.70 m   46 ms   141 ms    19.1%    0.5%     19.0 m
+G2 filter + speed                                               1.13 m   29 ms    86 ms     7.3%    0.0%      6.3 m
+G2 rt_lime_rock_park__no_chicane single                         2.76 m   74 ms   253 ms    38.8%    6.8%    278.3 m
+G2 rt_lime_rock_park__no_chicane filter                         2.90 m   78 ms   256 ms    39.9%    6.9%     31.6 m
+G2 rt_lime_rock_park__no_chicane filter, reference time         1.70 m   45 ms   138 ms    18.0%    1.2%     19.0 m
+G2 rt_lime_rock_park__no_chicane filter + speed                 1.15 m   30 ms    87 ms     7.1%    0.0%      6.3 m
+G2 rt_oulton_park__fosters single                               2.03 m   56 ms   220 ms    30.9%    5.0%    615.6 m
+G2 rt_oulton_park__fosters filter                               1.91 m   53 ms   212 ms    29.8%    4.2%     56.0 m
+G2 rt_oulton_park__fosters filter, reference time               1.70 m   46 ms   150 ms    20.1%    0.0%      8.0 m
+G2 rt_oulton_park__fosters filter + speed                       1.11 m   28 ms    86 ms     7.5%    0.0%      5.8 m

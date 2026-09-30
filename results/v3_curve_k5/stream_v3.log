@@ -97,26 +97,43 @@
                                                                        median      p90  >100 ms   >10 m     worst
 G1 single                                                       2.38 m   76 ms   365 ms    40.1%   12.1%   3158.4 m
 G1 filter                                                       2.32 m   74 ms   299 ms    38.4%   10.0%   1684.5 m
+G1 filter, reference time                                       1.45 m   47 ms   145 ms    19.5%    2.2%   1054.7 m
 G1 filter + speed                                               1.11 m   36 ms    99 ms     9.6%    0.2%     14.3 m
 G1 filter, lag-corrected                                        2.29 m   73 ms   298 ms    37.6%   10.0%   1684.1 m
+G1 filter, reference time, lag-corrected                        1.43 m   45 ms   140 ms    18.4%    2.1%   1054.4 m
 G1 filter + speed, lag-corrected                                0.99 m   31 ms    90 ms     7.7%    0.2%     12.3 m
 G2 single                                                       3.51 m   95 ms   880 ms    48.2%   19.1%   1299.8 m
 G2 filter                                                       3.30 m   90 ms   371 ms    45.8%   14.4%   1254.7 m
+G2 filter, reference time                                       1.75 m   48 ms   129 ms    18.8%    0.9%    150.9 m
 G2 filter + speed                                               1.32 m   36 ms    88 ms     6.5%    0.8%    299.2 m
 G2 filter, lag-corrected                                        3.30 m   90 ms   373 ms    46.1%   14.7%   1255.5 m
+G2 filter, reference time, lag-corrected                        1.82 m   50 ms   130 ms    19.5%    1.0%    151.0 m
 G2 filter + speed, lag-corrected                                1.33 m   36 ms    90 ms     7.4%    0.8%    298.8 m
 G2 ks_silverstone__national single                              4.13 m  111 ms  2418 ms    53.3%   25.5%   1299.8 m
 G2 ks_silverstone__national filter                              3.66 m   99 ms   535 ms    49.6%   18.8%   1254.7 m
+G2 ks_silverstone__national filter, reference time              1.67 m   46 ms   129 ms    18.1%    0.6%    150.9 m
 G2 ks_silverstone__national filter + speed                      1.19 m   32 ms    83 ms     5.3%    0.9%    299.2 m
 G2 ks_silverstone__national filter, lag-corrected               3.67 m  100 ms   535 ms    49.9%   19.0%   1255.5 m
+G2 ks_silverstone__national filter, reference time, lag-corrected    1.73 m   47 ms   131 ms    18.8%    0.7%    151.0 m
 G2 ks_silverstone__national filter + speed, lag-corrected       1.22 m   33 ms    87 ms     6.2%    0.9%    298.8 m
+G2 same car single                                              4.06 m  108 ms  5309 ms    52.5%   26.1%   1290.6 m
+G2 same car filter                                              3.72 m   99 ms   655 ms    49.8%   20.6%   1178.3 m
+G2 same car filter, reference time                              1.36 m   39 ms   104 ms    11.1%    0.2%    150.9 m
+G2 same car filter + speed                                      1.03 m   28 ms    74 ms     3.4%    0.0%      8.7 m
+G2 same car filter, lag-corrected                               3.76 m  100 ms   661 ms    50.2%   20.7%   1177.8 m
+G2 same car filter, reference time, lag-corrected               1.40 m   39 ms   106 ms    11.5%    0.2%    151.0 m
+G2 same car filter + speed, lag-corrected                       1.07 m   29 ms    76 ms     4.1%    0.0%      9.3 m
 G2 rt_lime_rock_park__no_chicane single                         2.70 m   72 ms   197 ms    35.7%    4.5%   1174.9 m
 G2 rt_lime_rock_park__no_chicane filter                         2.70 m   72 ms   187 ms    35.7%    2.8%    188.5 m
+G2 rt_lime_rock_park__no_chicane filter, reference time         1.78 m   47 ms   116 ms    17.1%    0.0%     10.4 m
 G2 rt_lime_rock_park__no_chicane filter + speed                 1.29 m   34 ms    81 ms     4.8%    0.0%      7.2 m
 G2 rt_lime_rock_park__no_chicane filter, lag-corrected          2.69 m   72 ms   187 ms    35.8%    3.2%    188.0 m
+G2 rt_lime_rock_park__no_chicane filter, reference time, lag-corrected    1.94 m   51 ms   117 ms    17.5%    0.0%      9.8 m
 G2 rt_lime_rock_park__no_chicane filter + speed, lag-corrected    1.26 m   33 ms    81 ms     5.9%    0.0%      8.6 m
 G2 rt_oulton_park__fosters single                               3.21 m   90 ms   427 ms    46.0%   15.3%   1171.0 m
 G2 rt_oulton_park__fosters filter                               3.14 m   88 ms   361 ms    45.0%   13.4%    539.8 m
+G2 rt_oulton_park__fosters filter, reference time               1.93 m   53 ms   141 ms    21.9%    2.5%     23.9 m
 G2 rt_oulton_park__fosters filter + speed                       1.71 m   46 ms   103 ms    10.8%    1.1%     26.6 m
 G2 rt_oulton_park__fosters filter, lag-corrected                3.16 m   89 ms   362 ms    45.1%   13.4%    539.4 m
+G2 rt_oulton_park__fosters filter, reference time, lag-corrected    1.95 m   54 ms   145 ms    22.7%    2.5%     23.8 m
 G2 rt_oulton_park__fosters filter + speed, lag-corrected        1.70 m   46 ms   105 ms    11.3%    1.3%     27.4 m

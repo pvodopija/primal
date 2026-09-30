@@ -22,12 +22,15 @@
   controls pass.
 - **Product metric:** share of 15 Hz ticks whose delta is more than 100 ms off,
   on whole laps of the unseen tracks, camera only, runtime stride 2 (*Evaluation*).
-- **Best camera-only result:** the pose + mirror recipe with the reference-time
-  tracker (*The reference lap as the speed prior*):
-  - unseen tracks: 12.2% of ticks over budget; 5.3% when the reference is the
-    same car;
-  - median 1.6 m / 43 ms; misses beyond 10 m 0.2%;
-  - with a true speed signal: 2.3%.
+- **Best camera-only result:** the pose + mirror recipe with head-turn
+  re-renders, and the reference-time tracker (*Nine training circuits*, *The
+  reference lap as the speed prior*), mean of three seeds:
+  - unseen tracks: 13.9% of ticks over budget (12.4-15.5% across seeds);
+  - same car: 7.8%, on 16 Silverstone pairs of near-identical bot laps;
+  - median about 1.6 m / 43 ms; misses beyond 10 m around 0.2%;
+  - with a true speed signal: 2.6%.
+  - More circuits barely help at this model size (5 -> 9 circuits: 18.8% ->
+    17.9%).
 - **What moved it this week:**
   - runtime stride 2 removed a ~60 ms lag;
   - tracking in reference time replaced most of a speed sensor;
@@ -955,6 +958,48 @@ gave 39.3% and 40.4%. On all 46 Silverstone pairs (stride 4, filter):
 - **Six pairs on one unseen track cannot rank recipes.** Between seeds the
   same recipe moves 10 points. Recipe choices need several seeds and more than
   one unseen track: the three holdout tracks of `packed_ac_v3`.
+
+### Nine training circuits: `packed_ac_v3`
+
+Six new circuits recorded unattended by the AC bot (MX-5 at noon, Abarth at dusk),
+two of them held out (Lime Rock, Oulton Park), plus one look-into-the-corner re-render
+per new circuit. Protocol as in *Evaluation*: stride 2, whole laps, every full lap of
+the three unseen circuits, both controls passing for every model. Share of ticks over
+100 ms, mean over three seeds with the range:
+
+| | trained tracks | unseen, filter in metres | **unseen, filter in reference time** | same car, reference time | unseen, true speed | head turns, metres / reference time |
+|---|---|---|---|---|---|---|
+| plain, 6000 + 1500 steps (one seed) | 26.2% | 41.5% | 18.9% | 20.4% | 6.0% | 34.9% / 15.2% |
+| pose + mirror recipe, clean finish | 34.1% (31.9-38.3) | 30.9% (30.5-31.4) | **13.6%** (12.2-14.7) | 8.2% (5.3-9.5) | 2.4% | 35.3% / 18.5% |
+| **the same, with the head-turn re-renders** | **31.7%** (31.3-32.4) | 30.6% (29.3-32.1) | **13.9%** (12.4-15.5) | 7.8% (7.0-9.1) | 2.6% | **33.9% / 16.1%** |
+
+- **Augmentation still pays with the reference-time filter:** 18.9% -> ~13.7%
+  on unseen circuits. It still costs trained-track precision.
+- **The head-turn re-renders help where they should, and are the recipe from
+  here.** Under head turns they are 1.4-2.4 points better across all three seeds.
+  Trained tracks are steadier (31-32% on every seed). Everything else is level.
+- **Head turns still cost a lot.** On Lime Rock, looking into corners takes the
+  metre filter from 18.7% to 43%. The augmentation's ±4° of yaw does not cover
+  the renders' turns of up to ~24°.
+- **"Same car" is 16 pairs, all on Silverstone.** Lime Rock and Oulton have one
+  session per car. The bot drives near-identical laps within 0.1 s, so same-car
+  pairs flatter the reference-time filter. A human driver's pace varies more,
+  and human-driven laps are needed to measure it.
+
+**The learning curve has flattened in the product metric.** Plain training at a
+fixed 3000 steps, on the v2 circuits plus new ones, one seed:
+
+| training circuits | unseen, metres | unseen, reference time | same car | true speed |
+|---|---|---|---|---|
+| 5 (the v2 set) | 45.8% | 18.8% | 11.1% | 6.5% |
+| 7 | 45.0% | 19.4% | 12.7% | 6.7% |
+| 9 | 41.8% | 17.9% | 12.3% | 6.2% |
+
+On v2, going from 1 to 5 circuits helped without a plateau. From 5 to 9 it barely
+moves once the filter tracks in reference time. At this model size and training
+length, more circuits alone is no longer the main lever. Two things may yet use
+them: longer training at 9 circuits, and a stronger encoder (*A pretrained
+backbone for the encoder*).
 
 ## Estimator
 

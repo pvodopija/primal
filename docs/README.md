@@ -48,11 +48,11 @@ circuits, 9 for training and 3 never seen), with both negative controls passing.
 The product metric is the share of 15 Hz ticks whose delta is more than 100 ms
 off, on whole laps of the unseen circuits, from the camera alone:
 
-| | unseen circuits | same car as the reference | median |
-|---|---|---|---|
-| tracker in metres (the original design) | 30.8% | 38.5% | 2.3 m / 62 ms |
-| **tracker in reference-lap time** | **12.2%** | **5.3%** | **1.6 m / 43 ms** |
-| with a true speed signal, for comparison | 2.3% | 2.4% | 1.0 m / 28 ms |
+| mean of three seeds | unseen circuits | same car as the reference (Silverstone, bot laps) |
+|---|---|---|
+| tracker in metres (the original design) | 30.6% | 40.1% |
+| **tracker in reference-lap time** | **13.9%** (12.4-15.5) | **7.8%** (7.0-9.1) |
+| with a true speed signal, for comparison | 2.6% | 4.9% |
 
 What got it there, all measured in [`ml-pivot.md`](ml-pivot.md):
 - **Tracking in reference-lap time.** The reference lap already knows where the
