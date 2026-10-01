@@ -39,6 +39,11 @@
   - runtime stride 2 removed a ~60 ms lag;
   - tracking in reference time replaced most of a speed sensor;
   - augmentation with mirroring.
+- **Strongest model so far, one seed:** the same recipe with an ImageNet
+  ResNet-18 encoder roughly halves every error (unseen 6.9% with the
+  reference-time tracker, trained tracks 14.3%). It is ten times the 0.67M
+  encoder and too big for Halo, so it is a teacher; a Halo-sized model that
+  learns from it is next (*A pretrained backbone for the encoder*).
 - **Hardware:** Halo can run it standalone. Vela puts it at 27-34% of the NPU
   once GroupNorm, the one layer the NPU cannot run, is removed (*Measured for
   Halo's NPU with Vela*).
@@ -1009,6 +1014,25 @@ the three unseen circuits, both controls passing for every model. Share of ticks
     One seed at ±15° is better still under head turns: 28.9% / 12.7% / 4.0%.
     **The recipe now uses wide yaw augmentation.** The proper version is exact
     head rotations cropped from wide renders, which are requested from Windows.
+- **Three more single-seed variants of the yaw ±10° recipe** (traffic test: a
+  kart drawn ahead for 30% of each lap, as a silhouette training never used):
+
+  | | trained | unseen, metres | unseen, ref. time (2 modes) | traffic test, metres / ref. time |
+  |---|---|---|---|---|
+  | yaw ±10°, three seeds | 29.0-31.7% | 29.8-30.5% | 13.1-15.0% | 29.8-30.7% / 13.2-14.7% |
+  | + a kart ahead in 30% of training clips (`--traffic`) | 30.4% | 27.8% | 12.8% | 27.9% / 13.1% |
+  | + fold-back clips at 10% (`--p-fold`) | 30.7% | 29.1% | 13.4% | - |
+  | ImageNet ResNet-18 encoder (`--encoder resnet18`) | **14.3%** | **18.4%** | **6.9%** | **20.1% / 7.5%** |
+
+  - **A drawn kart ahead does not hurt today's models at all** (traffic test
+    level with clean laps). Either the matcher already ignores a small dark
+    object low in the frame, or the test is too easy; AC renders with AI traffic
+    would tell.
+  - Training with it gives a small gain in metres (27.8%, outside the seed
+    range), nothing with the reference-time filter.
+  - Fold-back at 10% is neutral. At 25% it removed the lag at stride 2 (−16 ms
+    -> +2 ms) but cost precision without speed (known 38.0%, unseen 33.5%).
+  - The pretrained encoder is in *A pretrained backbone for the encoder*.
 - **"Same car" is 16 pairs, all on Silverstone.** Lime Rock and Oulton have one
   session per car. The bot drives near-identical laps within 0.1 s, so same-car
   pairs flatter the reference-time filter. A human driver's pace varies more,
@@ -1607,9 +1631,33 @@ For *training* line invariance on real footage, the camera rig in
 `capture/ac_rig` re-renders a replay from known sideways offsets, which gives AC
 data the line separation the `lines` gate needs.
 
-### A pretrained backbone for the encoder (planned experiment)
+### A pretrained backbone for the encoder (first result: it halves the error)
 
 ![Backbone experiment](img/backbone_experiment.svg)
+
+**Measured** (`--encoder resnet18`, one seed, a second running). ImageNet ResNet-18
+up to layer3, BatchNorm frozen at ImageNet's statistics, backbone at 0.3x the
+learning rate, on the current recipe. Share of ticks over 100 ms, `packed_ac_v3`
+protocol, against three seeds of the same recipe with the 0.67M encoder:
+
+| | trained tracks | unseen, metres | unseen, reference time (two modes) | true speed | head turns, metres / ref. time |
+|---|---|---|---|---|---|
+| 0.67M encoder, three seeds | 29.0-31.7% | 29.8-30.5% | 13.1-15.0% | 1.3-2.1% | 29.1-31.8% / 14.2-15.8% |
+| **ImageNet ResNet-18** | **14.3%** | **18.4%** | **6.9%** | **0.7%** | **20.0% / 8.3%** |
+
+The wrong-reference control passes, and the unseen circuits never enter training.
+**General visual experience was the missing ingredient,** as the plan below
+suspected: it halves the error on trained and unseen circuits alike, and under
+head turns.
+
+It does not fit Halo as it is: 3.27 M parameters (3.3 MB at 8 bits, against
+1.8 MB of MRAM shared with ~0.6 MB of firmware) and 342 M multiply-adds a frame,
+ten times the 0.67M encoder. It is a teacher. Next steps:
+- distil it into a Halo-sized student;
+- or try a pretrained network built for small devices (MobileNetV3-Small, about
+  13 M multiply-adds a frame here). Its weights need downloading.
+
+What follows is the plan as written before the experiment.
 
 **The question.** Unseen tracks are 2.7x worse than known ones, and the evidence
 says the encoder lacks general visual experience, not capacity (a 2x wider

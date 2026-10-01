@@ -1,0 +1,48 @@
+====================================================================================================
+GATES
+====================================================================================================
+
+seen laps, seen tracks
+  n=320  median   1.03 m /   32.1 ms  p90    3.26 m /    95.6 ms  worst     8.17 m  within1  74.4%  within5 100.0%
+  mean predictive entropy 2.210 nats
+    ks_black_cat_county__layout_short n=32  median   1.37 m /   41.6 ms  p90    4.25 m /   111.6 ms  worst     8.17 m  within1  68.8%  within5 100.0%
+    ks_brands_hatch__indy    n=40  median   0.48 m /   13.9 ms  p90    1.77 m /    48.3 ms  worst     2.04 m  within1  95.0%  within5 100.0%
+    ks_highlands__layout_short n=40  median   0.63 m /   18.5 ms  p90    1.40 m /    53.0 ms  worst     2.78 m  within1  92.5%  within5 100.0%
+    ks_laguna_seca           n=48  median   1.53 m /   44.5 ms  p90    4.71 m /   148.4 ms  worst     6.82 m  within1  58.3%  within5 100.0%
+    ks_monza66__junior       n=16  median   0.96 m /   22.5 ms  p90    2.27 m /    59.8 ms  worst     2.87 m  within1  75.0%  within5 100.0%
+    ks_nurburgring__layout_sprint_a n=32  median   1.43 m /   46.3 ms  p90    4.51 m /   118.1 ms  worst     7.26 m  within1  59.4%  within5 100.0%
+    ks_red_bull_ring__layout_national n=40  median   1.30 m /   34.1 ms  p90    3.28 m /    83.5 ms  worst     5.28 m  within1  75.0%  within5 100.0%
+    ks_vallelunga__club_circuit n=40  median   1.33 m /   43.2 ms  p90    3.27 m /    90.4 ms  worst     4.12 m  within1  65.0%  within5 100.0%
+    magione                  n=32  median   0.97 m /   30.4 ms  p90    2.92 m /    85.4 ms  worst     3.84 m  within1  81.2%  within5 100.0%
+
+G1  held-out laps, seen tracks
+  n=320  median   1.12 m /   33.0 ms  p90    3.34 m /   100.9 ms  worst     9.50 m  within1  74.7%  within5 100.0%
+  mean predictive entropy 2.205 nats
+    ks_black_cat_county__layout_short n=32  median   1.13 m /   33.3 ms  p90    3.42 m /   115.8 ms  worst     9.35 m  within1  68.8%  within5 100.0%
+    ks_brands_hatch__indy    n=32  median   0.67 m /   16.9 ms  p90    2.02 m /    51.5 ms  worst     5.01 m  within1  87.5%  within5 100.0%
+    ks_highlands__layout_short n=32  median   0.83 m /   26.8 ms  p90    1.97 m /    56.6 ms  worst     3.28 m  within1  87.5%  within5 100.0%
+    ks_laguna_seca           n=16  median   1.19 m /   34.5 ms  p90    4.33 m /   114.3 ms  worst     5.22 m  within1  75.0%  within5 100.0%
+    ks_monza66__junior       n=32  median   1.17 m /   30.0 ms  p90    3.18 m /    73.7 ms  worst     3.99 m  within1  75.0%  within5 100.0%
+    ks_nurburgring__layout_sprint_a n=48  median   1.79 m /   47.5 ms  p90    4.97 m /   165.0 ms  worst     9.50 m  within1  54.2%  within5 100.0%
+    ks_red_bull_ring__layout_national n=72  median   1.50 m /   40.7 ms  p90    3.25 m /    98.4 ms  worst     6.08 m  within1  69.4%  within5 100.0%
+    ks_vallelunga__club_circuit n=16  median   0.59 m /   23.3 ms  p90    1.70 m /    56.2 ms  worst     2.17 m  within1  93.8%  within5 100.0%
+    magione                  n=40  median   1.21 m /   38.5 ms  p90    2.25 m /    89.4 ms  worst     5.10 m  within1  85.0%  within5 100.0%
+
+G2  held-out tracks
+  n=320  median   1.67 m /   47.0 ms  p90    5.19 m /   147.3 ms  worst   242.73 m  within1  54.7%  within5  96.9%
+  mean predictive entropy 2.366 nats
+    ks_silverstone__national n=152  median   2.36 m /   59.2 ms  p90    6.19 m /   152.4 ms  worst    85.52 m  within1  42.1%  within5  96.1%
+    rt_lime_rock_park__no_chicane n=96  median   1.24 m /   33.7 ms  p90    3.89 m /   113.2 ms  worst   242.73 m  within1  67.7%  within5  99.0%
+    rt_oulton_park__fosters  n=72  median   1.39 m /   42.2 ms  p90    5.22 m /   163.1 ms  worst    22.08 m  within1  63.9%  within5  95.8%
+
+====================================================================================================
+NEGATIVE CONTROLS
+====================================================================================================
+
+wrong-reference control: live clips paired with another track's reference
+  matched reference   median    1.15 m   entropy 2.211 nats
+  wrong reference     median  673.53 m   entropy 3.468 nats
+  chance for 3227 bins at 2.00 m: 1613.3 m; uniform entropy 8.079 nats
+  PASS: error must collapse to chance when the reference is wrong
+
+wrote runs/v3_resnet_s0/gates_v3.json
