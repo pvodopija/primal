@@ -241,6 +241,8 @@ def main() -> None:
     parser.add_argument("--norm", choices=("group", "none"), default="group",
                         help="GroupNorm in encoder and head, or none (Halo's NPU cannot run GroupNorm)")
     parser.add_argument("--aug-yaw", type=float, default=4.0, help="yaw amplitude in degrees for --camera-aug")
+    parser.add_argument("--traffic", type=float, default=0.0,
+                        help="share of live clips with a kart ahead drawn in, as dark blocks in perspective")
     parser.add_argument("--p-fold", type=float, default=0.0,
                         help="share of clips that turn back at a random frame and retrace it, [a b c d c b]")
     parser.add_argument("--with-look", action="store_true",
@@ -287,6 +289,7 @@ def main() -> None:
         aug_pitch_deg=args.aug_pitch,
         aug_yaw_deg=args.aug_yaw,
         p_fold=args.p_fold,
+        p_traffic=args.traffic,
         aug_parts=frozenset(args.aug_parts.split(",")),
         strides=tuple(int(s) for s in args.strides.split(",")),
         target_at=args.target_at,

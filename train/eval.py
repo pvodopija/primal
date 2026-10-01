@@ -26,7 +26,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from train.dataset import AlignmentBatches, Lap, LapIndex, SampleConfig, _to_chw, circular_soft_target
+from train.dataset import (AlignmentBatches, Lap, LapIndex, SampleConfig, _to_chw, circular_soft_target,
+                           traffic_episodes)
 from train.estimator import EstimatorConfig, ProgressEstimator
 from train.model import (
     AlignmentMetrics,
@@ -576,7 +577,8 @@ def _instantaneous_speed(s: np.ndarray, t: np.ndarray, frames: np.ndarray, lengt
 
 @torch.no_grad()
 def _lap_stream(model, clip_len: int, reference: Lap, live: Lap, axis: str, stride: int,
-                device: torch.device, window: int, backward: bool = False) -> dict:
+                device: torch.device, window: int, backward: bool = False, traffic: float = 0.0,
+                traffic_seed: int = 0) -> dict:
     """
     One belief per tick along a whole live lap, as the phone would receive them.
 
@@ -590,6 +592,9 @@ def _lap_stream(model, clip_len: int, reference: Lap, live: Lap, axis: str, stri
         use_checkpoint=False,
     )
     frames = live.frames()
+    if traffic > 0.0:  # a kart ahead for that share of the lap, drawn by a generator training never used
+        rng = np.random.default_rng((traffic_seed, zlib.crc32(live.lap_id.encode())))
+        frames = traffic_episodes(frames, live.t().astype(np.float64), traffic, rng)
     desc = torch.cat([
         model.encode_reference(
             torch.from_numpy(_to_chw(np.asarray(frames[i : i + 256]))).to(device), use_checkpoint=False
@@ -715,7 +720,7 @@ def cmd_stream(args: argparse.Namespace) -> None:
     scores: dict[str, dict[str, list]] = {g: {k: [[], []] for k in kinds} for g in ("G1", "G2")}
     for gate, reference, live in pairs:
         stream = _lap_stream(model, clip_len, reference, live, axis, args.stride, device, args.window,
-                             backward=args.lag_k is not None)
+                             backward=args.lag_k is not None, traffic=args.traffic_test)
         runs = {
             "single": stream["single"],
             "filter": _run_estimator(stream, EstimatorConfig(), None, None, args.seed),
@@ -833,6 +838,8 @@ def main() -> None:
     stream.add_argument("--speed-sigma", type=float, help="also feed the filter the true speed, stated to +-this m/s")
     stream.add_argument("--speed-noise", type=float, default=0.0, help="fractional random error added to that speed")
     stream.add_argument("--window", type=int, default=8)
+    stream.add_argument("--traffic-test", type=float, default=0.0,
+                        help="draw a kart ahead (a silhouette training never saw) for this share of each live lap")
     stream.add_argument("--look", action="store_true",
                         help="score the held-out tracks' look-into-the-corner re-renders instead (head turns)")
     stream.add_argument("--lag-k", type=float,

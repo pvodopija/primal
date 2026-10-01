@@ -351,6 +351,8 @@ class SampleConfig:
     # pace changes inside the clip, so the last frame cannot be found by
     # extrapolating the clip's slope (the pace prior behind the stride lag).
     p_fold: float = 0.0
+    # Share of live clips with a kart ahead drawn in (draw_traffic, "blocks").
+    p_traffic: float = 0.0
     p_static: float = 0.03
     sigma_bins: float = 2.0
     roll_reference: bool = True
@@ -499,6 +501,74 @@ def camera_jitter(
     return out
 
 
+def draw_traffic(frames: np.ndarray, rng: np.random.Generator, times_s: np.ndarray, style: str = "blocks",
+                 hfov_deg: float = 91.5, camera_height_m: float = 1.15) -> np.ndarray:
+    """
+    A kart ahead on the road, drawn into uint8 frames [T, H, W, 3] of one stretch of a lap.
+    It stands on the road in perspective (smaller and higher the farther away) and moves
+    as a kart one follows does: closing or pulling away, drifting sideways, consistently
+    over the frames' times.
+
+    "blocks" builds it from a few dark rectangles, for training. "kart" is a different
+    silhouette (a coloured body, dark wheels, driver and helmet), for testing robustness
+    without testing the training generator.
+    """
+    import cv2
+
+    out = np.ascontiguousarray(frames.copy())
+    count, height, width = frames.shape[:3]
+    focal = (width / 2) / np.tan(np.radians(hfov_deg / 2))
+    horizon = 0.6 * height  # where AC's road meets the sky at the rig's height and pitch
+    distance = float(np.exp(rng.uniform(np.log(2.5), np.log(25.0))))  # close karts as often as far ones
+    closing = rng.uniform(-1.5, 1.5)  # m/s; positive closes in
+    lateral = rng.uniform(-2.5, 2.5)
+    drift = rng.uniform(-0.8, 0.8)  # m/s sideways
+    if style == "blocks":
+        shade = rng.integers(10, 70, size=3)
+        # (centre, half width, bottom, top) in metres, relative to the kart and the road
+        parts = [(rng.uniform(-0.4, 0.4), rng.uniform(0.2, 0.7), rng.uniform(0.0, 0.3), rng.uniform(0.4, 1.1),
+                  np.clip(shade + rng.integers(-10, 11, size=3), 0, 255)) for _ in range(int(rng.integers(2, 5)))]
+    else:
+        body = rng.integers(40, 230, size=3)
+        helmet = rng.integers(20, 240, size=3)
+        dark = np.array([20, 20, 20])
+        parts = [(0.0, 0.65, 0.10, 0.45, body), (-0.6, 0.13, 0.0, 0.28, dark), (0.6, 0.13, 0.0, 0.28, dark),
+                 (0.0, 0.25, 0.40, 0.85, dark + 30)]
+    last = float(times_s[-1])
+    for k in range(count):
+        ago = last - float(times_s[k])
+        d = float(np.clip(distance + closing * ago, 2.0, 40.0))
+        x0 = lateral - drift * ago
+        for centre, half, bottom, top, colour in parts:
+            u0 = int(round(width / 2 + focal * (x0 + centre - half) / d))
+            u1 = int(round(width / 2 + focal * (x0 + centre + half) / d))
+            v0 = int(round(horizon + focal * (camera_height_m - top) / d))
+            v1 = int(round(horizon + focal * (camera_height_m - bottom) / d))
+            if u1 >= 0 and u0 < width and v1 >= 0 and v0 < height and u1 > u0 and v1 > v0:
+                cv2.rectangle(out[k], (u0, v0), (u1, v1), tuple(int(c) for c in colour), thickness=-1)
+        if style != "blocks":
+            centre_uv = (int(round(width / 2 + focal * x0 / d)), int(round(horizon + focal * (camera_height_m - 0.98) / d)))
+            cv2.circle(out[k], centre_uv, max(1, int(round(focal * 0.14 / d))), tuple(int(c) for c in helmet), thickness=-1)
+    return out
+
+
+def traffic_episodes(frames: np.ndarray, times_s: np.ndarray, share: float, rng: np.random.Generator) -> np.ndarray:
+    """A whole lap with a kart ahead for about `share` of it, in 3-8 s stretches ("kart" style)."""
+    out = np.asarray(frames).copy()
+    total = float(times_s[-1] - times_s[0])
+    covered, guard = 0.0, 0
+    while covered < share * total and guard < 1000:
+        guard += 1
+        length = rng.uniform(3.0, 8.0)
+        start = rng.uniform(float(times_s[0]), max(float(times_s[0]), float(times_s[-1]) - length))
+        span = np.flatnonzero((times_s >= start) & (times_s <= start + length))
+        if span.size < 2:
+            continue
+        out[span] = draw_traffic(out[span], rng, times_s[span].astype(np.float64), style="kart")
+        covered += length
+    return out
+
+
 def prepare_frames(
     raw: np.ndarray, rng: np.random.Generator, camera_aug: bool, mirror: bool,
     zoom: tuple[float, float] = (1.03, 1.12), pitch_deg: float = 3.0,
@@ -630,8 +700,12 @@ class AlignmentBatches(Dataset):
         for i in range(config.batch_size):
             live_lap = live_pool[int(rng.integers(0, len(live_pool)))]
             indices = self._clip_indices(live_lap, rng)
+            raw = np.asarray(live_lap.frames()[indices])
+            # Drawn only when enabled, so runs without traffic sample exactly what they always did.
+            if config.p_traffic > 0.0 and rng.random() < config.p_traffic:
+                raw = draw_traffic(raw, rng, live_lap.t()[indices].astype(np.float64))
             clip = prepare_frames(
-                np.asarray(live_lap.frames()[indices]), rng, config.camera_aug, mirror,
+                raw, rng, config.camera_aug, mirror,
                 config.aug_zoom, config.aug_pitch_deg, config.aug_parts, yaw_deg=config.aug_yaw_deg,
             )
             clips[i] = photometric_jitter(clip, rng) if config.jitter else clip
