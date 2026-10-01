@@ -1653,10 +1653,25 @@ head turns.
 
 It does not fit Halo as it is: 3.27 M parameters (3.3 MB at 8 bits, against
 1.8 MB of MRAM shared with ~0.6 MB of firmware) and 342 M multiply-adds a frame,
-ten times the 0.67M encoder. It is a teacher. Next steps:
-- distil it into a Halo-sized student;
-- or try a pretrained network built for small devices (MobileNetV3-Small, about
-  13 M multiply-adds a frame here). Its weights need downloading.
+ten times the 0.67M encoder. Truncated after layer2 it is still 237 M.
+
+**Distilling it into the 0.67M encoder transferred nothing** (`--teacher`, one
+seed each). The student learned from the labels plus the teacher's softened
+belief over the reference and its per-frame similarity rows:
+
+| student | trained | unseen, metres | unseen, ref. time | true speed |
+|---|---|---|---|---|
+| 0.67M with GroupNorm, taught | 32.0% | 29.7% | 13.9% | 1.9% |
+| (the same untaught, three seeds) | 29.0-31.7% | 29.8-30.5% | 13.1-15.0% | 1.3-2.1% |
+| 0.67M without GroupNorm, taught | 43.1% | 37.9% | 19.1% | 4.6% |
+| (the same untaught) | 41.3% | 36.7% | | 4.5% |
+
+The gain lives in features learned from millions of images, which a small
+network trained only on AC frames does not reproduce by copying answers. The
+Halo-sized route is a small network that is pretrained itself: MobileNetV3-Small
+(`--encoder mobilenet`, ImageNet weights, 1.06 M parameters, 14 M multiply-adds
+a frame at 148x80, BatchNorm that folds on the NPU) is being measured, with two
+controls: ResNet-18 frozen, and ResNet-18 trained from scratch.
 
 What follows is the plan as written before the experiment.
 
