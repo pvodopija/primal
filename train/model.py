@@ -180,6 +180,99 @@ class ResNetEncoder(nn.Module):
         return F.normalize(self.project(features), dim=-1)
 
 
+MOBILENET_V3_SMALL_IMAGENET = Path.home() / ".cache/torch/hub/checkpoints/mobilenet_v3_small-047dcff4.pth"
+
+
+def _divisible(v: float, divisor: int = 8) -> int:
+    new = max(divisor, int(v + divisor / 2) // divisor * divisor)
+    return new + divisor if new < 0.9 * v else new
+
+
+def _conv_bn(inp: int, out: int, kernel: int, stride: int = 1, groups: int = 1, act: type | None = nn.Hardswish):
+    layers = [nn.Conv2d(inp, out, kernel, stride, (kernel - 1) // 2, groups=groups, bias=False),
+              nn.BatchNorm2d(out, eps=0.001, momentum=0.01)]
+    return nn.Sequential(*layers, *([act(inplace=True)] if act else []))
+
+
+class _SqueezeExcite(nn.Module):
+    def __init__(self, channels: int):
+        super().__init__()
+        squeeze = _divisible(channels // 4)
+        self.fc1 = nn.Conv2d(channels, squeeze, 1)
+        self.fc2 = nn.Conv2d(squeeze, channels, 1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        s = F.adaptive_avg_pool2d(x, 1)
+        return x * F.hardsigmoid(self.fc2(F.relu(self.fc1(s))))
+
+
+class _InvertedResidual(nn.Module):
+    """MobileNetV3's block, with torchvision's layout so its weights load as-is."""
+
+    def __init__(self, inp: int, kernel: int, expanded: int, out: int, se: bool, act: type, stride: int):
+        super().__init__()
+        layers = [] if expanded == inp else [_conv_bn(inp, expanded, 1, act=act)]
+        layers.append(_conv_bn(expanded, expanded, kernel, stride, groups=expanded, act=act))
+        if se:
+            layers.append(_SqueezeExcite(expanded))
+        layers.append(_conv_bn(expanded, out, 1, act=None))
+        self.block = nn.Sequential(*layers)
+        self.residual = stride == 1 and inp == out
+
+    def forward(self, x: Tensor) -> Tensor:
+        y = self.block(x)
+        return x + y if self.residual else y
+
+
+class MobileNetEncoder(nn.Module):
+    """
+    A pretrained encoder small enough for Halo: ImageNet MobileNetV3-Small up to its last
+    inverted-residual block (96 channels at stride 32, which at 148x80 is exactly the 3x5
+    grid), projected to the same unit-length descriptor. BatchNorm keeps ImageNet's
+    statistics, as in ResNetEncoder, and folds into the convolutions on an NPU.
+    """
+
+    SETTINGS = [  # input, kernel, expanded, output, squeeze-excite, activation, stride
+        (16, 3, 16, 16, True, nn.ReLU, 2), (16, 3, 72, 24, False, nn.ReLU, 2), (24, 3, 88, 24, False, nn.ReLU, 1),
+        (24, 5, 96, 40, True, nn.Hardswish, 2), (40, 5, 240, 40, True, nn.Hardswish, 1),
+        (40, 5, 240, 40, True, nn.Hardswish, 1), (40, 5, 120, 48, True, nn.Hardswish, 1),
+        (48, 5, 144, 48, True, nn.Hardswish, 1), (48, 5, 288, 96, True, nn.Hardswish, 2),
+        (96, 5, 576, 96, True, nn.Hardswish, 1), (96, 5, 576, 96, True, nn.Hardswish, 1),
+    ]
+
+    def __init__(self, dim: int = 128, weights: Path | None = MOBILENET_V3_SMALL_IMAGENET):
+        super().__init__()
+        self.features = nn.Sequential(_conv_bn(3, 16, 3, 2), *(_InvertedResidual(*s) for s in self.SETTINGS))
+        self.project = nn.Linear(96 * POOL_GRID[0] * POOL_GRID[1], dim)
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+        self.dim = dim
+        if weights is not None:
+            state = torch.load(weights, map_location="cpu", weights_only=True)
+            own = self.state_dict()
+            matched = {k: v for k, v in state.items() if k in own and v.shape == own[k].shape}
+            expected = [k for k in own if k.startswith("features.")]
+            missing = [k for k in expected if k not in matched]
+            if missing:
+                raise ValueError(f"MobileNetV3 weights do not fit: {missing[:5]}")
+            self.load_state_dict(matched, strict=False)
+
+    def backbone_parameters(self) -> list[nn.Parameter]:
+        return [p for name, p in self.named_parameters() if not name.startswith("project")]
+
+    def train(self, mode: bool = True) -> "MobileNetEncoder":
+        super().train(mode)
+        for module in self.modules():
+            if isinstance(module, nn.BatchNorm2d):
+                module.eval()
+        return self
+
+    def forward(self, images: Tensor) -> Tensor:
+        x = self.features((images[:, [2, 1, 0]] - self.mean) / self.std)
+        features = _pool_to_grid(x, POOL_GRID).flatten(1)
+        return F.normalize(self.project(features), dim=-1)
+
+
 class AlignmentHead(nn.Module):
     """
     Reads the K x N correlation matrix as a 1-D signal along the reference axis
@@ -233,6 +326,8 @@ class SequenceAligner(nn.Module):
         super().__init__()
         if encoder == "resnet18":
             self.encoder = ResNetEncoder(dim=dim, weights=encoder_weights)
+        elif encoder == "mobilenet":
+            self.encoder = MobileNetEncoder(dim=dim, weights=encoder_weights)
         else:
             self.encoder = FrameEncoder(dim=dim, width=width, frame_size=frame_size, norm=norm)
         self.head = AlignmentHead(clip_len=clip_len, hidden=hidden, blocks=blocks, norm=norm)

@@ -24,6 +24,8 @@ from torch.utils.data import DataLoader
 
 from train.dataset import AlignmentBatches, LapIndex, SampleConfig
 from train.model import (
+    MOBILENET_V3_SMALL_IMAGENET,
+    RESNET18_IMAGENET,
     SequenceAligner,
     alignment_loss,
     compute_metrics,
@@ -242,10 +244,13 @@ def main() -> None:
                         help="checkpoint of a stronger model to learn from as well (distillation), e.g. a resnet18 run")
     parser.add_argument("--distill-weight", type=float, default=1.0)
     parser.add_argument("--distill-temp", type=float, default=2.0)
-    parser.add_argument("--encoder", choices=("small", "resnet18"), default="small",
-                        help="the 0.67M from-scratch encoder, or ImageNet ResNet-18 up to layer3")
-    parser.add_argument("--encoder-weights", default=str(Path.home() / ".cache/torch/hub/checkpoints/resnet18-f37072fd.pth"),
-                        help="ImageNet weights for --encoder resnet18 (torchvision's file)")
+    parser.add_argument("--encoder", choices=("small", "resnet18", "mobilenet"), default="small",
+                        help="the 0.67M from-scratch encoder, ImageNet ResNet-18 up to layer3, or ImageNet MobileNetV3-Small")
+    parser.add_argument("--encoder-weights", default=None,
+                        help="pretrained weights for a pretrained encoder (default: torchvision's ImageNet file in the "
+                             "torch cache); 'none' trains the same architecture from scratch")
+    parser.add_argument("--freeze-backbone", action="store_true",
+                        help="keep a pretrained encoder's backbone fixed; only its projection and the head learn")
     parser.add_argument("--backbone-lr-scale", type=float, default=0.3,
                         help="learning rate of a pretrained backbone, as a share of --lr")
     parser.add_argument("--norm", choices=("group", "none"), default="group",
@@ -331,8 +336,13 @@ def main() -> None:
         frame_size=frame_size,
         norm=args.norm,
         encoder=args.encoder,
-        encoder_weights=None if args.init else Path(args.encoder_weights),
+        encoder_weights=None if args.init or args.encoder_weights == "none" else (
+            Path(args.encoder_weights) if args.encoder_weights else
+            {"resnet18": RESNET18_IMAGENET, "mobilenet": MOBILENET_V3_SMALL_IMAGENET}.get(args.encoder)),
     ).to(device)
+    if args.freeze_backbone:
+        for p in model.encoder.backbone_parameters():
+            p.requires_grad_(False)
     parameters = sum(p.numel() for p in model.parameters())
     if args.init:
         model.load_state_dict(torch.load(args.init, map_location=device, weights_only=False)["model"])
@@ -372,7 +382,8 @@ def main() -> None:
     if hasattr(model.encoder, "backbone_parameters"):
         # A pretrained backbone learns gentler than the layers trained from scratch.
         backbone = {id(p) for p in model.encoder.backbone_parameters()}
-        groups = [{"params": [p for p in model.parameters() if id(p) in backbone], "lr": args.lr * args.backbone_lr_scale},
+        groups = [{"params": [p for p in model.parameters() if id(p) in backbone and p.requires_grad],
+                   "lr": args.lr * args.backbone_lr_scale},
                   {"params": [p for p in model.parameters() if id(p) not in backbone], "lr": args.lr}]
         max_lr = [args.lr * args.backbone_lr_scale, args.lr]
     else:
