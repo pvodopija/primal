@@ -25,6 +25,7 @@ and integral keypoint regression.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from dataclasses import dataclass
 
 import numpy as np
@@ -111,6 +112,74 @@ class FrameEncoder(nn.Module):
         return F.normalize(self.project(features), dim=-1)
 
 
+RESNET18_IMAGENET = Path.home() / ".cache/torch/hub/checkpoints/resnet18-f37072fd.pth"
+
+
+class _BasicBlock(nn.Module):
+    """ResNet's basic block, with torchvision's attribute names so its weights load as-is."""
+
+    def __init__(self, inp: int, out: int, stride: int):
+        super().__init__()
+        self.conv1 = nn.Conv2d(inp, out, 3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out)
+        self.conv2 = nn.Conv2d(out, out, 3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out)
+        self.downsample = (
+            nn.Sequential(nn.Conv2d(inp, out, 1, stride=stride, bias=False), nn.BatchNorm2d(out))
+            if stride != 1 or inp != out else None
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        y = F.relu(self.bn1(self.conv1(x)))
+        y = self.bn2(self.conv2(y))
+        return F.relu(y + (x if self.downsample is None else self.downsample(x)))
+
+
+class ResNetEncoder(nn.Module):
+    """
+    A pretrained "how to see" encoder: ImageNet ResNet-18 up to layer3 (stride 16), pooled
+    to the same 3x5 grid and projected to the same unit-length descriptor as FrameEncoder.
+
+    BatchNorm keeps its ImageNet statistics (eval mode even while training), so live
+    clips and reference laps, which pass through in very different batches, are
+    normalised identically; on an NPU it folds into the convolutions. Frames arrive as
+    packed (BGR in [0, 1]) and are converted to ImageNet's RGB normalisation here.
+    """
+
+    def __init__(self, dim: int = 128, weights: Path | None = RESNET18_IMAGENET):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 64, 7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.layer1 = nn.Sequential(_BasicBlock(64, 64, 1), _BasicBlock(64, 64, 1))
+        self.layer2 = nn.Sequential(_BasicBlock(64, 128, 2), _BasicBlock(128, 128, 1))
+        self.layer3 = nn.Sequential(_BasicBlock(128, 256, 2), _BasicBlock(256, 256, 1))
+        self.project = nn.Linear(256 * POOL_GRID[0] * POOL_GRID[1], dim)
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+        self.dim = dim
+        if weights is not None:
+            state = torch.load(weights, map_location="cpu", weights_only=True)
+            own = self.state_dict()
+            self.load_state_dict({k: v for k, v in state.items() if k in own and v.shape == own[k].shape}, strict=False)
+
+    def backbone_parameters(self) -> list[nn.Parameter]:
+        return [p for name, p in self.named_parameters() if not name.startswith("project")]
+
+    def train(self, mode: bool = True) -> "ResNetEncoder":
+        super().train(mode)
+        for module in self.modules():
+            if isinstance(module, nn.BatchNorm2d):
+                module.eval()
+        return self
+
+    def forward(self, images: Tensor) -> Tensor:
+        x = (images[:, [2, 1, 0]] - self.mean) / self.std
+        x = F.max_pool2d(F.relu(self.bn1(self.conv1(x))), 3, stride=2, padding=1)
+        x = self.layer3(self.layer2(self.layer1(x)))
+        features = _pool_to_grid(x, POOL_GRID).flatten(1)
+        return F.normalize(self.project(features), dim=-1)
+
+
 class AlignmentHead(nn.Module):
     """
     Reads the K x N correlation matrix as a 1-D signal along the reference axis
@@ -158,9 +227,14 @@ class SequenceAligner(nn.Module):
         blocks: int = 4,
         frame_size: tuple[int, int] = (96, 160),
         norm: str = "group",
+        encoder: str = "small",
+        encoder_weights: Path | None = None,
     ):
         super().__init__()
-        self.encoder = FrameEncoder(dim=dim, width=width, frame_size=frame_size, norm=norm)
+        if encoder == "resnet18":
+            self.encoder = ResNetEncoder(dim=dim, weights=encoder_weights)
+        else:
+            self.encoder = FrameEncoder(dim=dim, width=width, frame_size=frame_size, norm=norm)
         self.head = AlignmentHead(clip_len=clip_len, hidden=hidden, blocks=blocks, norm=norm)
         self.logit_scale = nn.Parameter(torch.tensor(math.log(10.0)))
 

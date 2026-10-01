@@ -238,6 +238,12 @@ def main() -> None:
     parser.add_argument("--aug-parts", default="pose,blur,occlude,vignette,jpeg",
                         help="which --camera-aug effects to apply, comma-separated")
     parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
+    parser.add_argument("--encoder", choices=("small", "resnet18"), default="small",
+                        help="the 0.67M from-scratch encoder, or ImageNet ResNet-18 up to layer3")
+    parser.add_argument("--encoder-weights", default=str(Path.home() / ".cache/torch/hub/checkpoints/resnet18-f37072fd.pth"),
+                        help="ImageNet weights for --encoder resnet18 (torchvision's file)")
+    parser.add_argument("--backbone-lr-scale", type=float, default=0.3,
+                        help="learning rate of a pretrained backbone, as a share of --lr")
     parser.add_argument("--norm", choices=("group", "none"), default="group",
                         help="GroupNorm in encoder and head, or none (Halo's NPU cannot run GroupNorm)")
     parser.add_argument("--aug-yaw", type=float, default=4.0, help="yaw amplitude in degrees for --camera-aug")
@@ -320,6 +326,8 @@ def main() -> None:
         hidden=args.hidden,
         frame_size=frame_size,
         norm=args.norm,
+        encoder=args.encoder,
+        encoder_weights=None if args.init else Path(args.encoder_weights),
     ).to(device)
     parameters = sum(p.numel() for p in model.parameters())
     if args.init:
@@ -343,9 +351,17 @@ def main() -> None:
 
     loader = DataLoader(train_set, batch_size=None, num_workers=args.workers)
     eval_loader = DataLoader(eval_set, batch_size=None, num_workers=0)
-    optimiser = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    if hasattr(model.encoder, "backbone_parameters"):
+        # A pretrained backbone learns gentler than the layers trained from scratch.
+        backbone = {id(p) for p in model.encoder.backbone_parameters()}
+        groups = [{"params": [p for p in model.parameters() if id(p) in backbone], "lr": args.lr * args.backbone_lr_scale},
+                  {"params": [p for p in model.parameters() if id(p) not in backbone], "lr": args.lr}]
+        max_lr = [args.lr * args.backbone_lr_scale, args.lr]
+    else:
+        groups, max_lr = model.parameters(), args.lr
+    optimiser = torch.optim.AdamW(groups, lr=args.lr, weight_decay=args.weight_decay)
     schedule = torch.optim.lr_scheduler.OneCycleLR(
-        optimiser, max_lr=args.lr, total_steps=steps, pct_start=0.15
+        optimiser, max_lr=max_lr, total_steps=steps, pct_start=0.15
     )
 
     log: list[dict] = []

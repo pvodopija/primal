@@ -54,6 +54,7 @@ def load_model(checkpoint: Path, device: torch.device) -> tuple[SequenceAligner,
         hidden=saved["hidden"],
         frame_size=tuple(payload["frame_size"]),
         norm=saved.get("norm", "group"),
+        encoder=saved.get("encoder", "small"),
     ).to(device)
     model.load_state_dict(payload["model"])
     model.eval()
