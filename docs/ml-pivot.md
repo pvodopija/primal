@@ -39,9 +39,9 @@
   - runtime stride 2 removed a ~60 ms lag;
   - tracking in reference time replaced most of a speed sensor;
   - augmentation with mirroring.
-- **Strongest model so far, one seed:** the same recipe with an ImageNet
-  ResNet-18 encoder roughly halves every error (unseen 6.9% with the
-  reference-time tracker, trained tracks 14.3%). It is ten times the 0.67M
+- **Strongest model so far, two seeds:** the same recipe with an ImageNet
+  ResNet-18 encoder roughly halves every error (unseen 6.9-7.0% with the
+  reference-time tracker, trained tracks 14.3-14.7%). It is ten times the 0.67M
   encoder and too big for Halo, so it is a teacher; a Halo-sized model that
   learns from it is next (*A pretrained backbone for the encoder*).
 - **Hardware:** Halo can run it standalone. Vela puts it at 27-34% of the NPU
@@ -1635,7 +1635,7 @@ data the line separation the `lines` gate needs.
 
 ![Backbone experiment](img/backbone_experiment.svg)
 
-**Measured** (`--encoder resnet18`, one seed, a second running). ImageNet ResNet-18
+**Measured** (`--encoder resnet18`, two seeds). ImageNet ResNet-18
 up to layer3, BatchNorm frozen at ImageNet's statistics, backbone at 0.3x the
 learning rate, on the current recipe. Share of ticks over 100 ms, `packed_ac_v3`
 protocol, against three seeds of the same recipe with the 0.67M encoder:
@@ -1643,9 +1643,10 @@ protocol, against three seeds of the same recipe with the 0.67M encoder:
 | | trained tracks | unseen, metres | unseen, reference time (two modes) | true speed | head turns, metres / ref. time |
 |---|---|---|---|---|---|
 | 0.67M encoder, three seeds | 29.0-31.7% | 29.8-30.5% | 13.1-15.0% | 1.3-2.1% | 29.1-31.8% / 14.2-15.8% |
-| **ImageNet ResNet-18** | **14.3%** | **18.4%** | **6.9%** | **0.7%** | **20.0% / 8.3%** |
+| **ImageNet ResNet-18, two seeds** | **14.3-14.7%** | **18.4-18.6%** | **6.9-7.0%** | **0.7%** | **20.0-22.6% / 8.3-9.0%** |
 
 The wrong-reference control passes, and the unseen circuits never enter training.
+The two seeds agree within half a point, far closer than the 0.67M encoder's.
 **General visual experience was the missing ingredient,** as the plan below
 suspected: it halves the error on trained and unseen circuits alike, and under
 head turns.
