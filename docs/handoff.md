@@ -1625,3 +1625,87 @@ driver brakes, so it needs no speed sensor.
 
 Still open from the earlier entry: the rig log's row cap and the overlay's unflushed
 tail, both in AC's Lua.
+
+---
+
+## 2026-10-01 — Windows → Mac: wide re-renders, `packed_ac_v3_wide`
+
+Answers the wide-FOV request. Re-renders of saved replays, no new driving: rig
+`fov_deg = 90` vertical (121.3° horizontal at 16:9), wander 2.5 m, look off,
+camera 1.15 m up and 2.2 m ahead as before. One session per circuit, nine
+training and three holdout.
+
+### On the USB drive (two trips)
+
+`packed_ac_v3_wide`: 113 laps, 425,134 frames, 46 GB, 268x144 square pixels
+(`pixel_aspect 0.9997`), 2 m bins. The index records `fov_h_deg 121.28` and
+`fov_v_deg 87.34` (the barcode band comes off the bottom, so the packed
+vertical FOV is a little under 90). `variant` is `"live"` throughout: the
+rig did not turn the head. The 46 GB fits in two trips:
+
+- trip 1: `usb_wide_part1/` (half the laps, `index.json`, README)
+- trip 2: `usb_wide_part2/` (the other half)
+
+```bash
+mkdir -p data/packed_ac_v3_wide
+cp -R /Volumes/<USB>/usb_wide_part1/laps data/packed_ac_v3_wide/
+cp /Volumes/<USB>/usb_wide_part1/index.json data/packed_ac_v3_wide/
+cp -R /Volumes/<USB>/usb_wide_part2/laps/* data/packed_ac_v3_wide/laps/
+```
+
+Then 113 folders in `laps/` and every index `path` exists.
+
+### Sessions
+
+Session ids `<track>__<config>__20260930T1843Z-20260930T2345Z`; each run.json
+has `camera_vfov_deg: 90.0`, written by `session import` from the per-frame
+`cam_fov_deg`, and the source replay in `notes`.
+
+| Track | Split | Car (replay) | Laps packed | > 95% of a lap | Frames |
+|---|---|---|---|---|---|
+| `ks_black_cat_county__layout_short` | train | Abarth | 4 | 2 | 31,823 |
+| `ks_brands_hatch__indy` | train | MX-5 | 5 | 2 | 9,909 |
+| `ks_highlands__layout_short` | train | MX-5 | 12 | 9 | 31,928 |
+| `ks_laguna_seca` | train | MX-5 | 11 | 9 | 58,781 |
+| `ks_monza66__junior` | train | MX-5 | 11 | 9 | 33,375 |
+| `ks_nurburgring__layout_sprint_a` | train | Abarth | 11 | 9 | 60,865 |
+| `ks_red_bull_ring__layout_national` | train | MX-5 | 11 | 9 | 33,795 |
+| `ks_vallelunga__club_circuit` | train | Abarth | 10 | 8 | 30,876 |
+| `magione` | train | MX-5 | 7 | 5 | 27,861 |
+| `ks_silverstone__national` | holdout | Abarth | 10 | 6 | 31,346 |
+| `rt_lime_rock_park__no_chicane` | holdout | MX-5 | 11 | 9 | 34,688 |
+| `rt_oulton_park__fosters` | holdout | MX-5 | 10 | 9 | 39,887 |
+
+Ten laps where the replay held them. Brands Hatch's only replay is 3.7
+minutes (three laps), Black Cat's laps are three minutes long, and the
+Vallelunga, Magione and Silverstone replays ended after 7-9 laps. The old
+replays (Brands, Vallelunga, Magione, Red Bull, Black Cat, Silverstone) are
+33 Hz, the newer ones 67 Hz, all interpolated to 60 fps. Same time of day
+and weather as each replay's own session.
+
+### Checks
+
+Every session: 100% checksum, every kept frame at `cam_fov_deg` 90.0 with
+telemetry, label speed / car speed 1.001-1.003, no label step beyond the
+camera's movement. `trim --last-lap` cuts each recording after its last
+complete lap. Where a replay ended before the recording did, that tail is a
+frozen picture, and its one backward step and Brands' speed ratio of 0.001
+lie entirely in the trimmed part. Soft flag as before: camera past the AI
+edge on 0.1-0.3% of frames. Oulton's lap counter ticks up to 19.5 m from the
+`s` wrap here (3-7 m elsewhere), from AC's lap counting during replay; the
+labels themselves agree with the speed.
+
+### Also done
+
+- The two Lua items from 2026-09-30: the rig log now keeps an hour (110,000
+  rows, appended and saved with `io.saveAsync` off the render thread; checked
+  with a 70-minute stub run), and the timecode app flushes its last rows on
+  unload (`ac.onRelease`).
+- `.claude/skills/ac-unattended-recording` grew the replay-render steps: jump
+  past the replay's parked start using the green lap markers, and refocus CM
+  after each AC close (NVIDIA's overlay takes focus).
+
+### Next
+
+Human-driven laps need the user at the wheel; then Halo-FOV renders (81°
+horizontal) whenever wanted, from the same replays.

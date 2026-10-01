@@ -74,6 +74,34 @@ clouds; session 2 Abarth 500 Assetto Corse 18:30 clear. Mode Hotlap.
 10. In the background: calibrate, decode, `preflight check`, `session trim --last-lap`.
     Wait for it to finish before step 6 of the next session.
 
+## Re-rendering a saved replay (no driving)
+
+Set the rig in `apps/lua/primal_rig/rig.txt` first (`fov_deg`, `look`,
+`wander_m`, ...; it is re-read twice a second), and put it back afterwards.
+
+1. CM > Media > replays. Click the search box, type part of the replay's name,
+   Return, then **Play** (the first click may only activate the window; click
+   again if AC doesn't start).
+2. Wait for AC (`acs.exe` with a window, then ~40 s) and `focus_ac()`. If CSP
+   asks "Did Assetto Corsa just crash?", answer **No** (never send reports).
+3. Move the mouse to the bottom of AC's window for the replay bar. Replays
+   often start with the car parked for minutes: the green lap markers on the
+   timeline show where driving is; click the timeline there. Move the mouse
+   away so the bar (which overlaps the barcode) hides.
+4. Check the car moves: `last_row(newest_launch())` speed > 5 km/h and a fresh
+   chunk. A frozen `cam_s` means paused or parked.
+5. `autostop --start --laps 10 --max-min <minutes of replay left>`. The lap
+   counter works in replays. When the replay ends the picture freezes but the
+   speed does not drop, so the parked guard won't fire; `trim --last-lap`
+   removes that tail.
+6. `session import <mp4> --rig --split ...` while AC is still open (it writes
+   `camera_vfov_deg` from the telemetry), then close AC.
+7. After AC closes, focus usually falls to NVIDIA's overlay, Explorer or
+   another app; retry `cm_front.py` every few seconds (it can take a couple of
+   minutes) rather than clicking. CM minimizes itself while AC runs, so it
+   can't be clicked beforehand.
+8. Decode all renders in one batch after the last recording, not between them.
+
 ## If something goes wrong
 
 - A recording of a parked car / wrong settings: move it to `D:\Videos\rejected\`
