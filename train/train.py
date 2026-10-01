@@ -238,6 +238,10 @@ def main() -> None:
     parser.add_argument("--aug-parts", default="pose,blur,occlude,vignette,jpeg",
                         help="which --camera-aug effects to apply, comma-separated")
     parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
+    parser.add_argument("--teacher", default=None,
+                        help="checkpoint of a stronger model to learn from as well (distillation), e.g. a resnet18 run")
+    parser.add_argument("--distill-weight", type=float, default=1.0)
+    parser.add_argument("--distill-temp", type=float, default=2.0)
     parser.add_argument("--encoder", choices=("small", "resnet18"), default="small",
                         help="the 0.67M from-scratch encoder, or ImageNet ResNet-18 up to layer3")
     parser.add_argument("--encoder-weights", default=str(Path.home() / ".cache/torch/hub/checkpoints/resnet18-f37072fd.pth"),
@@ -351,6 +355,20 @@ def main() -> None:
 
     loader = DataLoader(train_set, batch_size=None, num_workers=args.workers)
     eval_loader = DataLoader(eval_set, batch_size=None, num_workers=0)
+    teacher = None
+    if args.teacher:
+        payload = torch.load(args.teacher, map_location=device, weights_only=False)
+        saved = payload["args"]
+        teacher = SequenceAligner(
+            clip_len=saved["clip_len"], dim=saved["dim"], width=saved["width"], hidden=saved["hidden"],
+            frame_size=tuple(payload["frame_size"]), norm=saved.get("norm", "group"),
+            encoder=saved.get("encoder", "small"),
+        ).to(device)
+        teacher.load_state_dict(payload["model"])
+        teacher.eval()
+        for p in teacher.parameters():
+            p.requires_grad_(False)
+        print(f"distilling from {args.teacher} (weight {args.distill_weight}, temperature {args.distill_temp})")
     if hasattr(model.encoder, "backbone_parameters"):
         # A pretrained backbone learns gentler than the layers trained from scratch.
         backbone = {id(p) for p in model.encoder.backbone_parameters()}
@@ -393,8 +411,23 @@ def main() -> None:
             frame_target=batch["frame_targets"].to(device) if args.aux_all_frames else None,
             sigma_bins=args.sigma_bins,
         )
+        total = parts.total
+        if teacher is not None:
+            # Learn from the teacher too: its belief over the reference (where the clip is)
+            # and its per-frame similarity rows (which places look alike), both softened.
+            with torch.no_grad():
+                teacher_logits, teacher_correlation = teacher(live, reference, use_checkpoint=False)
+            temp = args.distill_temp
+            head_kl = torch.nn.functional.kl_div(
+                torch.log_softmax(logits / temp, -1), torch.softmax(teacher_logits / temp, -1), reduction="batchmean"
+            ) * temp * temp
+            rows_kl = torch.nn.functional.kl_div(
+                torch.log_softmax(correlation.flatten(0, 1) / temp, -1),
+                torch.softmax(teacher_correlation.flatten(0, 1) / temp, -1), reduction="batchmean",
+            ) * temp * temp
+            total = total + args.distill_weight * (head_kl + 0.5 * rows_kl)
         optimiser.zero_grad(set_to_none=True)
-        parts.total.backward()
+        total.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimiser.step()
         schedule.step()
