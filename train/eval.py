@@ -579,34 +579,42 @@ def _instantaneous_speed(s: np.ndarray, t: np.ndarray, frames: np.ndarray, lengt
 @torch.no_grad()
 def _lap_stream(model, clip_len: int, reference: Lap, live: Lap, axis: str, stride: int,
                 device: torch.device, window: int, backward: bool = False, traffic: float = 0.0,
-                traffic_seed: int = 0) -> dict:
+                traffic_seed: int = 0, live_frames: np.ndarray | None = None,
+                ref_frames: np.ndarray | None = None) -> dict:
     """
     One belief per tick along a whole live lap, as the phone would receive them.
 
     With `backward`, also each tick's frame read backwards: as the last frame of the
     clip that starts 0.73 s later and runs back to it, the way training's reversed clips
     look. The phone has that reading 0.73 s late; `_lag_corrected` uses it.
+
+    `live_frames` and `ref_frames` stand in for the recorded frames (the live lap's, and
+    the reference's at its grid), e.g. as the virtual camera renders them.
     """
     grid = reference.reference_grid(axis)
-    ref = model.encode_reference(
-        torch.from_numpy(_to_chw(np.asarray(reference.frames()[grid.frame_idx]))).to(device),
-        use_checkpoint=False,
-    )
-    frames = live.frames()
+    if ref_frames is None:
+        ref_frames = np.asarray(reference.frames()[grid.frame_idx])
+    ref = model.encode_reference(torch.from_numpy(_to_chw(ref_frames)).to(device), use_checkpoint=False)
+    frames = live.frames() if live_frames is None else live_frames
     if traffic > 0.0:  # a kart ahead for that share of the lap, drawn by a generator training never used
         rng = np.random.default_rng((traffic_seed, zlib.crc32(live.lap_id.encode())))
         frames = traffic_episodes(frames, live.t().astype(np.float64), traffic, rng)
-    desc = torch.cat([
-        model.encode_reference(
-            torch.from_numpy(_to_chw(np.asarray(frames[i : i + 256]))).to(device), use_checkpoint=False
-        )
-        for i in range(0, live.n_frames, 256)
-    ])
     every = max(int(round(live.fps / STREAM_HZ)), 1)
     ticks = np.arange((clip_len - 1) * stride, live.n_frames, every)
     clip_idx = ticks[:, None] - np.arange(clip_len - 1, -1, -1)[None, :] * stride
     scale = model.logit_scale.exp()
     back_idx = np.minimum(ticks[:, None] + np.arange(clip_len - 1, -1, -1)[None, :] * stride, live.n_frames - 1)
+    # Only the frames some clip uses are encoded (every other one at stride 2), each once.
+    used = np.unique(np.concatenate([clip_idx.ravel()] + ([back_idx.ravel()] if backward else [])))
+    row = np.full(live.n_frames, -1, dtype=np.int64)
+    row[used] = np.arange(used.size)
+    clip_idx, back_idx = row[clip_idx], row[back_idx]
+    desc = torch.cat([
+        model.encode_reference(
+            torch.from_numpy(_to_chw(np.asarray(frames[used[i : i + 256]]))).to(device), use_checkpoint=False
+        )
+        for i in range(0, used.size, 256)
+    ])
     beliefs, single, single_back = [], [], []
     for chunk in np.array_split(np.arange(ticks.size), max(1, ticks.size // 64)):
         corr = torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(clip_idx[chunk]).to(device)], ref) * scale
@@ -774,6 +782,95 @@ def cmd_stream(args: argparse.Namespace) -> None:
         Path(args.out).write_text(json.dumps({"checkpoint": args.checkpoint, "args": {k: v for k, v in vars(args).items() if k != "func"}, "report": report}, indent=2))
 
 
+# Head pose and shake on the held-out tracks' wide renders (train/camera.py): name, view,
+# (yaw, pitch, roll) in degrees held over the whole lap with signs alternating lap to lap,
+# shake level. The training-view tests use a recorded lap in the other car as the
+# reference (a different drive by construction); the Halo tests can only use another lap
+# of the same wide session, since no other set covers Halo's vertical field of view, so
+# they come with their own same-session baseline at the training view.
+CAMERA_TESTS = (
+    ("level", "training", (0, 0, 0), 0.0),
+    ("yaw 7", "training", (7, 0, 0), 0.0),
+    ("yaw 14", "training", (14, 0, 0), 0.0),
+    ("pitch 5", "training", (0, 5, 0), 0.0),
+    ("roll 10", "training", (0, 0, 10), 0.0),
+    ("shake 1", "training", (0, 0, 0), 1.0),
+    ("shake 2", "training", (0, 0, 0), 2.0),
+    ("yaw 10, shake 1", "training", (10, 0, 0), 1.0),
+    ("same session: level", "training", (0, 0, 0), 0.0),
+    ("same session: Halo level", "halo", (0, 0, 0), 0.0),
+    ("same session: Halo yaw 10, shake 1", "halo", (10, 0, 0), 1.0),
+)
+
+
+def cmd_camera(args: argparse.Namespace) -> None:
+    """
+    Whole held-out laps through the virtual camera: held head turns, tilts and nods,
+    camera shake, and Halo's field of view, each scored with the single-shot readout and
+    the two-mode reference-time tracker the product runs. The first two seconds of each
+    lap are acquisition and are left out.
+    """
+    from train import camera
+
+    device = torch.device(args.device)
+    model, payload = load_model(Path(args.checkpoint), device)
+    clip_len = int(payload["args"]["clip_len"])
+    axis = reference_axis_of(payload)
+    recorded = LapIndex.load(Path(args.data), split="holdout")
+    wide = LapIndex.load(Path(args.wide), split="holdout")
+    views = {"training": camera.TRAINING, "halo": camera.HALO}
+    tests = [t for t in CAMERA_TESTS if not args.tests or t[0] in args.tests.split(",")]
+    scores: dict[str, dict[str, list]] = {name: {"single": [], "tracker": []} for name, *_ in tests}
+    for track, group in sorted(wide.by_track.items()):
+        whole = [lap for lap in group if lap.s_span > 0.98 and lap.usable_as_reference(0.98, axis)]
+        lives = whole[: args.laps]
+        others = [lap for lap in recorded.by_track.get(track, []) if lap.car_model != lives[0].car_model
+                  and lap.usable_as_reference(0.98, axis)]
+        for k, live in enumerate(lives):
+            sign = 1.0 if k % 2 == 0 else -1.0
+            t = live.t().astype(np.float64)
+            every = max(int(round(live.fps / STREAM_HZ)), 1)
+            used = np.zeros(live.n_frames, dtype=bool)
+            for tick in range((clip_len - 1) * args.stride, live.n_frames, every):
+                used[tick - np.arange(clip_len) * args.stride] = True
+            used = np.flatnonzero(used)
+            raw = np.asarray(live.frames()[used])
+            same_session = whole[(k + 1) % len(whole)]
+            for name, view_name, pose, level in tests:
+                view = views[view_name]
+                rng = np.random.default_rng((args.seed, zlib.crc32(f"{live.lap_id} {name}".encode())))
+                frames = np.zeros((live.n_frames, view.height, view.width, 3), dtype=np.uint8)
+                frames[used] = camera.render_clip(raw, t[used], rng, view=view, pose=tuple(sign * a for a in pose),
+                                                  shake_level=level)
+                if name.startswith("same session"):
+                    reference = same_session
+                    grid = reference.reference_grid(axis)
+                    ref_frames = camera.render_clip(np.asarray(reference.frames()[grid.frame_idx]),
+                                                    np.zeros(grid.n_bins), rng, view=view)
+                else:
+                    reference, ref_frames = others[k % len(others)], None
+                stream = _lap_stream(model, clip_len, reference, live, axis, args.stride, device, args.window,
+                                     live_frames=frames, ref_frames=ref_frames)
+                tracked = _run_estimator(stream, EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None,
+                                         args.seed, reference_time=True)
+                for kind, bins in (("single", stream["single"]), ("tracker", tracked)):
+                    scores[name][kind].append(_stream_errors(stream, bins)[1])
+            print(f"  {track[:28]:<28} live {live.lap_id[-5:]}  reference {others[k % len(others)].lap_id[-22:]}", flush=True)
+
+    report = {}
+    print(f"\n{'':40}{'single >100 ms':>16}{'tracker median':>16}{'p90':>9}{'>100 ms':>9}")
+    for name, *_ in tests:
+        single, tracker = (np.concatenate(scores[name][k]) for k in ("single", "tracker"))
+        row = dict(single_over_100ms=float(np.mean(single > 100)), median_ms=float(np.median(tracker)),
+                   p90_ms=float(np.percentile(tracker, 90)), over_100ms=float(np.mean(tracker > 100)),
+                   ticks=int(tracker.size))
+        report[name] = row
+        print(f"{name:<40}{100 * row['single_over_100ms']:>15.1f}%{row['median_ms']:>13.0f} ms"
+              f"{row['p90_ms']:>6.0f} ms{100 * row['over_100ms']:>8.1f}%")
+    if args.out:
+        Path(args.out).write_text(json.dumps({"checkpoint": args.checkpoint, "args": {k: v for k, v in vars(args).items() if k != "func"}, "report": report}, indent=2))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -849,6 +946,19 @@ def main() -> None:
     stream.add_argument("--out")
     stream.add_argument("--device", default=default_device())
     stream.set_defaults(func=cmd_stream)
+
+    cam = sub.add_parser("camera", help="held-out laps through the virtual camera: head pose, shake, Halo's view")
+    cam.add_argument("--data", required=True, help="the recorded set, for the other-car references")
+    cam.add_argument("--wide", required=True, help="the wide renders of the held-out tracks")
+    cam.add_argument("--checkpoint", required=True)
+    cam.add_argument("--laps", type=int, default=4, help="wide live laps per held-out track")
+    cam.add_argument("--tests", default=None, help="comma-separated subset of the test names")
+    cam.add_argument("--stride", type=int, default=2)
+    cam.add_argument("--window", type=int, default=8)
+    cam.add_argument("--seed", type=int, default=0)
+    cam.add_argument("--out")
+    cam.add_argument("--device", default=default_device())
+    cam.set_defaults(func=cmd_camera)
 
     args = parser.parse_args()
     args.func(args)

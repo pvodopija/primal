@@ -22,7 +22,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from train.dataset import AlignmentBatches, LapIndex, SampleConfig
+from train.dataset import AlignmentBatches, LapIndex, SampleConfig, same_drive
 from train.model import (
     MOBILENET_V3_LARGE_IMAGENET,
     MOBILENET_V3_SMALL_IMAGENET,
@@ -268,6 +268,12 @@ def main() -> None:
                         help="localise the clip's last frame (live tracking) or its middle (placing finished laps)")
     parser.add_argument("--strides", default="1,2,3,4",
                         help="frames between clip frames, drawn uniformly per clip; runtime uses 4, so centre them there")
+    parser.add_argument("--wide", default=None,
+                        help="also train on this set of wide renders, seen through the virtual camera (train/camera.py)")
+    parser.add_argument("--head", type=float, nargs=3, default=(14.0, 4.0, 8.0), metavar=("YAW", "PITCH", "ROLL"),
+                        help="head pose amplitudes in degrees for live clips from --wide laps")
+    parser.add_argument("--shake", type=float, default=0.0,
+                        help="camera shake on every live clip, level drawn from [0, this]; 1 = a typical kart")
     args = parser.parse_args()
 
     gate = GateConfig.get(args.gate)
@@ -289,6 +295,14 @@ def main() -> None:
     reserved: frozenset[str] = frozenset()
     if gate.name == "g1" and args.holdout_laps > 0:
         reserved = holdout_live_laps(train_index, args.holdout_laps)
+    if args.wide:
+        # Wide renders re-render recorded drives, some of them the held-out ones: any wide
+        # lap that could be a held-out drive stays out, or G1 would test on a seen drive.
+        wide = LapIndex.load(Path(args.wide), split="train", tracks=sorted(train_index.by_track))
+        held = [lap for lap in train_index.laps if lap.lap_id in reserved]
+        kept = [w for w in wide.laps if not any(same_drive(w, h) for h in held)]
+        print(f"wide: {len(kept)} of {len(wide.laps)} laps ({len(wide.laps) - len(kept)} could be held-out drives)")
+        train_index = LapIndex(train_index.laps + kept)
     trainable = frozenset(lap.lap_id for lap in train_index.laps) - reserved
 
     train_config = SampleConfig(
@@ -310,6 +324,10 @@ def main() -> None:
         aug_parts=frozenset(args.aug_parts.split(",")),
         strides=tuple(int(s) for s in args.strides.split(",")),
         target_at=args.target_at,
+        head_yaw_deg=args.head[0],
+        head_pitch_deg=args.head[1],
+        head_roll_deg=args.head[2],
+        shake_max=args.shake,
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 
@@ -328,7 +346,7 @@ def main() -> None:
     # A distinct seed stream, so evaluation clips are not the training clips.
     eval_set = AlignmentBatches(eval_index, eval_config, steps=args.eval_steps, seed=args.seed + 9973)
 
-    sample_shape = np.load(train_index.laps[0].directory / "frames.npy", mmap_mode="r").shape
+    sample_shape = np.load(next(l for l in train_index.laps if not l.wide).directory / "frames.npy", mmap_mode="r").shape
     frame_size = (int(sample_shape[1]), int(sample_shape[2]))
     model = SequenceAligner(
         clip_len=args.clip_len,

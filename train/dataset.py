@@ -59,10 +59,17 @@ class Lap:
     # with the rig turning the head into corners. A re-render repeats its source
     # drive exactly, so it must never be paired with it as a test.
     variant: str = "live"
+    # Horizontal field of view of the render. Wide renders (packed_ac_v3_wide, 121 deg)
+    # are not seen as they are: the sampler turns a virtual camera inside them.
+    fov_h_deg: float = 91.49
 
     @property
     def directory(self) -> Path:
         return self.root / self.path
+
+    @property
+    def wide(self) -> bool:
+        return self.fov_h_deg > 100.0
 
     def frames(self) -> np.ndarray:
         return np.load(self.directory / "frames.npy", mmap_mode="r")
@@ -152,6 +159,7 @@ class LapIndex:
                     yaw_mean_deg=float(entry.get("yaw_mean_deg", 0.0)),
                     yaw_bias_deg=float(entry.get("yaw_bias_deg", 0.0)),
                     variant=entry.get("variant", "live"),
+                    fov_h_deg=float(entry.get("fov_h_deg", 91.49)),
                 )
             )
         index = LapIndex(laps)
@@ -196,6 +204,25 @@ class LapIndex:
         ]
         lives = [lap for lap in group if live_only is None or lap.lap_id in live_only]
         return references, lives
+
+
+def same_drive(a: Lap, b: Lap, frames: float = 2.0, rms_m: float = 0.6) -> bool:
+    """
+    Whether two whole laps could be one drive rendered twice: a re-render of a replay
+    repeats the lap time to the frame and the progress along the track to centimetres.
+    AC's bots lap within a few hundredths of each other, so this also catches some
+    different drives; it is used to exclude, where erring that way is safe.
+    """
+    if a.track != b.track or a.s_span < 0.98 or b.s_span < 0.98:
+        return False
+    ta, tb = a.t().astype(np.float64), b.t().astype(np.float64)
+    if abs((ta[-1] - ta[0]) - (tb[-1] - tb[0])) > frames / min(a.fps, b.fps):
+        return False
+    grid = np.linspace(0.0, min(ta[-1] - ta[0], tb[-1] - tb[0]), 400)
+    progress = [np.interp(grid, t - t[0], np.unwrap(lap.s().astype(np.float64), period=1.0) * lap.track_length_m)
+                for lap, t in ((a, ta), (b, tb))]
+    gap = progress[0] - progress[1]
+    return float(np.sqrt(np.mean((gap - np.median(gap)) ** 2))) <= rms_m
 
 
 REFERENCE_AXES = ("distance", "time")
@@ -374,6 +401,17 @@ class SampleConfig:
     # Probability that a step mirrors its reference and all its clips together:
     # a mirror-image circuit, a plausible track the data does not contain.
     mirror_p: float = 0.0
+    # Wide laps go through the virtual camera (train/camera.py): every live clip is seen
+    # with a head pose held over the clip, drawn uniformly within these amplitudes and
+    # exact (no borders) up to about 14 deg of yaw; the reference with camera_jitter's
+    # amplitudes (aug_yaw_deg, aug_pitch_deg, 6 deg roll), exactly too.
+    head_yaw_deg: float = 14.0
+    head_pitch_deg: float = 4.0
+    head_roll_deg: float = 8.0
+    # Camera shake on every live clip, wide or not: vibration, kerb hits and head wobble
+    # with exposure blur, at a level drawn uniformly from [0, shake_max] (1 = a typical
+    # kart); the reference gets half that, without blur. 0 = off.
+    shake_max: float = 0.0
 
 
 def _to_chw(frames: np.ndarray) -> np.ndarray:
@@ -603,6 +641,7 @@ class AlignmentBatches(Dataset):
         steps: int,
         seed: int = 0,
         reference_cache: int = 8,
+        reference_cache_bytes: float = 1.5e9,
     ) -> None:
         self.index = index
         self.config = config
@@ -617,6 +656,8 @@ class AlignmentBatches(Dataset):
                 "capture more laps per track"
             )
         self._cache_limit = max(reference_cache, 1)
+        # A wide reference is ~4x a normal one (up to ~430 MB for Black Cat County).
+        self._cache_bytes = reference_cache_bytes
         # Cached as uint8: a 1000-bin reference is ~10 MB packed against ~120 MB
         # as float32, and the float conversion is negligible next to the encoder.
         self._cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
@@ -631,10 +672,37 @@ class AlignmentBatches(Dataset):
             return hit
         grid = lap.reference_grid(self.config.reference_axis)
         value = (np.asarray(lap.frames()[grid.frame_idx]), grid)
-        if len(self._cache) >= self._cache_limit:
+        while self._cache and (len(self._cache) >= self._cache_limit or
+                               sum(v[0].nbytes for v in self._cache.values()) + value[0].nbytes > self._cache_bytes):
             self._cache.pop(next(iter(self._cache)))
         self._cache[lap.lap_id] = value
         return value
+
+    def _camera(self, lap: Lap, raw: np.ndarray, times: np.ndarray, rng: np.random.Generator,
+                live: bool) -> tuple[np.ndarray, frozenset[str]]:
+        """
+        Frames as the training camera sees them, and the camera_jitter parts still to
+        apply. A wide lap is rendered through the virtual camera, which replaces
+        camera_jitter's approximate pose; a normal lap only gets the shake. Draws nothing
+        when neither applies, so runs without them sample exactly what they always did.
+        """
+        config = self.config
+        if not lap.wide and config.shake_max <= 0.0:
+            return raw, config.aug_parts
+        from train import camera
+
+        level = rng.uniform(0.0, config.shake_max) * (1.0 if live else 0.5) if config.shake_max > 0.0 else 0.0
+        pose = (0.0, 0.0, 0.0)
+        if lap.wide:
+            amplitude = ((config.head_yaw_deg, config.head_pitch_deg, config.head_roll_deg) if live
+                         else (config.aug_yaw_deg, config.aug_pitch_deg, 6.0))
+            pose = tuple(float(rng.uniform(-a, a)) for a in amplitude)
+        elif level == 0.0:
+            return raw, config.aug_parts
+        frames = camera.render_clip(raw, times, rng, source=camera.WIDE if lap.wide else camera.TRAINING,
+                                    view=camera.TRAINING, pose=pose, shake_level=level,
+                                    exposure_s=None if live else 0.0)
+        return frames, (config.aug_parts - {"pose"} if lap.wide else config.aug_parts)
 
     def _clip_indices(self, lap: Lap, rng: np.random.Generator) -> np.ndarray:
         clip_len = self.config.clip_len
@@ -680,13 +748,15 @@ class AlignmentBatches(Dataset):
         n_bins = grid.n_bins
         roll = int(rng.integers(0, n_bins)) if config.roll_reference else 0
         ref_raw = np.roll(ref_raw, roll, axis=0)
+        ref_raw, ref_parts = self._camera(reference_lap, ref_raw,
+                                          np.roll(reference_lap.t()[grid.frame_idx].astype(np.float64), roll), rng, live=False)
         ref_s, ref_speed = np.roll(grid.frame_s, roll), np.roll(grid.speed_mps, roll)
         ref_pos, ref_time = np.roll(grid.pos_m, roll), np.roll(grid.time_s, roll)
         # Drawn only when enabled, so runs without these augmentations sample
         # exactly what they always did.
         mirror = bool(config.mirror_p > 0.0 and rng.random() < config.mirror_p)
         ref_frames = prepare_frames(
-            ref_raw, rng, config.camera_aug, mirror, config.aug_zoom, config.aug_pitch_deg, config.aug_parts,
+            ref_raw, rng, config.camera_aug, mirror, config.aug_zoom, config.aug_pitch_deg, ref_parts,
             yaw_deg=config.aug_yaw_deg,
         )
 
@@ -701,12 +771,13 @@ class AlignmentBatches(Dataset):
             live_lap = live_pool[int(rng.integers(0, len(live_pool)))]
             indices = self._clip_indices(live_lap, rng)
             raw = np.asarray(live_lap.frames()[indices])
+            raw, parts = self._camera(live_lap, raw, live_lap.t()[indices].astype(np.float64), rng, live=True)
             # Drawn only when enabled, so runs without traffic sample exactly what they always did.
             if config.p_traffic > 0.0 and rng.random() < config.p_traffic:
                 raw = draw_traffic(raw, rng, live_lap.t()[indices].astype(np.float64))
             clip = prepare_frames(
                 raw, rng, config.camera_aug, mirror,
-                config.aug_zoom, config.aug_pitch_deg, config.aug_parts, yaw_deg=config.aug_yaw_deg,
+                config.aug_zoom, config.aug_pitch_deg, parts, yaw_deg=config.aug_yaw_deg,
             )
             clips[i] = photometric_jitter(clip, rng) if config.jitter else clip
             # The final frame is the one being localised: causal, matching runtime.

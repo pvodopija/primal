@@ -74,11 +74,13 @@ def render(frame: np.ndarray, source: View, view: View, yaw: float = 0.0, pitch:
 class Shake:
     """
     One clip's camera shake, as yaw, pitch and roll in degrees at any time. Drawn once per
-    clip; `level` scales everything (0 = none, 1 = a typical kart, 2 = a rough one).
+    clip; `level` scales everything (0 = none, 1 = a typical kart, 2 = a rough one). Kerb
+    hits are drawn from `start` to 2 s.
     """
 
     level: float
     rng: np.random.Generator
+    start: float = -1.0
 
     def __post_init__(self) -> None:
         rng, a = self.rng, self.level
@@ -88,13 +90,13 @@ class Shake:
         self.wob = [(rng.uniform(0.3, 2.0), rng.uniform(0, 2 * np.pi), rng.normal(size=3)) for _ in range(3)]
         self.wob_amp = a * rng.uniform(0.2, 0.8) * np.array([0.8, 0.6, 0.6])
         self.kerbs = []  # (time, amplitude deg, decay s), at ~0.3 per second
-        t = rng.exponential(1 / 0.3) - 1.0
+        t = rng.exponential(1 / 0.3) + self.start
         while t < 2.0:
             self.kerbs.append((t, a * rng.uniform(1.0, 3.0), rng.uniform(0.08, 0.2)))
             t += rng.exponential(1 / 0.3)
 
     def at(self, t: np.ndarray) -> np.ndarray:
-        """[len(t), 3] yaw, pitch, roll in degrees; t in seconds, any origin within ±2 s."""
+        """[len(t), 3] yaw, pitch, roll in degrees; t in seconds, from `start` to 2."""
         t = np.asarray(t, dtype=np.float64)[:, None]
         vib = sum(np.sin(2 * np.pi * f * t + ph) * d for f, ph, d in self.vib) / 2.0
         wob = sum(np.sin(2 * np.pi * f * t + ph) * d for f, ph, d in self.wob) / np.sqrt(3.0)
@@ -113,12 +115,13 @@ def render_clip(frames: np.ndarray, times: np.ndarray, rng: np.random.Generator,
     """
     Frames [T, H, W, 3] of one clip, taken at `times` (seconds), seen by `view` with a held
     head `pose` (yaw, pitch, roll) plus camera shake, with exposure blur from the shake.
+    Works for a clip or a whole lap: the shake covers every time given.
     """
     times = np.asarray(times, dtype=np.float64)
-    shake = Shake(shake_level, rng) if shake_level > 0 else None
+    rel = times - times[-1]
+    shake = Shake(shake_level, rng, start=min(float(rel.min()), 0.0) - 1.0) if shake_level > 0 else None
     exposure = rng.uniform(0.002, 0.010) if exposure_s is None else exposure_s
     out = np.empty((len(frames), view.height, view.width, 3), dtype=np.uint8)
-    rel = times - times[-1]
     for i, frame in enumerate(frames):
         if shake is None:
             out[i] = render(frame, source, view, *pose)

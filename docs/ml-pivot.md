@@ -1018,8 +1018,9 @@ the three unseen circuits, both controls passing for every model. Share of ticks
     overlap (29.1-31.8% vs 32.7-35.6%). Everything else is level or better:
     trained tracks 30.1% vs 31.7%, unseen 13.3% vs 13.9%, true speed 1.7% vs 2.6%.
     One seed at ±15° is better still under head turns: 28.9% / 12.7% / 4.0%.
-    **The recipe now uses wide yaw augmentation.** The proper version is exact
-    head rotations cropped from wide renders, which are requested from Windows.
+    **The recipe now uses wide yaw augmentation.** The proper version, exact
+    head rotations from wide renders, is now built: see
+    [The virtual camera](#the-virtual-camera-exact-head-turns-shake-halos-view).
 - **Three more single-seed variants of the yaw ±10° recipe** (traffic test: a
   kart drawn ahead for 30% of each lap, as a silhouette training never used):
 
@@ -1664,6 +1665,51 @@ The phone IMU still has real jobs — a motion model for the estimator, and
 bridging dropped frames over a wireless link — but view canonicalization is not
 one of them.
 
+### The virtual camera: exact head turns, shake, Halo's view
+
+`packed_ac_v3_wide` re-renders the v3 drives at 121°x87° (268x144) from the same
+rig position. Turning a camera about its own centre needs no depth, so any head
+pose is a homography of the wide frame, exact wherever the turned view stays
+inside it (`train/camera.py`, `experiments/show_camera.py`):
+
+| view | size | yaw exact to | pitch exact to |
+|---|---|---|---|
+| training (the v3 framing, 91.5°) | 148x80 | ±14.5° | +15° / -14° |
+| Halo (81.2° x 65.5°, 4:3, centred) | 128x96 | ±16.5° | +12° / -9.5° |
+
+Camera shake is drawn per clip: kart vibration at 8-25 Hz (mostly pitch and
+roll), kerb hits of a few degrees that ring out within ~0.2 s, and head wobble
+at 0.3-2 Hz; level 1 is about 0.3° of pitch jitter. Exposure blur is the average
+of the views along the motion during a 2-10 ms exposure.
+
+**Training** (`--wide data/packed_ac_v3_wide`, `--shake 2`, `--head 14 4 8`):
+wide laps join the v3 laps of the same tracks. Every live clip from a wide lap
+is rendered with a head pose held over the clip (uniform within ±14° yaw, ±4°
+pitch, ±8° roll), its reference with the ordinary jitter amplitudes. With
+`--shake`, every live clip, wide or not, gets shake at a level drawn from 0 to
+the given maximum, and the reference half that without blur. About a fifth of
+the clips come from wide laps.
+
+The wide laps re-render recorded drives, some of them the laps G1 holds out. A
+wide lap that could be a held-out drive (`same_drive`: the same lap time to two
+frames and the same progress along the track) is left out of training. AC's
+bots lap so evenly that this also catches other drives: 10 of 82 wide training
+laps go, 8 of them on the Red Bull Ring.
+
+**Testing** (`python -m train.eval camera`): whole held-out laps from the wide
+set, four per unseen track, each rendered under a held head turn, tilt or nod
+(signs alternating lap to lap), shake, or Halo's view, and scored with the
+single-shot readout and the two-mode reference-time tracker. References are
+recorded laps in the other car, a different drive by construction. Nothing else
+covers Halo's vertical field of view, so the Halo rows use another lap of the
+same wide session as the reference, next to their own same-session baseline at
+the training view.
+
+A first check (small model, one lap per unseen track): the level render scores
+like the recorded footage (15.4% of ticks over 100 ms, against 13-15% on the v3
+test), so the camera model matches the captures. Halo's view costs that model
+2.7% -> 9.9% on same-session pairs: it has never seen a 4:3, 81° picture.
+
 ---
 
 ## Not built yet
@@ -1841,7 +1887,9 @@ between users. It does not arise when reference and live come from the same
 device.
 
 Halo's camera sees about 81°x65° at 4:3 against the AC footage's 91°x58°, so
-targeting it means AC captured or cropped to Halo's field of view. Meta's
+targeting it means AC captured or cropped to Halo's field of view. The wide
+renders give it exactly, through the virtual camera
+([above](#the-virtual-camera-exact-head-turns-shake-halos-view)). Meta's
 toolkit presets are portrait, which needs the same check.
 
 ---
@@ -2072,7 +2120,7 @@ npu/                  int8 TensorFlow Lite export and Vela estimate for Halo's N
 experiments/          the scripts behind each finding (README maps finding -> script)
 results/              every run's settings and measured results, INDEX.md to look them up
 tests/                overlay wire format, fake-recording e2e, sampler and grid invariants, estimator, lag correction,
-                      motion vectors, flow speed
+                      motion vectors, flow speed, the virtual camera and the wide sampler
 ```
 
 Everything from packing onward is portable; only capture is Windows-only.

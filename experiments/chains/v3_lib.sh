@@ -33,3 +33,11 @@ recipe() {  # name seed [extra train args]
   train $name --seed $seed --init runs/${name}_base/best.pt --steps 1500 --lr 1e-4 "$@"
   evaluate $name look
 }
+camera_eval() {  # name: held-out laps through the virtual camera (head pose, shake, Halo's view)
+  local name=$1
+  [[ -f runs/$name/best.pt ]] || return
+  if [[ ! -f runs/$name/camera_v3.json ]]; then
+    ./.venv/bin/python -m train.eval camera --data $D --wide data/packed_ac_v3_wide --checkpoint runs/$name/best.pt --out runs/$name/camera_v3.json > runs/$name/camera_v3.log 2>&1
+  fi
+  echo "--- camera $name"; grep -A 12 "single >100 ms" runs/$name/camera_v3.log
+}
