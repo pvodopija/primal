@@ -1,0 +1,135 @@
+{
+  "checkpoint": "runs/v3_mobilenet_wide_s0/best.pt",
+  "args": {
+    "cmd": "camera",
+    "data": "data/packed_ac_v3",
+    "wide": "data/packed_ac_v3_wide",
+    "checkpoint": "runs/v3_mobilenet_wide_s0/best.pt",
+    "laps": 4,
+    "known": false,
+    "tests": null,
+    "stride": 2,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/v3_mobilenet_wide_s0/camera_v3.json",
+    "device": "mps"
+  },
+  "report": {
+    "level": {
+      "single_over_100ms": 0.2654353562005277,
+      "median_ms": 37.456512451171875,
+      "p90_ms": 106.78291320800781,
+      "over_100ms": 0.12031662269129288,
+      "ticks": 11370
+    },
+    "yaw 7": {
+      "single_over_100ms": 0.4002638522427441,
+      "median_ms": 58.406829833984375,
+      "p90_ms": 157.623291015625,
+      "over_100ms": 0.2685136323658751,
+      "ticks": 11370
+    },
+    "yaw 14": {
+      "single_over_100ms": 0.5959542656112577,
+      "median_ms": 99.63321685791016,
+      "p90_ms": 268.24456787109375,
+      "over_100ms": 0.4990325417766051,
+      "ticks": 11370
+    },
+    "pitch 5": {
+      "single_over_100ms": 0.3586631486367634,
+      "median_ms": 49.533843994140625,
+      "p90_ms": 133.74061584472656,
+      "over_100ms": 0.1820580474934037,
+      "ticks": 11370
+    },
+    "roll 10": {
+      "single_over_100ms": 0.3591029023746702,
+      "median_ms": 40.474891662597656,
+      "p90_ms": 124.42512512207031,
+      "over_100ms": 0.15628847845206684,
+      "ticks": 11370
+    },
+    "shake 1": {
+      "single_over_100ms": 0.2668425681618294,
+      "median_ms": 36.998748779296875,
+      "p90_ms": 106.95037841796875,
+      "over_100ms": 0.11750219876868953,
+      "ticks": 11370
+    },
+    "shake 2": {
+      "single_over_100ms": 0.2671943711521548,
+      "median_ms": 37.51373291015625,
+      "p90_ms": 105.47065734863281,
+      "over_100ms": 0.11644678979771328,
+      "ticks": 11370
+    },
+    "yaw 10, shake 1": {
+      "single_over_100ms": 0.48293755496921725,
+      "median_ms": 72.97134399414062,
+      "p90_ms": 196.8059539794922,
+      "over_100ms": 0.3743183817062445,
+      "ticks": 11370
+    },
+    "same session: level": {
+      "single_over_100ms": 0.07053649956024627,
+      "median_ms": 13.357162475585938,
+      "p90_ms": 39.39094543457031,
+      "over_100ms": 0.009234828496042216,
+      "ticks": 11370
+    },
+    "same session: Halo level": {
+      "single_over_100ms": 0.11512752858399296,
+      "median_ms": 16.312599182128906,
+      "p90_ms": 49.46174621582031,
+      "over_100ms": 0.014511873350923483,
+      "ticks": 11370
+    },
+    "same session: Halo yaw 10, shake 1": {
+      "single_over_100ms": 0.44529463500439753,
+      "median_ms": 62.949180603027344,
+      "p90_ms": 191.3349151611328,
+      "over_100ms": 0.3239226033421284,
+      "ticks": 11370
+    },
+    "track ks_silverstone__national": {
+      "level": 0.17356646952944202,
+      "yaw 7": 0.3306762663923888,
+      "yaw 14": 0.6135253278477758,
+      "pitch 5": 0.28927744921573667,
+      "roll 10": 0.2543070197994343,
+      "shake 1": 0.16868089483157625,
+      "shake 2": 0.16430959115453844,
+      "yaw 10, shake 1": 0.47672923630753405,
+      "same session: level": 0.016456672666495243,
+      "same session: Halo level": 0.021856518385188994,
+      "same session: Halo yaw 10, shake 1": 0.4551298534327591
+    },
+    "track rt_lime_rock_park__no_chicane": {
+      "level": 0.09536307961504811,
+      "yaw 7": 0.32662583843686205,
+      "yaw 14": 0.6223388743073782,
+      "pitch 5": 0.12540099154272383,
+      "roll 10": 0.09361329833770779,
+      "shake 1": 0.08544765237678624,
+      "shake 2": 0.08194808982210557,
+      "yaw 10, shake 1": 0.45960921551472733,
+      "same session: level": 0.0,
+      "same session: Halo level": 0.0,
+      "same session: Halo yaw 10, shake 1": 0.36395450568678916
+    },
+    "track rt_oulton_park__fosters": {
+      "level": 0.09032576505429418,
+      "yaw 7": 0.15967423494570582,
+      "yaw 14": 0.28479763079960513,
+      "pitch 5": 0.12709772951628825,
+      "roll 10": 0.11525172754195459,
+      "shake 1": 0.09550839091806515,
+      "shake 2": 0.09970384995064166,
+      "yaw 10, shake 1": 0.20384995064165845,
+      "same session: level": 0.010118460019743336,
+      "same session: Halo level": 0.019743336623889437,
+      "same session: Halo yaw 10, shake 1": 0.16411648568608095
+    }
+  }
+}

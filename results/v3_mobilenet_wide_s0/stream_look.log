@@ -1,0 +1,23 @@
+  G2 rt_lime_rock_park__no_chican ref 143440Z  live 205006Z
+  G2 rt_lime_rock_park__no_chican ref 143440Z  live 205006Z
+  G2 rt_lime_rock_park__no_chican ref 143440Z  live 205006Z
+  G2 rt_oulton_park__fosters      ref 195157Z  live 205804Z
+  G2 rt_oulton_park__fosters      ref 195157Z  live 205804Z
+  G2 rt_oulton_park__fosters      ref 195157Z  live 205804Z
+
+                                                                       median      p90  >100 ms   >10 m     worst
+G2 single                                                       2.07 m   58 ms   189 ms    27.2%    6.1%    462.2 m
+G2 filter                                                       1.92 m   52 ms   175 ms    24.6%    4.0%     82.1 m
+G2 filter, reference time                                       1.40 m   39 ms   101 ms    10.3%    0.0%      8.8 m
+G2 filter, reference time, two modes                            1.38 m   39 ms    98 ms     9.4%    0.0%      9.5 m
+G2 filter + speed                                               0.73 m   19 ms    50 ms     0.8%    0.0%      3.9 m
+G2 rt_lime_rock_park__no_chicane single                         2.44 m   68 ms   221 ms    34.3%    8.5%    210.6 m
+G2 rt_lime_rock_park__no_chicane filter                         2.35 m   64 ms   191 ms    31.5%    5.5%     82.1 m
+G2 rt_lime_rock_park__no_chicane filter, reference time         1.28 m   36 ms    91 ms     6.2%    0.0%      8.8 m
+G2 rt_lime_rock_park__no_chicane filter, reference time, two modes    1.44 m   41 ms    89 ms     6.7%    0.0%      9.5 m
+G2 rt_lime_rock_park__no_chicane filter + speed                 0.63 m   17 ms    44 ms     0.0%    0.0%      2.5 m
+G2 rt_oulton_park__fosters single                               1.80 m   50 ms   156 ms    21.2%    4.2%    462.2 m
+G2 rt_oulton_park__fosters filter                               1.64 m   45 ms   148 ms    18.8%    2.8%     34.2 m
+G2 rt_oulton_park__fosters filter, reference time               1.51 m   42 ms   111 ms    13.8%    0.0%      6.6 m
+G2 rt_oulton_park__fosters filter, reference time, two modes    1.32 m   37 ms   105 ms    11.7%    0.0%      7.0 m
+G2 rt_oulton_park__fosters filter + speed                       0.80 m   22 ms    57 ms     1.4%    0.0%      3.9 m

@@ -1742,18 +1742,25 @@ alternate lap to lap):
 So training on exact rotations is aimed at the right thing: held yaw first, then
 pitch.
 
-**Trained on it** (`v3_wide_s0`: the yaw ±10° recipe plus `--wide` and `--shake 2`,
-one seed; two more and a MobileNet run follow):
+**Trained on it** (`v3_wide_s0..s2`: the yaw ±10° recipe plus `--wide` and
+`--shake 2`; `v3_mobilenet_wide_s0`: MobileNet-Small at the full rate, the same way):
 
-| model | level | yaw 7° | yaw 14° | pitch 5° | roll 10° | shake 2 | yaw 10° + shake 1 | same session: level / Halo |
+| model | level | yaw 7° | yaw 14° | pitch 5° | roll 10° | shake 2 | yaw 10° + shake 1 | same session: Halo / Halo yaw 10° + shake 1 |
 |---|---|---|---|---|---|---|---|---|
-| 0.67M, yaw ±10° recipe | 11.8% | 42.1% | 70.5% | 53.4% | 43.4% | 11.6% | 56.7% | 2.7% / 8.4% |
-| 0.67M, + wide renders and shake | 11.7% | 37.9% | 65.4% | 30.2% | 24.6% | 12.2% | 50.3% | 3.6% / 9.6% |
+| 0.67M, yaw ±10° recipe, 3 seeds | 11.8-14.9% | 42.1-44.3% | 70.5-73.8% | 53.4-63.4% | 43.4-48.0% | 11.6-16.1% | 56.7-60.4% | 8.4-9.2% / 57.4-61.5% |
+| 0.67M, + wide renders and shake, 3 seeds | 11.7-13.3% | 34.1-42.7% | 62.2-68.0% | 29.9-33.3% | 22.7-28.0% | 12.2-13.6% | 48.1-55.2% | 8.8-9.6% / 52.0-56.0% |
+| MobileNetV3-Small, full rate | 9.2% | 35.6% | 62.4% | 19.3% | 13.9% | 9.6% | 48.0% | 1.5% / 42.4% |
+| MobileNetV3-Small, + wide renders and shake | 12.0% | 26.9% | 49.9% | 18.2% | 15.6% | 11.6% | 37.4% | 1.5% / 32.4% |
 
-On the usual tests it is level with the recipe's three seeds (unseen 13.4% with
-the two-mode tracker against 13.1-15.0%, trained tracks 31.7% against
-29.0-31.7%), so the extra data costs nothing there. Under the camera it nearly
-halves the pitch and roll losses but barely moves a held yaw.
+- **Pitch and roll halve for the 0.67M encoder, on every seed** (ranges apart).
+- **A held yaw moves little:** 43% -> 38% at 7° on average (ranges touch), 72% ->
+  65% at 14°. MobileNet gains more (36% -> 27%, 62% -> 50%, one seed) and is still
+  three times its level error at 7°.
+- **The usual tests pay a little.** The 0.67M encoder: unseen tracks level (13.3-15.0%
+  with the two-mode tracker against 13.1-15.0%; head turns 14.0-15.3% against
+  14.2-15.8%), trained tracks slightly worse (31.7-35.3% against 29.0-31.7%).
+  MobileNet: unseen 8.8% against 7.6%, head turns 9.4% against 8.3%, level under
+  the camera 12.0% against 9.2% (one seed each, so within what seeds can do).
 
 **A held yaw is not mistaken for a place in a corner.** Inside a corner the
 kart's heading turns steadily, so a head turned 7° looks like being a little
