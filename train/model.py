@@ -181,6 +181,7 @@ class ResNetEncoder(nn.Module):
 
 
 MOBILENET_V3_SMALL_IMAGENET = Path.home() / ".cache/torch/hub/checkpoints/mobilenet_v3_small-047dcff4.pth"
+MOBILENET_V3_LARGE_IMAGENET = Path.home() / ".cache/torch/hub/checkpoints/mobilenet_v3_large-8738ca79.pth"
 
 
 def _divisible(v: float, divisor: int = 8) -> int:
@@ -226,12 +227,24 @@ class _InvertedResidual(nn.Module):
 
 class MobileNetEncoder(nn.Module):
     """
-    A pretrained encoder small enough for Halo: ImageNet MobileNetV3-Small up to its last
-    inverted-residual block (96 channels at stride 32, which at 148x80 is exactly the 3x5
-    grid), projected to the same unit-length descriptor. BatchNorm keeps ImageNet's
-    statistics, as in ResNetEncoder, and folds into the convolutions on an NPU.
+    A pretrained encoder small enough for Halo, projected to the same unit-length
+    descriptor. BatchNorm keeps ImageNet's statistics, as in ResNetEncoder, and folds
+    into the convolutions on an NPU.
+
+    "small": ImageNet MobileNetV3-Small up to its last inverted-residual block (96
+    channels at stride 32, which at 148x80 is exactly the 3x5 grid).
+    "large": ImageNet MobileNetV3-Large up to block 12 (112 channels at stride 16,
+    pooled to the grid): about the same number of weights as "small", which is what
+    Halo's memory allows, with the larger network's richer early layers.
     """
 
+    LARGE = [  # input, kernel, expanded, output, squeeze-excite, activation, stride
+        (16, 3, 16, 16, False, nn.ReLU, 1), (16, 3, 64, 24, False, nn.ReLU, 2), (24, 3, 72, 24, False, nn.ReLU, 1),
+        (24, 5, 72, 40, True, nn.ReLU, 2), (40, 5, 120, 40, True, nn.ReLU, 1), (40, 5, 120, 40, True, nn.ReLU, 1),
+        (40, 3, 240, 80, False, nn.Hardswish, 2), (80, 3, 200, 80, False, nn.Hardswish, 1),
+        (80, 3, 184, 80, False, nn.Hardswish, 1), (80, 3, 184, 80, False, nn.Hardswish, 1),
+        (80, 3, 480, 112, True, nn.Hardswish, 1), (112, 3, 672, 112, True, nn.Hardswish, 1),
+    ]
     SETTINGS = [  # input, kernel, expanded, output, squeeze-excite, activation, stride
         (16, 3, 16, 16, True, nn.ReLU, 2), (16, 3, 72, 24, False, nn.ReLU, 2), (24, 3, 88, 24, False, nn.ReLU, 1),
         (24, 5, 96, 40, True, nn.Hardswish, 2), (40, 5, 240, 40, True, nn.Hardswish, 1),
@@ -240,10 +253,11 @@ class MobileNetEncoder(nn.Module):
         (96, 5, 576, 96, True, nn.Hardswish, 1), (96, 5, 576, 96, True, nn.Hardswish, 1),
     ]
 
-    def __init__(self, dim: int = 128, weights: Path | None = MOBILENET_V3_SMALL_IMAGENET):
+    def __init__(self, dim: int = 128, weights: Path | None = MOBILENET_V3_SMALL_IMAGENET, variant: str = "small"):
         super().__init__()
-        self.features = nn.Sequential(_conv_bn(3, 16, 3, 2), *(_InvertedResidual(*s) for s in self.SETTINGS))
-        self.project = nn.Linear(96 * POOL_GRID[0] * POOL_GRID[1], dim)
+        settings = self.LARGE if variant == "large" else self.SETTINGS
+        self.features = nn.Sequential(_conv_bn(3, 16, 3, 2), *(_InvertedResidual(*s) for s in settings))
+        self.project = nn.Linear(settings[-1][3] * POOL_GRID[0] * POOL_GRID[1], dim)
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
         self.dim = dim
@@ -328,6 +342,8 @@ class SequenceAligner(nn.Module):
             self.encoder = ResNetEncoder(dim=dim, weights=encoder_weights)
         elif encoder == "mobilenet":
             self.encoder = MobileNetEncoder(dim=dim, weights=encoder_weights)
+        elif encoder == "mobilenet_large":
+            self.encoder = MobileNetEncoder(dim=dim, weights=encoder_weights, variant="large")
         else:
             self.encoder = FrameEncoder(dim=dim, width=width, frame_size=frame_size, norm=norm)
         self.head = AlignmentHead(clip_len=clip_len, hidden=hidden, blocks=blocks, norm=norm)

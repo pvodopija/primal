@@ -24,6 +24,7 @@ from torch.utils.data import DataLoader
 
 from train.dataset import AlignmentBatches, LapIndex, SampleConfig
 from train.model import (
+    MOBILENET_V3_LARGE_IMAGENET,
     MOBILENET_V3_SMALL_IMAGENET,
     RESNET18_IMAGENET,
     SequenceAligner,
@@ -244,8 +245,9 @@ def main() -> None:
                         help="checkpoint of a stronger model to learn from as well (distillation), e.g. a resnet18 run")
     parser.add_argument("--distill-weight", type=float, default=1.0)
     parser.add_argument("--distill-temp", type=float, default=2.0)
-    parser.add_argument("--encoder", choices=("small", "resnet18", "mobilenet"), default="small",
-                        help="the 0.67M from-scratch encoder, ImageNet ResNet-18 up to layer3, or ImageNet MobileNetV3-Small")
+    parser.add_argument("--encoder", choices=("small", "resnet18", "mobilenet", "mobilenet_large"), default="small",
+                        help="the 0.67M from-scratch encoder, ImageNet ResNet-18 up to layer3, or ImageNet "
+                             "MobileNetV3-Small / -Large cut to Halo's size")
     parser.add_argument("--encoder-weights", default=None,
                         help="pretrained weights for a pretrained encoder (default: torchvision's ImageNet file in the "
                              "torch cache); 'none' trains the same architecture from scratch")
@@ -338,7 +340,8 @@ def main() -> None:
         encoder=args.encoder,
         encoder_weights=None if args.init or args.encoder_weights == "none" else (
             Path(args.encoder_weights) if args.encoder_weights else
-            {"resnet18": RESNET18_IMAGENET, "mobilenet": MOBILENET_V3_SMALL_IMAGENET}.get(args.encoder)),
+            {"resnet18": RESNET18_IMAGENET, "mobilenet": MOBILENET_V3_SMALL_IMAGENET,
+             "mobilenet_large": MOBILENET_V3_LARGE_IMAGENET}.get(args.encoder)),
     ).to(device)
     if args.freeze_backbone:
         for p in model.encoder.backbone_parameters():
