@@ -1707,10 +1707,40 @@ covers Halo's vertical field of view, so the Halo rows use another lap of the
 same wide session as the reference, next to their own same-session baseline at
 the training view.
 
-A first check (small model, one lap per unseen track): the level render scores
-like the recorded footage (15.4% of ticks over 100 ms, against 13-15% on the v3
-test), so the camera model matches the captures. Halo's view costs that model
-2.7% -> 9.9% on same-session pairs: it has never seen a 4:3, 81° picture.
+**Today's models on it** (one seed each, four laps per unseen track, share of
+ticks over 100 ms with the two-mode reference-time tracker; signs of the pose
+alternate lap to lap):
+
+| model | level | yaw 7° | yaw 14° | pitch 5° | roll 10° | shake 1 | shake 2 | yaw 10° + shake 1 | same session: level / Halo / Halo yaw 10° + shake 1 |
+|---|---|---|---|---|---|---|---|---|---|
+| 0.67M encoder (yaw ±10° recipe) | 11.8% | 42.1% | 70.5% | 53.4% | 43.4% | 11.5% | 11.6% | 56.7% | 2.7% / 8.4% / 61.5% |
+| MobileNetV3-Small, full rate | 9.2% | 35.6% | 62.4% | 19.3% | 13.9% | 9.3% | 9.6% | 48.0% | 0.9% / 1.5% / 42.4% |
+| ResNet-18 | 8.2% | 31.6% | 58.3% | 21.8% | 13.5% | 8.3% | 8.7% | 43.3% | 0.7% / 2.0% / 45.8% |
+| MobileNetV3-Large, Halo-sized | 14.0% | 40.2% | 69.8% | 34.2% | 25.1% | 14.0% | 14.4% | 54.6% | 1.0% / 3.1% / 52.8% |
+
+- **The camera model matches the captures:** the level render scores like the
+  recorded footage on the v3 test (8-14% against 7-15%).
+- **Shake costs nothing,** even at level 2 (at most +0.5 points): twelve frames a
+  clip and the tracker average it out.
+- **A head held turned is the weak point.** 7° of yaw held over a lap multiplies
+  the errors by 3.5-4, 14° by 6-7, for every model, the pretrained ones included,
+  although training jitters yaw by ±10°. That jitter is a 2D shift of a narrow
+  frame with mirrored borders, not a rotation. The error is mostly scatter: on
+  MobileNet the error around its own median exceeds 100 ms on 41-54% of
+  Silverstone ticks at ±7°, with a median shift of 40-45 ms that follows the
+  sign of the turn. Turning into corners, which the look re-renders test, costs
+  far less (8.3% for MobileNet): the held turn is the hard case, as when the
+  glasses or the head sit differently than when the reference was driven.
+- **Pitch is read as distance.** Looking 5° up places the kart 30-37 ms behind
+  where it is on both tracks tested (MobileNet), as the road sitting higher looks
+  further away; looking down is inconsistent. The pretrained encoders lose far
+  less to pitch and roll (13-22%) than the 0.67M one (43-53%).
+- **Halo's field of view barely matters to the pretrained encoders** (0.9% ->
+  1.5% for MobileNet on same-session pairs) but costs the 0.67M encoder
+  (2.7% -> 8.4%).
+
+So training on exact rotations is aimed at the right thing: held yaw first, then
+pitch.
 
 ---
 

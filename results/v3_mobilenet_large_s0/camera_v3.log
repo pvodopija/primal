@@ -12,14 +12,14 @@
   rt_oulton_park__fosters      live lap05  reference 0260929T195157Z__lap06
 
                                           single >100 ms  tracker median      p90  >100 ms
-level                                              23.6%           37 ms   107 ms    11.8%
-yaw 7                                              51.1%           82 ms   230 ms    42.1%
-yaw 14                                             78.8%          175 ms   481 ms    70.5%
-pitch 5                                            67.9%          109 ms   697 ms    53.4%
-roll 10                                            63.3%           84 ms   844 ms    43.4%
-shake 1                                            24.6%           37 ms   107 ms    11.5%
-shake 2                                            26.8%           37 ms   107 ms    11.6%
-yaw 10, shake 1                                    65.2%          117 ms   336 ms    56.7%
-same session: level                                13.4%           20 ms    60 ms     2.7%
-same session: Halo level                           22.9%           25 ms    88 ms     8.4%
-same session: Halo yaw 10, shake 1                 67.0%          136 ms   391 ms    61.5%
+level                                              29.1%           40 ms   115 ms    14.0%
+yaw 7                                              50.8%           79 ms   230 ms    40.2%
+yaw 14                                             76.7%          176 ms   520 ms    69.8%
+pitch 5                                            49.2%           72 ms   174 ms    34.2%
+roll 10                                            44.1%           53 ms   170 ms    25.1%
+shake 1                                            28.9%           40 ms   115 ms    14.0%
+shake 2                                            30.0%           40 ms   116 ms    14.4%
+yaw 10, shake 1                                    63.0%          111 ms   317 ms    54.6%
+same session: level                                 6.0%           20 ms    45 ms     1.0%
+same session: Halo level                           13.6%           26 ms    64 ms     3.1%
+same session: Halo yaw 10, shake 1                 59.0%          107 ms   349 ms    52.8%
