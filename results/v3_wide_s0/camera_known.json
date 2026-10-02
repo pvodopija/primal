@@ -1,0 +1,75 @@
+{
+  "checkpoint": "runs/v3_wide_s0/best.pt",
+  "args": {
+    "cmd": "camera",
+    "data": "data/packed_ac_v3",
+    "wide": "data/packed_ac_v3_wide",
+    "checkpoint": "runs/v3_wide_s0/best.pt",
+    "laps": 4,
+    "known": true,
+    "tests": "level,yaw 7,yaw 14,pitch 5,roll 10",
+    "stride": 2,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/v3_wide_s0/camera_known.json",
+    "device": "mps"
+  },
+  "report": {
+    "level": {
+      "single_over_100ms": 0.3071537678207739,
+      "median_ms": 45.18699645996094,
+      "p90_ms": 124.30477142333984,
+      "over_100ms": 0.1614052953156823,
+      "ticks": 7856
+    },
+    "yaw 7": {
+      "single_over_100ms": 0.47161405295315684,
+      "median_ms": 68.13907623291016,
+      "p90_ms": 235.4383544921875,
+      "over_100ms": 0.344959266802444,
+      "ticks": 7856
+    },
+    "yaw 14": {
+      "single_over_100ms": 0.7217413441955194,
+      "median_ms": 160.56442260742188,
+      "p90_ms": 503.4112854003906,
+      "over_100ms": 0.6565682281059063,
+      "ticks": 7856
+    },
+    "pitch 5": {
+      "single_over_100ms": 0.48727087576374745,
+      "median_ms": 66.50447845458984,
+      "p90_ms": 184.73721313476562,
+      "over_100ms": 0.3471232179226069,
+      "ticks": 7856
+    },
+    "roll 10": {
+      "single_over_100ms": 0.5216395112016293,
+      "median_ms": 61.138153076171875,
+      "p90_ms": 216.6156768798828,
+      "over_100ms": 0.31988289205702647,
+      "ticks": 7856
+    },
+    "track ks_black_cat_county__layout_short": {
+      "level": 0.09594882729211088,
+      "yaw 7": 0.34968017057569295,
+      "yaw 14": 0.6943852167732765,
+      "pitch 5": 0.18585643212508884,
+      "roll 10": 0.26261549395877753
+    },
+    "track ks_nurburgring__layout_sprint_a": {
+      "level": 0.29419354838709677,
+      "yaw 7": 0.4309677419354839,
+      "yaw 14": 0.7419354838709677,
+      "pitch 5": 0.4296774193548387,
+      "roll 10": 0.37548387096774194
+    },
+    "track ks_red_bull_ring__layout_national": {
+      "level": 0.1552119129438717,
+      "yaw 7": 0.30297823596792667,
+      "yaw 14": 0.5882016036655212,
+      "pitch 5": 0.4404352806414662,
+      "roll 10": 0.3413516609392898
+    }
+  }
+}

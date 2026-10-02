@@ -1764,6 +1764,27 @@ binned by how fast the view is turning (measured from the frames), ticks over
 of the training clips were turned exactly, so `--wide-share 0.8` (four in five)
 is next.
 
+**Not memorised per track: the trained tracks fail the same way**
+(`train.eval camera --known`). The ten wide laps training left out are renders
+of G1's held-out drives on three trained tracks (one lap each on Black Cat County
+and the Nürburgring, four on the Red Bull Ring, where some may be renders of
+trained drives), against recorded references from another session:
+
+| model | level | yaw 7° | yaw 14° | pitch 5° | roll 10° |
+|---|---|---|---|---|---|
+| 0.67M, yaw ±10° recipe | 15.8% | 38.3% | 70.5% | 58.0% | 51.3% |
+| 0.67M, + wide renders and shake | 16.1% | 34.5% | 65.7% | 34.7% | 32.0% |
+| MobileNetV3-Small, full rate | 8.9% | 29.0% | 61.3% | 14.1% | 12.5% |
+
+A held 7° turn triples the errors on tracks the models trained on, the wide
+model included, although it saw these very tracks turned exactly in other laps;
+every track shows it. Pitch and roll are learnable (training on the wide renders
+nearly halves them; the pretrained encoder hardly minds them), but a sideways
+turn is not, at this design. The likely reason: the descriptor keeps the
+left-right layout of the picture, and where things sit left to right (where the
+road runs, which side the trees are on) is exactly what tells two places a few
+metres apart; a turn moves all of it.
+
 ---
 
 ## Not built yet

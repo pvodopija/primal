@@ -1,0 +1,75 @@
+{
+  "checkpoint": "runs/v3_yaw10_s0/best.pt",
+  "args": {
+    "cmd": "camera",
+    "data": "data/packed_ac_v3",
+    "wide": "data/packed_ac_v3_wide",
+    "checkpoint": "runs/v3_yaw10_s0/best.pt",
+    "laps": 4,
+    "known": true,
+    "tests": "level,yaw 7,yaw 14,pitch 5,roll 10",
+    "stride": 2,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/v3_yaw10_s0/camera_known.json",
+    "device": "mps"
+  },
+  "report": {
+    "level": {
+      "single_over_100ms": 0.3020621181262729,
+      "median_ms": 43.68400573730469,
+      "p90_ms": 125.11253356933594,
+      "over_100ms": 0.15771384928716906,
+      "ticks": 7856
+    },
+    "yaw 7": {
+      "single_over_100ms": 0.5016547861507128,
+      "median_ms": 74.15771484375,
+      "p90_ms": 238.93643188476562,
+      "over_100ms": 0.38289205702647655,
+      "ticks": 7856
+    },
+    "yaw 14": {
+      "single_over_100ms": 0.7697301425661914,
+      "median_ms": 209.4573974609375,
+      "p90_ms": 669.870361328125,
+      "over_100ms": 0.7046843177189409,
+      "ticks": 7856
+    },
+    "pitch 5": {
+      "single_over_100ms": 0.6936099796334012,
+      "median_ms": 126.495361328125,
+      "p90_ms": 2615.86572265625,
+      "over_100ms": 0.579938900203666,
+      "ticks": 7856
+    },
+    "roll 10": {
+      "single_over_100ms": 0.6750254582484725,
+      "median_ms": 105.01861572265625,
+      "p90_ms": 638.9102783203125,
+      "over_100ms": 0.5131109979633401,
+      "ticks": 7856
+    },
+    "track ks_black_cat_county__layout_short": {
+      "level": 0.12153518123667377,
+      "yaw 7": 0.39339019189765456,
+      "yaw 14": 0.7380952380952381,
+      "pitch 5": 0.527363184079602,
+      "roll 10": 0.5767590618336887
+    },
+    "track ks_nurburgring__layout_sprint_a": {
+      "level": 0.2503225806451613,
+      "yaw 7": 0.46903225806451615,
+      "yaw 14": 0.8038709677419354,
+      "pitch 5": 0.5045161290322581,
+      "roll 10": 0.4896774193548387
+    },
+    "track ks_red_bull_ring__layout_national": {
+      "level": 0.14576174112256587,
+      "yaw 7": 0.3361970217640321,
+      "yaw 14": 0.6337342497136311,
+      "pitch 5": 0.6557846506300115,
+      "roll 10": 0.4722222222222222
+    }
+  }
+}

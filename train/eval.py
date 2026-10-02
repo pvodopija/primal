@@ -27,7 +27,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from train.dataset import (AlignmentBatches, Lap, LapIndex, SampleConfig, _to_chw, circular_soft_target,
-                           traffic_episodes)
+                           same_drive, traffic_episodes)
 from train.estimator import EstimatorConfig, ProgressEstimator
 from train.model import (
     AlignmentMetrics,
@@ -809,6 +809,10 @@ def cmd_camera(args: argparse.Namespace) -> None:
     camera shake, and Halo's field of view, each scored with the single-shot readout and
     the two-mode reference-time tracker the product runs. The first two seconds of each
     lap are acquisition and are left out.
+
+    With `known`, the same on the trained tracks: the lives are the wide laps that training
+    left out because they could be G1's held-out drives, the references recorded laps
+    training used, from another session and preferably the other car.
     """
     from train import camera
 
@@ -816,16 +820,32 @@ def cmd_camera(args: argparse.Namespace) -> None:
     model, payload = load_model(Path(args.checkpoint), device)
     clip_len = int(payload["args"]["clip_len"])
     axis = reference_axis_of(payload)
-    recorded = LapIndex.load(Path(args.data), split="holdout")
-    wide = LapIndex.load(Path(args.wide), split="holdout")
+    split = "train" if args.known else "holdout"
+    recorded = LapIndex.load(Path(args.data), split=split)
+    wide = LapIndex.load(Path(args.wide), split=split)
+    reserved = holdout_live_laps(recorded, 1) if args.known else frozenset()
+    held = [lap for lap in recorded.laps if lap.lap_id in reserved]
     views = {"training": camera.TRAINING, "halo": camera.HALO}
     tests = [t for t in CAMERA_TESTS if not args.tests or t[0] in args.tests.split(",")]
     scores: dict[str, dict[str, list]] = {name: {"single": [], "tracker": []} for name, *_ in tests}
+    per_track: dict[str, dict[str, list]] = {}
     for track, group in sorted(wide.by_track.items()):
         whole = [lap for lap in group if lap.s_span > 0.98 and lap.usable_as_reference(0.98, axis)]
-        lives = whole[: args.laps]
-        others = [lap for lap in recorded.by_track.get(track, []) if lap.car_model != lives[0].car_model
-                  and lap.usable_as_reference(0.98, axis)]
+        if args.known:
+            sources = {w.lap_id: [h for h in held if same_drive(w, h)] for w in whole}
+            lives = [w for w in whole if sources[w.lap_id]][: args.laps]
+        else:
+            lives = whole[: args.laps]
+        if not lives:
+            continue
+        others = [lap for lap in recorded.by_track.get(track, []) if lap.usable_as_reference(0.98, axis)
+                  and lap.lap_id not in reserved]
+        if args.known:  # never the drive itself, nor its session
+            avoid = {h.session_id for live in lives for h in sources[live.lap_id]}
+            others = [lap for lap in others if lap.session_id not in avoid
+                      and not any(same_drive(lap, live) for live in lives)]
+        other_car = [lap for lap in others if lap.car_model != lives[0].car_model]
+        others = other_car or others
         for k, live in enumerate(lives):
             sign = 1.0 if k % 2 == 0 else -1.0
             t = live.t().astype(np.float64)
@@ -855,6 +875,7 @@ def cmd_camera(args: argparse.Namespace) -> None:
                                          args.seed, reference_time=True)
                 for kind, bins in (("single", stream["single"]), ("tracker", tracked)):
                     scores[name][kind].append(_stream_errors(stream, bins)[1])
+                per_track.setdefault(track, {}).setdefault(name, []).append(scores[name]["tracker"][-1])
             print(f"  {track[:28]:<28} live {live.lap_id[-5:]}  reference {others[k % len(others)].lap_id[-22:]}", flush=True)
 
     report = {}
@@ -867,6 +888,10 @@ def cmd_camera(args: argparse.Namespace) -> None:
         report[name] = row
         print(f"{name:<40}{100 * row['single_over_100ms']:>15.1f}%{row['median_ms']:>13.0f} ms"
               f"{row['p90_ms']:>6.0f} ms{100 * row['over_100ms']:>8.1f}%")
+    print("\ntracker >100 ms per track: " + " | ".join(name for name, *_ in tests))
+    for track, rows in per_track.items():
+        report[f"track {track}"] = {name: float(np.mean(np.concatenate(v) > 100)) for name, v in rows.items()}
+        print(f"  {track[:32]:<32} " + " | ".join(f"{100 * report[f'track {track}'][name]:4.1f}%" for name, *_ in tests))
     if args.out:
         Path(args.out).write_text(json.dumps({"checkpoint": args.checkpoint, "args": {k: v for k, v in vars(args).items() if k != "func"}, "report": report}, indent=2))
 
@@ -952,6 +977,8 @@ def main() -> None:
     cam.add_argument("--wide", required=True, help="the wide renders of the held-out tracks")
     cam.add_argument("--checkpoint", required=True)
     cam.add_argument("--laps", type=int, default=4, help="wide live laps per held-out track")
+    cam.add_argument("--known", action="store_true",
+                     help="the trained tracks instead, on the wide laps training left out as G1's drives")
     cam.add_argument("--tests", default=None, help="comma-separated subset of the test names")
     cam.add_argument("--stride", type=int, default=2)
     cam.add_argument("--window", type=int, default=8)

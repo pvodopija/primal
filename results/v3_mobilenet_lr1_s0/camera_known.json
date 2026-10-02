@@ -1,0 +1,75 @@
+{
+  "checkpoint": "runs/v3_mobilenet_lr1_s0/best.pt",
+  "args": {
+    "cmd": "camera",
+    "data": "data/packed_ac_v3",
+    "wide": "data/packed_ac_v3_wide",
+    "checkpoint": "runs/v3_mobilenet_lr1_s0/best.pt",
+    "laps": 4,
+    "known": true,
+    "tests": "level,yaw 7,yaw 14,pitch 5,roll 10",
+    "stride": 2,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/v3_mobilenet_lr1_s0/camera_known.json",
+    "device": "mps"
+  },
+  "report": {
+    "level": {
+      "single_over_100ms": 0.2219959266802444,
+      "median_ms": 32.306671142578125,
+      "p90_ms": 95.74604034423828,
+      "over_100ms": 0.08923116089613034,
+      "ticks": 7856
+    },
+    "yaw 7": {
+      "single_over_100ms": 0.38887474541751527,
+      "median_ms": 62.740325927734375,
+      "p90_ms": 159.54017639160156,
+      "over_100ms": 0.289969450101833,
+      "ticks": 7856
+    },
+    "yaw 14": {
+      "single_over_100ms": 0.6454938900203666,
+      "median_ms": 132.6923370361328,
+      "p90_ms": 338.5400695800781,
+      "over_100ms": 0.6131619144602851,
+      "ticks": 7856
+    },
+    "pitch 5": {
+      "single_over_100ms": 0.2874236252545825,
+      "median_ms": 46.298980712890625,
+      "p90_ms": 114.65644836425781,
+      "over_100ms": 0.14065682281059064,
+      "ticks": 7856
+    },
+    "roll 10": {
+      "single_over_100ms": 0.3193737270875764,
+      "median_ms": 40.302276611328125,
+      "p90_ms": 107.49435424804688,
+      "over_100ms": 0.12461812627291242,
+      "ticks": 7856
+    },
+    "track ks_black_cat_county__layout_short": {
+      "level": 0.057569296375266525,
+      "yaw 7": 0.2615493958777541,
+      "yaw 14": 0.5792466240227434,
+      "pitch 5": 0.1417910447761194,
+      "roll 10": 0.10483297796730633
+    },
+    "track ks_nurburgring__layout_sprint_a": {
+      "level": 0.09935483870967741,
+      "yaw 7": 0.3580645161290323,
+      "yaw 14": 0.7303225806451613,
+      "pitch 5": 0.13032258064516128,
+      "roll 10": 0.11612903225806452
+    },
+    "track ks_red_bull_ring__layout_national": {
+      "level": 0.11025200458190149,
+      "yaw 7": 0.28264604810996563,
+      "yaw 14": 0.5884879725085911,
+      "pitch 5": 0.14432989690721648,
+      "roll 10": 0.14432989690721648
+    }
+  }
+}
