@@ -47,6 +47,9 @@
   keeps about half the gain (unseen 10.0%, one seed). Pretraining, not the
   architecture, is the source; fine-tuning on AC footage is what makes it work
   (*A pretrained backbone for the encoder*).
+- **First real footage** (a GoPro of a solo kart session, never trained on):
+  with pretrained encoders, ~55-60 ms median and 24-26% of ticks over budget,
+  same session; the 0.67M encoder 37% (*First real footage*).
 - **Hardware:** Halo can run it standalone. Vela puts it at 27-34% of the NPU
   once GroupNorm, the one layer the NPU cannot run, is removed (*Measured for
   Halo's NPU with Vela*).
@@ -1055,6 +1058,52 @@ moves once the filter tracks in reference time. At this model size and training
 length, more circuits alone is no longer the main lever. Two things may yet use
 them: longer training at 9 circuits, and a stronger encoder (*A pretrained
 backbone for the encoder*).
+
+## First real footage
+
+A GoPro of a solo session on a small outdoor kart track (37-38 s laps, a bridge over
+the circuit, low evening sun), from the internet; `data/real-footage/adventure-solo`,
+not in git. No model was trained on real footage or on this track. Scripts:
+`experiments/real_footage.py`, `real_truth_orb.py`, `real_demo.py`.
+
+**Input:** the centre of the picture above the steering wheel, cropped to AC's
+1.85:1 and resized to 148x80. The cockpit (wheel, hands, nose) is cut off; the
+GoPro's wide lens and the driver's 10-15° lean in corners are left as they are.
+
+**Laps:** the finish-line crossings were noted by hand to the second. They are
+refined from the video: each is moved to the frame that looks most like lap 1's
+start, by raw pixels. Lap times come out 37.2-38.1 s.
+
+**Truth:** none recorded, so it is reconstructed without any network. Each live
+frame, at 5 Hz, is matched to the reference lap's frames within ±1.5 s of a
+constant-pace guess, by ORB features and RANSAC. The frame with the most
+geometrically consistent matches wins: 275-365 inliers in median. That truth
+departs from a constant pace by 0.1-0.25 s in median and 0.6 s at most, as lap-to-lap
+driving does. A first attempt with raw-pixel matching wandered by up to 3.7 s on this
+track and was dropped.
+
+Laps 2-9 against lap 1 at runtime settings, share of 5 Hz ticks more than 100 ms
+off:
+
+| encoder | single shot: median / >100 ms | reference-time tracker (two modes): median / p90 / >100 ms |
+|---|---|---|
+| 0.67M encoder (yaw ±10° recipe) | 72 ms / 39.5% | 75 ms / 198 ms / 37.4% |
+| MobileNetV3-Small, two seeds | 51-52 ms / 23-25% | 58-59 ms / 146-147 ms / 26% |
+| ResNet-18, two seeds | 45-47 ms / 21-22% | 55-56 ms / 145-146 ms / 24% |
+
+- **The system works on real footage it never trained on,** at a median of
+  ~55-60 ms with the pretrained encoders.
+- **Pretrained encoders carry over to the real world far better:** 24-26% of
+  ticks over budget against 37%. Fine-tuning on AC did not cost them their
+  real-world robustness.
+- **MobileNetV3-Small, the Halo-sized one, nearly matches ResNet-18 here** (26%
+  against 24%), though it trailed on AC's unseen circuits (10-11% against 7%).
+- **The pretrained models agree with each other within 15-30 ms in median**
+  (p90 42-57 ms), closer than they agree with the truth. Part of the measured
+  error is probably the truth's own.
+- **This is the easy case:** consecutive laps a minute apart, in the same light,
+  with one driver, camera and line. On lap 5, MobileNet's delta at the line is
+  +0.05 s against a true lap difference of +0.03 s.
 
 ## Estimator
 
