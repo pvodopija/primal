@@ -42,8 +42,11 @@
 - **Strongest model so far, two seeds:** the same recipe with an ImageNet
   ResNet-18 encoder roughly halves every error (unseen 6.9-7.0% with the
   reference-time tracker, trained tracks 14.3-14.7%). It is ten times the 0.67M
-  encoder and too big for Halo, so it is a teacher; a Halo-sized model that
-  learns from it is next (*A pretrained backbone for the encoder*).
+  encoder and too big for Halo. Distilling it into the small encoder
+  transferred nothing. A pretrained MobileNetV3-Small, which does fit Halo,
+  keeps about half the gain (unseen 10.0%, one seed). Pretraining, not the
+  architecture, is the source; fine-tuning on AC footage is what makes it work
+  (*A pretrained backbone for the encoder*).
 - **Hardware:** Halo can run it standalone. Vela puts it at 27-34% of the NPU
   once GroupNorm, the one layer the NPU cannot run, is removed (*Measured for
   Halo's NPU with Vela*).
@@ -1667,11 +1670,39 @@ belief over the reference and its per-frame similarity rows:
 | (the same untaught) | 41.3% | 36.7% | | 4.5% |
 
 The gain lives in features learned from millions of images, which a small
-network trained only on AC frames does not reproduce by copying answers. The
-Halo-sized route is a small network that is pretrained itself: MobileNetV3-Small
-(`--encoder mobilenet`, ImageNet weights, 1.06 M parameters, 14 M multiply-adds
-a frame at 148x80, BatchNorm that folds on the NPU) is being measured, with two
-controls: ResNet-18 frozen, and ResNet-18 trained from scratch.
+network trained only on AC frames does not reproduce by copying answers.
+
+**Where the gain comes from, and a Halo-sized pretrained encoder** (one seed
+each; share of ticks over 100 ms):
+
+| encoder | multiply-adds a frame | trained | unseen, metres | unseen, ref. time | true speed | head turns, ref. time |
+|---|---|---|---|---|---|---|
+| 0.67M, from scratch (2-3 seeds) | 35 M | 29.0-31.7% | 29.8-30.5% | 13.1-15.0% | 1.3-2.1% | 14.2-15.8% |
+| ResNet-18, from scratch | 342 M | 25.7% | 28.0% | 12.4% | 3.1% | 10.7% |
+| ResNet-18, ImageNet, frozen | 342 M | 28.9% | 32.7% | 16.2% | 2.7% | 18.9% |
+| ResNet-18, ImageNet, fine-tuned (2 seeds) | 342 M | 14.3-14.7% | 18.4-18.6% | 6.9-7.0% | 0.7% | 8.3-9.0% |
+| **MobileNetV3-Small, ImageNet, fine-tuned** | **14 M** | 26.8% | 29.0% | **10.0%** | 1.4% | **11.7%** |
+
+- **Pretraining is most of it, not the architecture.** The same ResNet trained
+  from scratch, with its residual connections and ten times the compute, is
+  only a little better than the 0.67M encoder (12.4% against ~14%).
+- **Fine-tuning on AC footage is what makes the pretrained features useful.**
+  Frozen, ImageNet's features are worse than the small encoder trained from
+  scratch (16.2%). The labelled race footage turns general vision into metre-level
+  place recognition.
+- **MobileNetV3-Small keeps about half of the gain on the unseen circuits**
+  (10.0% with the reference-time filter, 11.7% under head turns), with fewer
+  multiply-adds than the 0.67M encoder. It fits Halo: 1.06 M parameters, and
+  BatchNorm instead of GroupNorm. With the filter in metres it is level with
+  the small encoder. A second seed, and its backbone at the full learning rate,
+  are running.
+
+MobileNetV3-Small (`--encoder mobilenet`) is ImageNet's MobileNetV3-Small up to
+its last inverted-residual block. At 148x80 that lands on the 3x5 grid: 96
+channels, 1.06 M parameters and 14 M multiply-adds a frame. BatchNorm is frozen
+at ImageNet's statistics and folds on the NPU. It trains at 1.45 s a step on
+the Mac, since depthwise convolutions are slow on its GPU, against 0.4 s for
+the 0.67M encoder.
 
 What follows is the plan as written before the experiment.
 
