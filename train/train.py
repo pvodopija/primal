@@ -274,6 +274,8 @@ def main() -> None:
                         help="head pose amplitudes in degrees for live clips from --wide laps")
     parser.add_argument("--shake", type=float, default=0.0,
                         help="camera shake on every live clip, level drawn from [0, this]; 1 = a typical kart")
+    parser.add_argument("--wide-share", type=float, default=0.0,
+                        help="share of live clips from --wide laps (0: laps drawn uniformly, about a fifth)")
     args = parser.parse_args()
 
     gate = GateConfig.get(args.gate)
@@ -328,6 +330,7 @@ def main() -> None:
         head_pitch_deg=args.head[1],
         head_roll_deg=args.head[2],
         shake_max=args.shake,
+        wide_share=args.wide_share,
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 

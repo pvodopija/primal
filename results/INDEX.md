@@ -11,7 +11,9 @@ run's folder; what each experiment tested is in `experiments/README.md` and
 
 | run | finished | data | training | seed | wrong-ref control | protocol | G1 | G2 metres | G2 ref. time | G2 + speed | other results |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| v3_wide_s0_base | 2026-10-02 19:03 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
+| v3_wide_s1_base | 2026-10-02 20:06 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 1 |  |  |  |  |  |  |  |
+| v3_wide_s0 | 2026-10-02 19:53 | packed_ac_v3 | lr=0.0001, with_look, init v3_wide_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 31.7% | 28.5% | 12.5% | 1.4% | camera_v3.json, gates_v3.json, stream_look.json, stream_v3.json |
+| v3_wide_s0_base | 2026-10-02 19:39 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
 | v3_mobilenet_large_s0 | 2026-10-02 18:14 | packed_ac_v3 | lr=0.0001, with_look, init v3_mobilenet_large_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 21.6% | 25.9% | 11.8% | 2.9% | camera_v3.json, gates_v3.json, stream_look.json, stream_v3.json |
 | v3_mobilenet_large_s0_base | 2026-10-02 17:27 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
 | v3_mobilenet_lr1_s0 | 2026-10-02 14:31 | packed_ac_v3 | lr=0.0001, with_look, init v3_mobilenet_lr1_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 20.8% | 24.1% | 7.1% | 1.1% | camera_v3.json, gates_v3.json, stream_look.json, stream_v3.json |
@@ -40,9 +42,9 @@ run's folder; what each experiment tested is in `experiments/README.md` and
 | v3_fold_s0_base | 2026-09-30 23:09 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
 | v3_yaw15_s0 | 2026-09-30 22:36 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw15_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 29.6% | 30.0% | 12.9% | 1.9% | gates_v3.json, stream_look.json, stream_v3.json |
 | v3_yaw15_s0_base | 2026-09-30 22:24 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
-| v3_yaw10_s2 | 2026-09-30 21:38 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s2_base, 1500 steps | 2 | PASS | v3, stride 2, 3 unseen tracks | 31.7% | 30.5% | 13.3% | 2.1% | gates_v3.json, stream_look.json, stream_traffic.json, stream_v3.json |
+| v3_yaw10_s2 | 2026-09-30 21:38 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s2_base, 1500 steps | 2 | PASS | v3, stride 2, 3 unseen tracks | 31.7% | 30.5% | 13.3% | 2.1% | camera_v3.json, gates_v3.json, stream_look.json, stream_traffic.json, stream_v3.json |
 | v3_yaw10_s2_base | 2026-09-30 21:28 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 2 |  |  |  |  |  |  |  |
-| v3_yaw10_s1 | 2026-09-30 20:46 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s1_base, 1500 steps | 1 | PASS | v3, stride 2, 3 unseen tracks | 29.0% | 29.8% | 13.5% | 1.8% | gates_v3.json, stream_look.json, stream_traffic.json, stream_v3.json |
+| v3_yaw10_s1 | 2026-09-30 20:46 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s1_base, 1500 steps | 1 | PASS | v3, stride 2, 3 unseen tracks | 29.0% | 29.8% | 13.5% | 1.8% | camera_v3.json, gates_v3.json, stream_look.json, stream_traffic.json, stream_v3.json |
 | v3_yaw10_s1_base | 2026-09-30 20:32 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 1 |  |  |  |  |  |  |  |
 | v3_yaw10_s0 | 2026-09-30 19:39 | packed_ac_v3 | lr=0.0001, with_look, init v3_yaw10_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 29.5% | 30.4% | 13.0% | 1.3% | camera_v3.json, gates_v3.json, stream_look.json, stream_traffic.json, stream_v3.json |
 | v3_yaw10_s0_base | 2026-09-30 19:27 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |

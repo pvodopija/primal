@@ -1,0 +1,95 @@
+{
+  "checkpoint": "runs/v3_wide_s0/best.pt",
+  "args": {
+    "cmd": "camera",
+    "data": "data/packed_ac_v3",
+    "wide": "data/packed_ac_v3_wide",
+    "checkpoint": "runs/v3_wide_s0/best.pt",
+    "laps": 4,
+    "tests": null,
+    "stride": 2,
+    "window": 8,
+    "seed": 0,
+    "out": "runs/v3_wide_s0/camera_v3.json",
+    "device": "mps"
+  },
+  "report": {
+    "level": {
+      "single_over_100ms": 0.2532102022867194,
+      "median_ms": 34.942626953125,
+      "p90_ms": 108.1979751586914,
+      "over_100ms": 0.1167985927880387,
+      "ticks": 11370
+    },
+    "yaw 7": {
+      "single_over_100ms": 0.48504837291116976,
+      "median_ms": 75.33836364746094,
+      "p90_ms": 208.94317626953125,
+      "over_100ms": 0.3792436235708003,
+      "ticks": 11370
+    },
+    "yaw 14": {
+      "single_over_100ms": 0.7400175901495163,
+      "median_ms": 155.94863891601562,
+      "p90_ms": 472.9972839355469,
+      "over_100ms": 0.6541776605101144,
+      "ticks": 11370
+    },
+    "pitch 5": {
+      "single_over_100ms": 0.49718557607739666,
+      "median_ms": 70.06454467773438,
+      "p90_ms": 170.9613800048828,
+      "over_100ms": 0.3021108179419525,
+      "ticks": 11370
+    },
+    "roll 10": {
+      "single_over_100ms": 0.47968337730870714,
+      "median_ms": 53.24745178222656,
+      "p90_ms": 226.89361572265625,
+      "over_100ms": 0.24591029023746702,
+      "ticks": 11370
+    },
+    "shake 1": {
+      "single_over_100ms": 0.25708003518029904,
+      "median_ms": 35.30693054199219,
+      "p90_ms": 110.75325012207031,
+      "over_100ms": 0.12110817941952506,
+      "ticks": 11370
+    },
+    "shake 2": {
+      "single_over_100ms": 0.26613896218117855,
+      "median_ms": 36.43226623535156,
+      "p90_ms": 111.79084777832031,
+      "over_100ms": 0.12172383465259455,
+      "ticks": 11370
+    },
+    "yaw 10, shake 1": {
+      "single_over_100ms": 0.6053649956024626,
+      "median_ms": 100.85678100585938,
+      "p90_ms": 291.5859375,
+      "over_100ms": 0.5032541776605101,
+      "ticks": 11370
+    },
+    "same session: level": {
+      "single_over_100ms": 0.15101143359718558,
+      "median_ms": 19.2108154296875,
+      "p90_ms": 61.57722473144531,
+      "over_100ms": 0.035883905013192614,
+      "ticks": 11370
+    },
+    "same session: Halo level": {
+      "single_over_100ms": 0.254089709762533,
+      "median_ms": 25.287628173828125,
+      "p90_ms": 97.87406921386719,
+      "over_100ms": 0.09577836411609499,
+      "ticks": 11370
+    },
+    "same session: Halo yaw 10, shake 1": {
+      "single_over_100ms": 0.615127528583993,
+      "median_ms": 115.11611938476562,
+      "p90_ms": 328.80706787109375,
+      "over_100ms": 0.5490765171503957,
+      "ticks": 11370
+    }
+  }
+}

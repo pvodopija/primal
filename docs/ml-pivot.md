@@ -1742,6 +1742,28 @@ alternate lap to lap):
 So training on exact rotations is aimed at the right thing: held yaw first, then
 pitch.
 
+**Trained on it** (`v3_wide_s0`: the yaw ±10° recipe plus `--wide` and `--shake 2`,
+one seed; two more and a MobileNet run follow):
+
+| model | level | yaw 7° | yaw 14° | pitch 5° | roll 10° | shake 2 | yaw 10° + shake 1 | same session: level / Halo |
+|---|---|---|---|---|---|---|---|---|
+| 0.67M, yaw ±10° recipe | 11.8% | 42.1% | 70.5% | 53.4% | 43.4% | 11.6% | 56.7% | 2.7% / 8.4% |
+| 0.67M, + wide renders and shake | 11.7% | 37.9% | 65.4% | 30.2% | 24.6% | 12.2% | 50.3% | 3.6% / 9.6% |
+
+On the usual tests it is level with the recipe's three seeds (unseen 13.4% with
+the two-mode tracker against 13.1-15.0%, trained tracks 31.7% against
+29.0-31.7%), so the extra data costs nothing there. Under the camera it nearly
+halves the pitch and roll losses but barely moves a held yaw.
+
+**A held yaw is not mistaken for a place in a corner.** Inside a corner the
+kart's heading turns steadily, so a head turned 7° looks like being a little
+further round it, which would put the errors in the corners. They are not there:
+binned by how fast the view is turning (measured from the frames), ticks over
+100 ms at ±7° are 37-42% on the straights and 30-49% in the corners, against
+10-15% level. The match itself weakens whenever the view is turned. Only a fifth
+of the training clips were turned exactly, so `--wide-share 0.8` (four in five)
+is next.
+
 ---
 
 ## Not built yet

@@ -412,6 +412,9 @@ class SampleConfig:
     # with exposure blur, at a level drawn uniformly from [0, shake_max] (1 = a typical
     # kart); the reference gets half that, without blur. 0 = off.
     shake_max: float = 0.0
+    # Share of live clips drawn from wide laps where a track has both kinds; 0 draws
+    # laps uniformly, which gives wide laps about a fifth of the clips.
+    wide_share: float = 0.0
 
 
 def _to_chw(frames: np.ndarray) -> np.ndarray:
@@ -767,8 +770,16 @@ class AlignmentBatches(Dataset):
         frame_targets = np.empty((config.batch_size, config.clip_len), dtype=np.float64)
         live_s = np.empty(config.batch_size, dtype=np.float64)
         live_ids: list[str] = []
+        pools = [live_pool]
+        if config.wide_share > 0.0:
+            pools = [[lap for lap in live_pool if lap.wide], [lap for lap in live_pool if not lap.wide]]
+            pools = [pool for pool in pools if pool]
         for i in range(config.batch_size):
-            live_lap = live_pool[int(rng.integers(0, len(live_pool)))]
+            pool = pools[0]
+            # Drawn only when enabled, so runs without it sample exactly what they always did.
+            if len(pools) == 2:
+                pool = pools[0] if rng.random() < config.wide_share else pools[1]
+            live_lap = pool[int(rng.integers(0, len(pool)))]
             indices = self._clip_indices(live_lap, rng)
             raw = np.asarray(live_lap.frames()[indices])
             raw, parts = self._camera(live_lap, raw, live_lap.t()[indices].astype(np.float64), rng, live=True)

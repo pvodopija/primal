@@ -1,0 +1,25 @@
+  ks_silverstone__national     live lap02  reference 0260924T104658Z__lap01
+  ks_silverstone__national     live lap04  reference 0260924T104658Z__lap02
+  ks_silverstone__national     live lap05  reference 0260924T104658Z__lap03
+  ks_silverstone__national     live lap06  reference 0260924T104658Z__lap04
+  rt_lime_rock_park__no_chican live lap02  reference 0260928T143440Z__lap04
+  rt_lime_rock_park__no_chican live lap03  reference 0260928T143440Z__lap05
+  rt_lime_rock_park__no_chican live lap04  reference 0260928T143440Z__lap06
+  rt_lime_rock_park__no_chican live lap05  reference 0260928T143440Z__lap07
+  rt_oulton_park__fosters      live lap02  reference 0260929T195157Z__lap03
+  rt_oulton_park__fosters      live lap03  reference 0260929T195157Z__lap04
+  rt_oulton_park__fosters      live lap04  reference 0260929T195157Z__lap05
+  rt_oulton_park__fosters      live lap05  reference 0260929T195157Z__lap06
+
+                                          single >100 ms  tracker median      p90  >100 ms
+level                                              27.7%           38 ms   118 ms    14.0%
+yaw 7                                              53.6%           83 ms   247 ms    42.6%
+yaw 14                                             80.1%          192 ms   534 ms    71.9%
+pitch 5                                            75.1%          138 ms  2128 ms    63.4%
+roll 10                                            67.0%           94 ms   901 ms    48.0%
+shake 1                                            28.5%           37 ms   122 ms    15.0%
+shake 2                                            30.3%           38 ms   119 ms    14.8%
+yaw 10, shake 1                                    67.1%          120 ms   341 ms    58.1%
+same session: level                                14.1%           19 ms    60 ms     2.5%
+same session: Halo level                           25.2%           28 ms    92 ms     8.5%
+same session: Halo yaw 10, shake 1                 66.8%          120 ms   391 ms    57.4%
