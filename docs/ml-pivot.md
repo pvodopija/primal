@@ -44,7 +44,8 @@
   reference-time tracker, trained tracks 14.3-14.7%). It is ten times the 0.67M
   encoder and too big for Halo. Distilling it into the small encoder
   transferred nothing. A pretrained MobileNetV3-Small, which does fit Halo,
-  keeps about half the gain (unseen 10.0%, one seed). Pretraining, not the
+  comes close once its backbone trains at the full rate (unseen 7.6%, one seed);
+  a MobileNetV3-Large cut to Halo's size did not beat it. Pretraining, not the
   architecture, is the source; fine-tuning on AC footage is what makes it work
   (*A pretrained backbone for the encoder*).
 - **First real footage** (a GoPro of a solo kart session, never trained on):
@@ -1111,7 +1112,8 @@ off:
   turns at 8.3%. On these real laps it scores the same as the gentler version: 25.5%
   against 26.1%, single shot 22.5%. The full rate is MobileNet's recipe from here.
   This test is too easy to separate the pretrained models finely, though: all land
-  within two points.
+  within two points. MobileNetV3-Large cut to Halo's size scores the same again
+  (25.0%), though it is clearly worse on AC's unseen circuits (12.0%).
 
 ## Estimator
 
@@ -1785,6 +1787,7 @@ each; share of ticks over 100 ms):
 | ResNet-18, ImageNet, fine-tuned (2 seeds) | 342 M | 14.3-14.7% | 18.4-18.6% | 6.9-7.0% | 0.7% | 8.3-9.0% |
 | MobileNetV3-Small, ImageNet, fine-tuned at 0.3x (2 seeds) | 14 M | 26.8-28.1% | 29.0-30.0% | 10.0-11.2% | 1.4-1.7% | 11.7-13.6% |
 | **MobileNetV3-Small, fine-tuned at the full rate** | **14 M** | **20.8%** | **24.1%** | **7.6%** | **1.1%** | **8.3%** |
+| MobileNetV3-Large cut to Halo's size, fine-tuned at 0.3x | 38 M | 21.6% | 25.9% | 12.0% | 2.9% | 12.8% |
 
 - **Pretraining is most of it, not the architecture.** The same ResNet trained
   from scratch, with its residual connections and ten times the compute, is
@@ -1793,12 +1796,17 @@ each; share of ticks over 100 ms):
   Frozen, ImageNet's features are worse than the small encoder trained from
   scratch (16.2%). The labelled race footage turns general vision into metre-level
   place recognition.
-- **MobileNetV3-Small keeps about half of the gain on the unseen circuits**
-  (10.0% with the reference-time filter, 11.7% under head turns), with fewer
-  multiply-adds than the 0.67M encoder. It fits Halo: 1.06 M parameters, and
-  BatchNorm instead of GroupNorm. With the filter in metres it is level with
-  the small encoder. A second seed, and its backbone at the full learning rate,
-  are running.
+- **MobileNetV3-Small comes close to ResNet-18 once its backbone trains at the
+  full rate** (7.6% with the reference-time filter against 6.9-7.0%, 8.3% under
+  head turns, one seed), with fewer multiply-adds than the 0.67M encoder. At 0.3x
+  it kept only about half the gain (10.0-11.2%, two seeds). It fits Halo: 1.06 M
+  parameters, and BatchNorm instead of GroupNorm, which folds on the NPU.
+- **A bigger mobile network did not help.** MobileNetV3-Large up to its twelfth
+  block (`--encoder mobilenet_large`: 1.01 M parameters, 38 M multiply-adds,
+  1.7 s a step) reached 12.0% unseen, worst on Silverstone (15.8%). It ran at
+  the 0.3x backbone rate, so it compares with MobileNet-Small at 0.3x
+  (10.0-11.2%), not with the full rate; it is no better there either. On the
+  real GoPro laps it ties MobileNet-Small (25.0% against 25.5%). Not pursued.
 
 MobileNetV3-Small (`--encoder mobilenet`) is ImageNet's MobileNetV3-Small up to
 its last inverted-residual block. At 148x80 that lands on the 3x5 grid: 96
