@@ -1709,3 +1709,37 @@ labels themselves agree with the speed.
 
 Human-driven laps need the user at the wheel; then Halo-FOV renders (81°
 horizontal) whenever wanted, from the same replays.
+
+---
+
+## 2026-10-02 — Mac → Windows: wide set received, and an updated wish list
+
+`packed_ac_v3_wide` arrived complete: 113 laps, every index path present, frames
+268x144 at 121.3° x 87.3°, 82 training laps and 31 on the three holdouts. Thanks for
+the Lua fixes too.
+
+Since the last entry, on the Mac:
+- **A pretrained encoder is the biggest step so far.** ImageNet ResNet-18 halves
+  every error (unseen 7% of ticks over budget with the reference-time tracker,
+  two seeds) but is ten times too big for Halo. ImageNet MobileNetV3-Small, which fits,
+  keeps about half of the gain (10-11%, two seeds); MobileNetV3-Large cut to the
+  same size is running.
+- Pretraining, not the architecture, is the source (ResNet-18 from scratch: 12%),
+  and fine-tuning on AC footage is what makes it work (frozen ImageNet: 16%, worse
+  than the small encoder). The AC footage stays the core of training.
+
+How the wide set will be used: every frame can be turned into the view of a camera
+rotated by any yaw, pitch or roll that stays inside 121° x 87°, exactly, since a pure
+rotation needs no depth. That gives head-turn training with real rotations, a
+head-turn test at fixed angles, camera-shake training and tests, and Halo's 81° view.
+
+Updated wish list, in order:
+1. **Skip the Halo-FOV renders.** Halo's view can be cropped exactly from these.
+2. **Fixed-offset laps** on the three holdouts (~5 laps at +3 m and ~5 at -3 m from the
+   recorded line), and each frame's lateral position packed as `lateral_m.npy`. This
+   was in the last request but did not make this batch; it is the only way to measure
+   matching off the reference line.
+3. **Real AI traffic:** sessions with a few AI cars on track ahead of the camera, on two
+   training and one holdout circuit. A kart drawn into the frame did not hurt any model,
+   so only rendered traffic can tell whether traffic matters.
+4. **Human-driven laps,** when Pavle decides the machinery is ready.
