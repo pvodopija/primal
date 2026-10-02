@@ -1,0 +1,15 @@
+gate g1: held-out laps of seen tracks; full augmentation
+train tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_highlands__layout_short', 'ks_laguna_seca', 'ks_monza66__junior', 'ks_nurburgring__layout_sprint_a', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'] (284 laps usable)
+eval  tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_highlands__layout_short', 'ks_laguna_seca', 'ks_monza66__junior', 'ks_nurburgring__layout_sprint_a', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'], split=train
+held out as live-only: ['ks_black_cat_county__layout_short__20260923T183526Z__lap07', 'ks_brands_hatch__indy__20260921T221531Z__lap02', 'ks_highlands__layout_short__20260928T005654Z__lap54', 'ks_laguna_seca__default__20260928T123110Z__lap12', 'ks_monza66__junior__20260928T093530Z__lap14', 'ks_nurburgring__layout_sprint_a__20260928T103410Z__lap12', 'ks_red_bull_ring__layout_national__20260923T174436Z__lap11', 'ks_vallelunga__club_circuit__20260922T223945Z__lap07', 'magione__default__20260922T231051Z__lap06']
+frame 148x80, reference bins 3227
+model 1.09M params on mps
+
+step     1/6000  loss  9.7694 (ce  6.627 aux  6.282 ref 0.0034)  train median  154.50 m   6.67 s/step
+step    20/6000  loss 10.1784 (ce  7.104 aux  6.149 ref 0.0004)  train median   24.77 m   2.42 s/step
+step    40/6000  loss 10.0866 (ce  6.870 aux  6.429 ref 0.0032)  train median   36.74 m   2.17 s/step
+step    60/6000  loss 10.1542 (ce  6.761 aux  6.782 ref 0.0045)  train median  329.68 m   2.15 s/step
+step    80/6000  loss  8.5863 (ce  5.725 aux  5.718 ref 0.0047)  train median   38.97 m   2.16 s/step
+step   100/6000  loss  8.5948 (ce  5.595 aux  5.998 ref 0.0014)  train median   49.86 m   2.23 s/step
+step   120/6000  loss  7.3879 (ce  4.770 aux  5.230 ref 0.0056)  train median   16.53 m   2.30 s/step
+step   140/6000  loss  6.8369 (ce  4.294 aux  5.083 ref 0.0026)  train median    5.03 m   2.38 s/step

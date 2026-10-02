@@ -1104,6 +1104,13 @@ off:
 - **This is the easy case:** consecutive laps a minute apart, in the same light,
   with one driver, camera and line. On lap 5, MobileNet's delta at the line is
   +0.05 s against a true lap difference of +0.03 s.
+- **Fine-tuning MobileNet fully on AC did not cost it real-world accuracy.** Its
+  backbone at the full learning rate instead of 0.3x reaches AC's unseen circuits at
+  7.6% (two-mode reference time; 0.3x: 10.0-11.2%; ResNet-18: 6.9-7.0%), and head
+  turns at 8.3%. On these real laps it scores the same as the gentler version: 25.5%
+  against 26.1%, single shot 22.5%. The full rate is MobileNet's recipe from here.
+  This test is too easy to separate the pretrained models finely, though: all land
+  within two points.
 
 ## Estimator
 
@@ -1730,7 +1737,8 @@ each; share of ticks over 100 ms):
 | ResNet-18, from scratch | 342 M | 25.7% | 28.0% | 12.4% | 3.1% | 10.7% |
 | ResNet-18, ImageNet, frozen | 342 M | 28.9% | 32.7% | 16.2% | 2.7% | 18.9% |
 | ResNet-18, ImageNet, fine-tuned (2 seeds) | 342 M | 14.3-14.7% | 18.4-18.6% | 6.9-7.0% | 0.7% | 8.3-9.0% |
-| **MobileNetV3-Small, ImageNet, fine-tuned** | **14 M** | 26.8% | 29.0% | **10.0%** | 1.4% | **11.7%** |
+| MobileNetV3-Small, ImageNet, fine-tuned at 0.3x (2 seeds) | 14 M | 26.8-28.1% | 29.0-30.0% | 10.0-11.2% | 1.4-1.7% | 11.7-13.6% |
+| **MobileNetV3-Small, fine-tuned at the full rate** | **14 M** | **20.8%** | **24.1%** | **7.6%** | **1.1%** | **8.3%** |
 
 - **Pretraining is most of it, not the architecture.** The same ResNet trained
   from scratch, with its residual connections and ten times the compute, is

@@ -90,8 +90,15 @@ def main() -> None:
     ref_idx = [int(round(x * fps)) for x in ref_times]
 
     truth = {}
+    cache = ROOT / "truth_orb.npz"
+    if cache.exists():  # the truth does not depend on any model: compute it once
+        z = np.load(cache)
+        truth = {int(k[1:]): (z[f"t{k[1:]}"], z[f"e{k[1:]}"], z[f"p{k[1:]}"]) for k in z.files if k.startswith("t")}
+        print("truth loaded from", cache)
     with ProcessPoolExecutor(max_workers=6) as pool:
         for k, (a, b) in enumerate(laps[1:], start=2):
+            if k in truth:
+                continue
             jobs, windows = [], []
             for x in ticks[k]:
                 guess = ref_start + (x - a) * T / (b - a)
@@ -117,6 +124,8 @@ def main() -> None:
             print(f"  lap {k}: ORB truth - constant pace: median {np.median(np.abs(dev))*1000:4.0f} ms, max {np.abs(dev).max():4.2f} s; "
                   f"median inliers {np.median(peak):.0f}", flush=True)
 
+    if not cache.exists():
+        np.savez(cache, **{f"{c}{k}": v for k, tr in truth.items() for c, v in zip("tep", tr)})
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     n_bins = int(round(T / BIN_S))
     bin_frame = np.array([int(np.argmin(np.abs(t - (ref_start + i * T / n_bins)))) for i in range(n_bins)])
@@ -161,7 +170,9 @@ def main() -> None:
         for y in names[i + 1:]:
             d = np.abs((np.concatenate(answers[x]["tracker"]) - np.concatenate(answers[y]["tracker"]) + T / 2) % T - T / 2) * 1000
             print(f"  agreement {x} vs {y}: median {np.median(d):4.0f} ms, p90 {np.percentile(d, 90):5.0f} ms")
-    (ROOT / "results_orb.json").write_text(json.dumps({"starts": starts, "report": report}, indent=2))
+    out = ROOT / "results_orb.json"
+    old = json.loads(out.read_text())["report"] if out.exists() else {}
+    out.write_text(json.dumps({"starts": starts, "report": {**old, **report}}, indent=2))
 
 
 def _match_serialised(job):
