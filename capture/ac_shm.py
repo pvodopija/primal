@@ -206,6 +206,7 @@ class AcSnapshot:
     last_lap_ms: int = 0
     performance_meter: float = 0.0      # AC's own delta to its best lap, s
     packet_id: int = 0                  # physics packets; advances only while AC runs
+    tyres_out: int = 0                  # wheels off the track; AC calls 3 or more a cut
 
     @property
     def status_name(self) -> str:
@@ -323,6 +324,7 @@ class AcSharedMemory:
             last_lap_ms=int(graphics.i_last_time),
             performance_meter=float(physics.performance_meter) if physics else 0.0,
             packet_id=int(physics.packet_id) if physics else 0,
+            tyres_out=int(physics.number_of_tyres_out) if physics else 0,
         )
 
 

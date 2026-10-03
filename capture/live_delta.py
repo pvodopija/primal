@@ -93,6 +93,8 @@ CAMERAS = {
     "ac": ("AC's own cameras", {"enabled": 0}),
 }
 SETTLE_S = 1.0  # after a camera switch: the rig's re-read, and AC's camera settling
+GAP_S = 0.5     # a longer hole in the frames (AC paused) restarts the tracker and the lap
+SLOW_KMH = 20.0
 
 
 @dataclass
@@ -185,6 +187,8 @@ class UiState:
     drops: int = 0
     done: bool = False
     camera: str = ""
+    paused: bool = False
+    lap_flags: str = ""  # why the current lap won't count as clean, if it won't
     rec: str = ""        # "", "armed", "recording" or "encoding"
     prompt: str = ""     # a question that needs the wheel, drawn over the deltas
 
@@ -313,6 +317,10 @@ def capture_loop(source, prep: Preprocess, shm: AcSharedMemory | None, out: queu
                 break
             small, _, spline, ok = prep(frame)
             snap = shm.snapshot() if shm is not None else None
+            if snap is not None and snap.status != STATUS_LIVE:
+                ui.preview, ui.paused = small, True
+                continue
+            ui.paused = False
             if snap is not None:
                 key = track_key_of(snap)
                 if track is None:
@@ -441,6 +449,10 @@ class Worker(threading.Thread):
         self.finished_line: float | None = None  # the line that ended the latest recording
         self.settle_until = 0.0
         self.crossings = 0
+        self.last_t: float | None = None
+        self.lap_flags: set[str] = {"out lap"}       # reset at each line: what made this lap unclean
+        self.primal_line: float | None = None         # the line, as PRIMAL's own position crosses it
+        self.prev_reading: Reading | None = None
         self.prev: tuple[float, float] | None = None
         self.rows: list[dict] = []
         self.stale = 0
@@ -448,7 +460,12 @@ class Worker(threading.Thread):
         self.writer: csv.DictWriter | None = None
         self.ui.camera = CAMERAS[self.camera][0]
 
+    def flag(self, why: str) -> None:
+        self.lap_flags.add(why)
+        self.ui.lap_flags = ", ".join(sorted(self.lap_flags))
+
     def use(self, engine: LiveDelta, grid: ReferenceGrid, name: str) -> None:
+        self.primal_line = self.prev_reading = None
         self.refs[self.camera] = (engine, grid, name)
         self.engine, self.grid, self.ref_name = engine, grid, name
         self.ui.message = f"reference: {name} ({grid.lap_time_s:.2f} s)"
@@ -510,6 +527,8 @@ class Worker(threading.Thread):
         self.recording, self.armed, self.ui.rec = None, False, ""
         # new camera, new picture: no deltas until its reference, and its own line crossing
         self.settle_until, self.lap_start, self.prev, self.ui.row = t + SETTLE_S, None, None, None
+        self.flag("camera change")
+        self.primal_line = self.prev_reading = None
         if self.camera in self.refs:
             engine, grid, name = self.refs[self.camera]
             engine.reset()
@@ -522,8 +541,22 @@ class Worker(threading.Thread):
     # --- frames
 
     def step(self, f: Frame) -> None:
+        if self.last_t is not None and f.t - self.last_t > GAP_S:
+            # AC was paused (or frames stopped): nothing since is known, start the lap over
+            self.flag("pause")
+            self.lap_start = self.prev = self.primal_line = self.prev_reading = None
+            if self.engine is not None:
+                self.engine.reset()
+        self.last_t = f.t
         if f.t < self.settle_until:
             return
+        if f.snap is not None:
+            if f.snap.tyres_out >= 3:
+                self.flag("off track")
+            if f.snap.speed_kmh < SLOW_KMH and self.lap_start is not None:
+                self.flag("slow")
+            if f.snap.is_in_pit:
+                self.flag("pits")
         crossed = None
         if np.isfinite(f.cam_s):
             if self.prev is not None and self.prev[1] > 0.9 and f.cam_s < 0.1 and f.t - self.prev[0] < 0.5:
@@ -533,6 +566,8 @@ class Worker(threading.Thread):
         if crossed is not None:
             self.lap_start = self.last_line = crossed
             self.crossings += 1
+            self.lap_flags = set()
+            self.ui.lap_flags = ""
             if self.recording is not None and self.recording.ends_at is None:
                 self.recording.ends_at = crossed + LINE_PAD_S
             elif self.armed and self.recording is None:
@@ -592,10 +627,20 @@ class Worker(threading.Thread):
         else:
             elapsed, clock = float("nan"), ""
         true_ref = float(np.interp(f.cam_s, grid.s_knots, grid.tau_knots)) if np.isfinite(f.cam_s) else float("nan")
+        # The camera alone: the lap starts when PRIMAL's own position passes the line.
+        last = self.prev_reading
+        if last is not None and last.ref_time_s > 0.75 * period and r.ref_time_s < 0.25 * period:
+            frac = (period - last.ref_time_s) / (r.ref_time_s + period - last.ref_time_s)
+            self.primal_line = last.t + frac * (r.t - last.t)
+        self.prev_reading = r
+        primal_only = (lap_delta(r.t - self.primal_line, r.ref_time_s, period) if self.primal_line is not None
+                       else float("nan"))
         row = {
             "wall_time": round(time.time(), 3),
             "t": round(r.t, 4),
-            "lap": snap.completed_laps if snap else self.crossings,
+            "lap": self.crossings,
+            "lap_flags": ";".join(sorted(self.lap_flags)),
+            "ac_completed_laps": snap.completed_laps if snap else -1,
             "lap_elapsed_s": round(elapsed, 4),
             "clock": clock,
             "ac_lap_time_s": snap.lap_time_ms / 1000.0 if snap else float("nan"),
@@ -606,11 +651,13 @@ class Worker(threading.Thread):
             "primal_delta_s": round(lap_delta(elapsed, r.ref_time_s, period), 4),
             "true_delta_s": round(lap_delta(elapsed, true_ref, period), 4),
             "error_ms": round(1000 * wrap(r.ref_time_s - true_ref, period), 1),
+            "camera_only_delta_s": round(primal_only, 4),
             "performance_meter": snap.performance_meter if snap else float("nan"),
             "spline_pos": round(snap.spline_pos, 6) if snap else float("nan"),
             "cam_s": round(f.cam_s, 6),
             "s_source": f.s_source,
             "speed_kmh": round(snap.speed_kmh, 2) if snap else float("nan"),
+            "tyres_out": snap.tyres_out if snap else -1,
             "delay_ms": round(1000 * (now - r.t), 1) if self.live_source else float("nan"),
             "queue": self.frames.qsize(),
             "camera": self.camera,
@@ -732,6 +779,11 @@ def render(ui: UiState) -> np.ndarray:
     if ui.drops:
         text(img, f"dropped {ui.drops}", (w - 120, 194), font, 0.45, (80, 80, 235), 1, cv2.LINE_AA)
     text(img, ui.message[:90], (14, 258), font, 0.45, (90, 200, 230), 1, cv2.LINE_AA)
+    if ui.paused:
+        text(img, "AC paused: not logging", (w - 308, 214), font, 0.5, (90, 200, 230), 1, cv2.LINE_AA)
+    elif ui.lap_flags:
+        text(img, f"this lap won't count: {ui.lap_flags}"[:44], (w - 308, 214), font, 0.42, (150, 150, 150), 1,
+             cv2.LINE_AA)
     if ui.prompt:
         cv2.rectangle(img, (0, 40), (w - 320, 240), (40, 40, 40), -1)
         text(img, "Wheel setup", (14, 80), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
@@ -755,7 +807,20 @@ def summarize(rows: list[dict], worker: Worker, ui: UiState) -> dict:
         err = np.abs([r["error_ms"] for r in good])
         out["error_ms"] = {"ticks": len(good), "median": float(np.median(err)), "p90": float(np.percentile(err, 90)),
                            "over_100ms_pct": float(100 * np.mean(err > 100)), "over_500ms_pct": float(100 * np.mean(err > 500))}
+        # a lap is clean if nothing flagged it by its end (flags only grow within a lap)
+        last_flags = {}
+        for r in rows:
+            last_flags[r["lap"]] = r["lap_flags"]
+        last_flags[max(last_flags)] = ";".join(filter(None, [last_flags[max(last_flags)], "unfinished"]))
+        clean = [r for r in good if not last_flags[r["lap"]]]
+        if clean:
+            e = np.abs([r["error_ms"] for r in clean])
+            out["clean_laps"] = {"laps": sorted({r["lap"] for r in clean}), "ticks": len(clean),
+                                 "median_ms": float(np.median(e)), "p90_ms": float(np.percentile(e, 90)),
+                                 "over_100ms_pct": float(100 * np.mean(e > 100)),
+                                 "over_1s_pct": float(100 * np.mean(e > 1000))}
         laps = sorted({r["lap"] for r in good})
+        out["lap_flags"] = {str(lap): last_flags[lap] for lap in laps}
         out["per_lap"] = {str(lap): {"ticks": len(e), "median_ms": float(np.median(e)), "over_100ms_pct": float(100 * np.mean(e > 100))}
                           for lap in laps for e in [np.abs([r["error_ms"] for r in good if r["lap"] == lap])]}
     return out
