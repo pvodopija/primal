@@ -202,6 +202,9 @@ class AcSnapshot:
     replay_time_multiplier: float
     world_pos: Optional[tuple[float, float, float]] = None
     aids: dict = field(default_factory=dict)
+    lap_time_ms: int = 0                # the current lap's timer
+    last_lap_ms: int = 0
+    performance_meter: float = 0.0      # AC's own delta to its best lap, s
 
     @property
     def status_name(self) -> str:
@@ -315,6 +318,9 @@ class AcSharedMemory:
                 "stability": float(static.aid_stability) if static else 0.0,
                 "auto_clutch": bool(static.aid_auto_clutch) if static else False,
             },
+            lap_time_ms=int(graphics.i_current_time),
+            last_lap_ms=int(graphics.i_last_time),
+            performance_meter=float(physics.performance_meter) if physics else 0.0,
         )
 
 
