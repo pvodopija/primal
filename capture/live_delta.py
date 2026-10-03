@@ -401,6 +401,16 @@ class Recording:
             return "went backwards"
         if np.diff(np.sort(s)).max() * track_length_m > 6.0:
             return "a gap along the track"
+        # A flying lap crosses the line at about the speed it finishes at. One started
+        # slowly (out of the pits, after a pause) teaches the tracker a pace no later
+        # lap has there, and it lags seconds behind every lap after the line.
+        x -= np.floor(np.median(x))
+        start, end = (x >= 0) & (x < 0.03), (x >= 0.97) & (x < 1.0)
+        if start.sum() > 1 and end.sum() > 1:
+            v0 = 0.03 * track_length_m / (t[start].max() - t[start].min()) * 3.6
+            v1 = 0.03 * track_length_m / (t[end].max() - t[end].min()) * 3.6
+            if v0 < 0.75 * v1:
+                return f"not a flying lap: crossed the line at {v0:.0f} km/h, finished at {v1:.0f}"
         return None
 
 
