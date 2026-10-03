@@ -930,7 +930,11 @@ def main() -> None:
             x, y = (int(v) for v in args.pos.split(","))
             cv2.moveWindow(WINDOW, x, y)
             cv2.setWindowProperty(WINDOW, cv2.WND_PROP_TOPMOST, 1)
+            said = ""
             while not ui.done:
+                if ui.message != said:  # into the console too, so a run can be read back afterwards
+                    said = ui.message
+                    print(f"{datetime.now():%H:%M:%S} {said}", flush=True)
                 cv2.imshow(WINDOW, render(ui))
                 key = cv2.waitKey(33) & 0xFF
                 if key == ord("q") or cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
