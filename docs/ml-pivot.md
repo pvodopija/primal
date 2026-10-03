@@ -1833,13 +1833,50 @@ of the reference's own drive):
 | MobileNetV3-Small | 15.6% / 15.0% / 15.8% | 1.8% / 5.9% / 5.9% | 63-75% |
 | 0.67M + wide renders | 14.7% / 16.1% / 15.9% | 5.9% / 8.2% / 7.9% | 75-80% |
 
-Straight ahead it is neutral within 1.5 points either way, but on the laps that
-turn into corners it costs 2-4 points (three laps): it leaves 0° on a quarter to a
-third of the ticks, and an angle picked in a corner lingers into the next straight.
-Two cars on two lines may also differ in heading by a few degrees at the same
-place, which a search would legitimately absorb. The search needs a pull towards
-0°, switching only when another angle is clearly better, tuned on the trained
-tracks; as it stands it fixes the hard case and taxes the easy one.
+Straight ahead it is neutral within 1.5 points either way, but on the three AC
+laps that turn into corners it costs 2-4 points: it leaves 0° on a quarter to a
+third of the ticks. (Two cars on two lines also differ in heading by a few
+degrees at the same place, which a search may legitimately absorb.)
+
+**Tuned on the trained tracks** (`experiments/yaw_search_tune.py`, MobileNet + wide
+renders, Halo's three angles): neither a margin over straight ahead nor a 30 s
+memory beats the plain rule (best angle over the last 10 s): the mean over held
+turns, no turn and turning into corners is 11.3-12.2% against 11.5%, and with no
+turn the search is neutral there (5.5% against 5.4%). The rule stays as it is.
+
+**Turning into corners, simulated** (`yaw_search.corner_look`): the head follows
+the corners, 0.4 times the turn the kart makes over the next second (read off
+the frames), within ±12°: on average 5°, 11° at the 90th percentile, smooth (at
+most 16°/s). That is about the AC look re-renders' turn (95th percentile 6-11°
+including 4° of line wander) to twice it. Held-out tracks, same-session
+references, share of ticks over 100 ms:
+
+| model | head | no search | search ±10.5° | search ±3.5° (Halo) |
+|---|---|---|---|---|
+| MobileNetV3-Small + wide renders | straight (both laps) | 0.9% | 0.9% | 0.9% |
+| | into corners, reference straight | 16.2% | 8.5% | 11.1% |
+| | into corners + 7° held, reference straight | 18.9% | 10.8% | 16.2% |
+| | **both laps into corners** (the same driver's habit) | 5.6% | 2.4% | 4.5% |
+| | **both into corners, + 7° held** (glasses sitting differently) | 17.5% | 2.9% | 6.9% |
+| MobileNetV3-Small | into corners, reference straight | 21.0% | 12.1% | 13.6% |
+| | both laps into corners | 7.0% | 3.6% | 6.3% |
+| | both into corners, + 7° held | 27.3% | 4.5% | 8.7% |
+
+- **Turning into corners is the costly head movement, more than a held turn of
+  the same size**, when only one lap does it (16% at about 5° on average against
+  2.5% for a held 3.5°): a head turned into a corner sees where the kart will
+  point later, so the place reads further round the corner.
+- **The product's case is mild:** the reference is the driver's own lap, with the
+  same habit, and then it costs 5.6% against 0.9%. The search follows the head
+  into each corner and halves what is left (2.4%).
+- **The search fixes the glasses sitting differently on top** (17.5% -> 2.9%;
+  6.9% within Halo's ±3.5°).
+- **Halo's budget is the limit, not the method.** Every row improves with the
+  wider search. A narrower model view (67° of Halo's 81° leaves ±7°) is the next
+  thing to measure: it buys search range at some cost in context.
+
+This is camera-only and needs no retraining: the reference is turned, the model
+is not.
 
 ---
 

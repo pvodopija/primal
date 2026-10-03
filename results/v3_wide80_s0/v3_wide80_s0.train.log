@@ -1,0 +1,17 @@
+wide: 72 of 82 laps (10 could be held-out drives)
+started from runs/v3_wide80_s0_base/best.pt
+gate g1: held-out laps of seen tracks; full augmentation
+train tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_highlands__layout_short', 'ks_laguna_seca', 'ks_monza66__junior', 'ks_nurburgring__layout_sprint_a', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'] (356 laps usable)
+eval  tracks ['ks_black_cat_county__layout_short', 'ks_brands_hatch__indy', 'ks_highlands__layout_short', 'ks_laguna_seca', 'ks_monza66__junior', 'ks_nurburgring__layout_sprint_a', 'ks_red_bull_ring__layout_national', 'ks_vallelunga__club_circuit', 'magione'], split=train
+held out as live-only: ['ks_black_cat_county__layout_short__20260923T183526Z__lap07', 'ks_brands_hatch__indy__20260921T221531Z__lap02', 'ks_highlands__layout_short__20260928T005654Z__lap54', 'ks_laguna_seca__default__20260928T123110Z__lap12', 'ks_monza66__junior__20260928T093530Z__lap14', 'ks_nurburgring__layout_sprint_a__20260928T103410Z__lap12', 'ks_red_bull_ring__layout_national__20260923T174436Z__lap11', 'ks_vallelunga__club_circuit__20260922T223945Z__lap07', 'magione__default__20260922T231051Z__lap06']
+frame 148x80, reference bins 3227
+model 0.67M params on mps
+
+step     1/1500  loss  4.3504 (ce  2.789 aux  3.120 ref 0.0017)  train median    3.72 m   2.59 s/step
+step    20/1500  loss  4.3766 (ce  2.737 aux  3.278 ref 0.0011)  train median    2.68 m   0.48 s/step
+step    40/1500  loss  5.0293 (ce  3.142 aux  3.774 ref 0.0012)  train median    4.79 m   0.42 s/step
+step    60/1500  loss  4.7413 (ce  2.968 aux  3.546 ref 0.0008)  train median    2.08 m   0.44 s/step
+step    80/1500  loss  4.3694 (ce  2.779 aux  3.179 ref 0.0027)  train median    5.69 m   0.44 s/step
+step   100/1500  loss  5.7134 (ce  3.680 aux  4.067 ref 0.0005)  train median    6.10 m   0.45 s/step
+step   120/1500  loss  4.3722 (ce  2.765 aux  3.211 ref 0.0029)  train median    5.36 m   0.46 s/step
+step   140/1500  loss  4.4876 (ce  2.806 aux  3.361 ref 0.0017)  train median    2.54 m   0.45 s/step

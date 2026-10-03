@@ -9,34 +9,63 @@
     10.5
   ],
   "window_s": 10.0,
+  "margin": 0.0,
   "report": {
-    "0": {
+    "0\u00b0": {
       "no search": 0.00949868073878628,
       "right angle given": 0.00949868073878628,
       "search \u00b110.5\u00b0": 0.010202286719437115,
       "search \u00b13.5\u00b0 (Halo)": 0.009850483729111698,
       "search picks the right angle": 0.990325417766051
     },
-    "3.5": {
+    "3.5\u00b0": {
       "no search": 0.03579595426561126,
       "right angle given": 0.009586631486367634,
       "search \u00b110.5\u00b0": 0.01029023746701847,
       "search \u00b13.5\u00b0 (Halo)": 0.009410729991204925,
       "search picks the right angle": 0.9977132805628848
     },
-    "7": {
+    "7\u00b0": {
       "no search": 0.2276165347405453,
       "right angle given": 0.010466138962181178,
       "search \u00b110.5\u00b0": 0.010729991204925241,
       "search \u00b13.5\u00b0 (Halo)": 0.031222515391380826,
       "search picks the right angle": 0.995778364116095
     },
-    "14": {
+    "14\u00b0": {
       "no search": 0.5466138962181178,
       "right angle given": 0.04239226033421284,
       "search \u00b110.5\u00b0": 0.04221635883905013,
       "search \u00b13.5\u00b0 (Halo)": 0.39331574318381707,
       "search picks the right angle": 1.0
+    },
+    "into corners": {
+      "no search": 0.20958663148636764,
+      "right angle given": 0.20958663148636764,
+      "search \u00b110.5\u00b0": 0.12075637642919965,
+      "search \u00b13.5\u00b0 (Halo)": 0.1357080035180299,
+      "search picks the right angle": 0.1671943711521548
+    },
+    "into corners + 7\u00b0": {
+      "no search": 0.25083553210202286,
+      "right angle given": 0.21442392260334212,
+      "search \u00b110.5\u00b0": 0.1357080035180299,
+      "search \u00b13.5\u00b0 (Halo)": 0.1990325417766051,
+      "search picks the right angle": 0.19155672823218997
+    },
+    "both into corners": {
+      "no search": 0.0702726473175022,
+      "right angle given": 0.0702726473175022,
+      "search \u00b110.5\u00b0": 0.036323658751099386,
+      "search \u00b13.5\u00b0 (Halo)": 0.06341248900615655,
+      "search picks the right angle": 0.8213720316622691
+    },
+    "both into corners + 7\u00b0": {
+      "no search": 0.2727352682497801,
+      "right angle given": 0.07018469656992084,
+      "search \u00b110.5\u00b0": 0.04494283201407212,
+      "search \u00b13.5\u00b0 (Halo)": 0.08733509234828496,
+      "search picks the right angle": 0.8257695690413368
     }
   }
 }

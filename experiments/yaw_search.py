@@ -45,6 +45,29 @@ THETAS = (0.0, 3.5, 7.0, 14.0)
 WINDOW_S, LAPS, STRIDE, AXIS = 10.0, 4, 2, "time"
 
 
+def corner_look(level: np.ndarray, t: np.ndarray, gain: float = 0.4, ahead_s: float = 1.0, limit: float = 12.0) -> np.ndarray:
+    """
+    A head that turns into corners, per frame in degrees: `gain` times the turn the kart
+    makes over the next `ahead_s` seconds, within ±`limit`. The kart's turn is read off the
+    level frames themselves (horizontal phase shift of the top band, mostly far scenery).
+    """
+    import cv2
+
+    grey = [np.float32(cv2.cvtColor(f[: f.shape[0] // 2], cv2.COLOR_BGR2GRAY)) for f in level]
+    window = cv2.createHanningWindow(grey[0].shape[::-1], cv2.CV_32F)
+    step = np.zeros(len(level))
+    for i in range(1, len(level)):
+        (dx, _), _ = cv2.phaseCorrelate(grey[i - 1], grey[i], window)
+        step[i] = -np.degrees(np.arctan(dx / camera.TRAINING.focal))  # scenery moving left = turning right
+    heading = np.cumsum(step)
+    later = np.interp(t + ahead_s, t, heading)
+    return np.clip(gain * (later - heading), -limit, limit)
+
+
+def render_turning(raw: np.ndarray, yaw: np.ndarray) -> np.ndarray:
+    return np.stack([camera.render(f, camera.WIDE, camera.TRAINING, yaw=float(y)) for f, y in zip(raw, yaw)])
+
+
 @torch.no_grad()
 def encode(model, frames: np.ndarray, device) -> torch.Tensor:
     return torch.cat([model.encode_reference(torch.from_numpy(_to_chw(frames[i:i + 256])).to(device), use_checkpoint=False)
@@ -67,17 +90,23 @@ def per_offset(model, live_desc: torch.Tensor, clip_rows: np.ndarray, refs: list
     return np.stack(beliefs), np.stack(scores)  # [K, T, N], [K, T]
 
 
-def searched(beliefs: np.ndarray, scores: np.ndarray, allowed: np.ndarray, window: int) -> tuple[np.ndarray, np.ndarray]:
-    """Per tick, the belief of the allowed angle with the best mean score over the last `window` ticks."""
+def searched(beliefs: np.ndarray, scores: np.ndarray, allowed: np.ndarray, window: int,
+             margin: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Per tick, the belief of the allowed angle with the best mean score over the last
+    `window` ticks; straight ahead (0°) unless that angle beats it by `margin`.
+    """
     run = np.cumsum(np.pad(scores, ((0, 0), (1, 0))), axis=1)
     t = np.arange(scores.shape[1])
     mean = (run[:, t + 1] - run[:, np.maximum(t + 1 - window, 0)]) / np.minimum(t + 1, window)
     mean[~allowed] = -np.inf
     pick = mean.argmax(0)
+    centre = int(np.argmin(np.abs(OFFSETS))) if len(OFFSETS) == len(scores) else len(scores) // 2
+    pick = np.where(mean[pick, t] - mean[centre, t] < margin, centre, pick)
     return beliefs[pick, t], pick
 
 
-def cross(runs: list[str]) -> None:
+def cross(runs: list[str], margin: float = 0.0) -> None:
     device = torch.device(default_device())
     wide = LapIndex.load(Path("data/packed_ac_v3_wide"), split="holdout")
     recorded = LapIndex.load(Path("data/packed_ac_v3"), split="holdout", variants=("live", "look"))
@@ -110,9 +139,9 @@ def cross(runs: list[str]) -> None:
                     beliefs, scores = per_offset(model, encode(model, np.asarray(live.frames()[used]), device), row[clip_idx], refs)
                     window = int(WINDOW_S * STREAM_HZ)
                     centre = int(np.argmin(np.abs(OFFSETS)))
-                    full, pick = searched(beliefs, scores, np.ones(len(OFFSETS), bool), window)
+                    full, pick = searched(beliefs, scores, np.ones(len(OFFSETS), bool), window, margin)
                     streams = {"no search": beliefs[centre], methods[1]: full,
-                               methods[2]: searched(beliefs, scores, np.abs(OFFSETS) <= HALO_BUDGET + 1e-6, window)[0]}
+                               methods[2]: searched(beliefs, scores, np.abs(OFFSETS) <= HALO_BUDGET + 1e-6, window, margin)[0]}
                     zero[variant].append((pick == centre)[int(ACQUISITION_S * STREAM_HZ):])
                     for m, b in streams.items():
                         bins = _run_estimator({**stream, "belief": b.astype(np.float64)}, EstimatorConfig(**REFERENCE_TIME_TWO_MODES),
@@ -128,20 +157,32 @@ def cross(runs: list[str]) -> None:
             report[name] = row_
             print(f"{name:<26}" + "".join(f"{100 * row_[m]:>21.1f}%" for m in methods) + f"{100 * row_['search stays at 0']:>21.1f}%")
         (Path("runs") / run / "yaw_search_cross.json").write_text(json.dumps({"offsets": OFFSETS.tolist(), "window_s": WINDOW_S,
-                                                                               "report": report}, indent=2))
+                                                                               "margin": margin, "report": report}, indent=2))
 
 
 def main() -> None:
-    if sys.argv[1] == "--cross":
-        return cross(sys.argv[2:])
+    global WINDOW_S
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("runs", nargs="+")
+    parser.add_argument("--cross", action="store_true")
+    parser.add_argument("--window", type=float, default=WINDOW_S, help="seconds of match history behind each pick")
+    parser.add_argument("--margin", type=float, default=0.0, help="how much better than straight ahead a turn must match")
+    args = parser.parse_args()
+    WINDOW_S = args.window
+    if args.cross:
+        return cross(args.runs, args.margin)
     device = torch.device(default_device())
     wide = LapIndex.load(Path("data/packed_ac_v3_wide"), split="holdout")
-    for run in sys.argv[1:]:
+    names = [f"{theta:g}°" for theta in THETAS] + ["into corners", "into corners + 7°",
+                                                   "both into corners", "both into corners + 7°"]
+    for run in args.runs:
         model, payload = load_model(Path("runs") / run / "best.pt", device)
         clip_len = int(payload["args"]["clip_len"])
         methods = ["no search", "right angle given", f"search ±{OFFSETS.max():g}°", f"search ±{HALO_BUDGET:g}° (Halo)"]
-        errs = {(theta, m): [] for theta in THETAS for m in methods}
-        picked_right = {theta: [] for theta in THETAS}
+        errs = {(name, m): [] for name in names for m in methods}
+        picked_right = {name: [] for name in names}
         for track, group in sorted(wide.by_track.items()):
             whole = [lap for lap in group if lap.s_span > 0.98 and lap.usable_as_reference(0.98, AXIS)]
             for k, live in enumerate(whole[:LAPS]):
@@ -151,6 +192,10 @@ def main() -> None:
                 rng = np.random.default_rng(zlib.crc32(reference.lap_id.encode()))
                 refs = [encode(model, camera.render_clip(ref_raw, np.zeros(grid.n_bins), rng, pose=(float(o), 0, 0)), device)
                         for o in OFFSETS]
+                # the same driver's habit in the reference: its own head into its own corners
+                ref_times = reference.t()[grid.frame_idx].astype(np.float64)
+                ref_look = corner_look(camera.render_clip(ref_raw, ref_times, rng), ref_times)
+                refs_look = [encode(model, render_turning(ref_raw, ref_look + o), device) for o in OFFSETS]
                 every = max(int(round(live.fps / STREAM_HZ)), 1)
                 ticks = np.arange((clip_len - 1) * STRIDE, live.n_frames, every)
                 clip_idx = ticks[:, None] - np.arange(clip_len - 1, -1, -1)[None, :] * STRIDE
@@ -160,37 +205,42 @@ def main() -> None:
                 raw, t = np.asarray(live.frames()[used]), live.t().astype(np.float64)
                 stream = {"grid": grid, "t": t[ticks], "target": torch.from_numpy(grid.target(live.s()[ticks]).astype(np.float32))}
                 sign = 1.0 if k % 2 == 0 else -1.0
-                for theta in THETAS:
-                    turn = sign * theta
-                    frames = camera.render_clip(raw, t[used], np.random.default_rng(k), pose=(turn, 0, 0))
-                    beliefs, scores = per_offset(model, encode(model, frames, device), row[clip_idx], refs)
+                look = corner_look(camera.render_clip(raw, t[used], np.random.default_rng(k)), t[used])
+                conditions = [(f"{theta:g}°", sign * theta, None, refs) for theta in THETAS]
+                conditions += [("into corners", 0.0, look, refs), ("into corners + 7°", sign * 7.0, look, refs),
+                               ("both into corners", 0.0, look, refs_look),
+                               ("both into corners + 7°", sign * 7.0, look, refs_look)]
+                for name, turn, per_frame, reference_set in conditions:
+                    frames = (render_turning(raw, per_frame + turn) if per_frame is not None
+                              else camera.render_clip(raw, t[used], np.random.default_rng(k), pose=(turn, 0, 0)))
+                    beliefs, scores = per_offset(model, encode(model, frames, device), row[clip_idx], reference_set)
                     window = int(WINDOW_S * STREAM_HZ)
-                    right = int(np.argmin(np.abs(OFFSETS - turn)))
+                    right = int(np.argmin(np.abs(OFFSETS - turn)))  # the held part of the turn
                     streams = {
                         "no search": beliefs[int(np.argmin(np.abs(OFFSETS)))],
                         "right angle given": beliefs[right],
-                        methods[2]: searched(beliefs, scores, np.ones(len(OFFSETS), bool), window)[0],
-                        methods[3]: searched(beliefs, scores, np.abs(OFFSETS) <= HALO_BUDGET + 1e-6, window)[0],
+                        methods[2]: searched(beliefs, scores, np.ones(len(OFFSETS), bool), window, args.margin)[0],
+                        methods[3]: searched(beliefs, scores, np.abs(OFFSETS) <= HALO_BUDGET + 1e-6, window, args.margin)[0],
                     }
-                    pick = searched(beliefs, scores, np.ones(len(OFFSETS), bool), window)[1]
-                    # right = the grid angle nearest the turn (14° is off the grid: 10.5° is right)
-                    picked_right[theta].append((pick == right)[int(ACQUISITION_S * STREAM_HZ):])
+                    pick = searched(beliefs, scores, np.ones(len(OFFSETS), bool), window, args.margin)[1]
+                    # right = the grid angle nearest the held turn (14° is off the grid: 10.5° is right)
+                    picked_right[name].append((pick == right)[int(ACQUISITION_S * STREAM_HZ):])
                     for m, b in streams.items():
                         bins = _run_estimator({**stream, "belief": b.astype(np.float64)}, EstimatorConfig(**REFERENCE_TIME_TWO_MODES),
                                               None, None, 0, reference_time=True)
-                        errs[(theta, m)].append(_stream_errors(stream, bins)[1])
+                        errs[(name, m)].append(_stream_errors(stream, bins)[1])
                 print(f"  {run} {track[:26]:<26} live {live.lap_id[-5:]} reference {reference.lap_id[-5:]}", flush=True)
         report = {}
         print(f"\n{run}: share of ticks over 100 ms, two-mode reference-time tracker (same-session references)")
-        print(f"{'held turn':<12}" + "".join(f"{m:>22}" for m in methods) + f"{'search picks right':>22}")
-        for theta in THETAS:
-            row_ = {m: float(np.mean(np.concatenate(errs[(theta, m)]) > 100)) for m in methods}
-            row_["search picks the right angle"] = float(np.mean(np.concatenate(picked_right[theta])))
-            report[f"{theta:g}"] = row_
-            print(f"{theta:>5g}°      " + "".join(f"{100 * row_[m]:>21.1f}%" for m in methods)
+        print(f"{'head':<20}" + "".join(f"{m:>22}" for m in methods) + f"{'search picks right':>22}")
+        for name in names:
+            row_ = {m: float(np.mean(np.concatenate(errs[(name, m)]) > 100)) for m in methods}
+            row_["search picks the right angle"] = float(np.mean(np.concatenate(picked_right[name])))
+            report[name] = row_
+            print(f"{name:<20}" + "".join(f"{100 * row_[m]:>21.1f}%" for m in methods)
                   + f"{100 * row_['search picks the right angle']:>21.1f}%")
         (Path("runs") / run / "yaw_search.json").write_text(json.dumps({"offsets": OFFSETS.tolist(), "window_s": WINDOW_S,
-                                                                         "report": report}, indent=2))
+                                                                         "margin": args.margin, "report": report}, indent=2))
 
 
 if __name__ == "__main__":
