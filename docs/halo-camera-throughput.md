@@ -19,11 +19,18 @@ stills, not for throughput.
   8-bit parallel, full VGA. That bus moves at most **~78 full-VGA frames/s**
   before blanking. **120 fps at full VGA is impossible in the shipped
   configuration.**
-- **Reaching 120 fps** needs one of two things, and neither is verified yet:
-  - the 48 MHz register table PixArt left commented out in the driver (bus
-    ceiling ~156 VGA fps), or
-  - a smaller window from the sensor. PRIMAL only needs ~160×120, so this is
-    the more natural route.
+- **Reaching 120 fps** with the whole field of view has two routes. Neither is
+  verified yet:
+  - **48 MHz clock, full 640×480.** PixArt's complete register table for it is
+    commented out in the driver (bus ceiling ~156 fps). This needs no
+    resolution reverse engineering; the open question is whether the B1's
+    camera port accepts 48 MHz.
+  - **Subsampled readout at 24 MHz**: skipping or binning, which keeps the
+    whole image at fewer pixels, e.g. 320×240. The skip registers are named in
+    the driver but undocumented, so this needs reverse engineering
+    ([Reverse-engineering notes](#reverse-engineering-notes)).
+
+  Neither route crops the image.
 
 Two things the open sources don't settle, and only an on-device test will:
 the PAG7982's true maximum frame rate, and the B1 LP-CPI's maximum pixel
@@ -84,8 +91,7 @@ bounds with zero blanking; real line/frame blanking costs some extra.
 | Readout | Bytes/frame | 24 MHz (shipped) | 48 MHz (PixArt table) |
 |---------|------------:|-----------------:|----------------------:|
 | 640×480 | 307,200 | 12.8 ms → **≤ 78 fps** | 6.4 ms → ≤ 156 fps |
-| 640×240 crop (horizon band) | 153,600 | 6.4 ms → ≤ 156 fps | ≤ 312 fps |
-| 320×240 skip | 76,800 | 3.2 ms → ≤ 312 fps | ≤ 625 fps |
+| 320×240 subsampled (whole field of view) | 76,800 | 3.2 ms → ≤ 312 fps | ≤ 625 fps |
 
 Consequences:
 
@@ -116,13 +122,24 @@ Keep these apart. Only the first one sets the frame rate.
 - **A trained model is tied to its input size.** The trunk ends in
   `Flatten → Linear`, whose weight shape depends on the spatial size. Any size
   works at packing time; changing it later means retraining.
-- **The readout to aim for is 320×240 Bayer.**
-  - Each 2×2 BGGR block becomes one RGB pixel, giving 160×120 RGB.
-  - Cropping 12 rows top and bottom gives exactly the 160×96 the trunk is
-    trained on, or retrain at the native 4:3 size.
+- **Subsampling is not cropping.**
+  - Cropping cuts out part of the scene.
+  - Skipping (reading every other 2×2 colour block) or binning (averaging
+    neighbours) keeps the whole 81.2° view at fewer pixels.
+  - Nothing in this plan crops.
+- **The readout to aim for is 320×240 Bayer, subsampled.**
+  - Each 2×2 BGGR block becomes one RGB pixel, giving the full view as
+    160×120 RGB.
   - Bus time is 3.2 ms at 24 MHz.
   - 160×120 Bayer is smaller still, but it only holds ~80×60 full-colour
     pixels, so it gives the trunk less than it sees in training.
+- **Train at 4:3, 160×120.**
+  - Today's 160×96 comes from the 16:9 Assetto Corsa recordings, not from the
+    glasses.
+  - Record AC in a 4:3 window with its horizontal FOV set to the glasses'
+    81.2°, pack with `--height 120`, and the model sees the glasses' whole
+    image.
+  - Costs 3.7 ms on the NPU instead of 3.0.
 - **The stock firmware has no lower readout.** The driver accepts only
   640×480. PixArt's 320×240 and 160×120 entries are commented out with no
   register values behind them, and the driver's whole git history is a single
@@ -133,8 +150,10 @@ Keep these apart. Only the first one sets the frame rate.
   well under 8.3 ms. That's easy in daylight; dim indoor tracks may not allow
   it.
 
-A 320×240 readout makes 120 fps a **24 MHz** problem, not a 48 MHz one, and
-cuts buffer memory 4×.
+A subsampled 320×240 readout makes 120 fps a **24 MHz** problem, not a
+48 MHz one, and cuts buffer memory 4×. The 48 MHz route keeps full 640×480
+and downsamples on the M55 instead, at ~1–2 ms per frame and 600–900 KB of
+buffers.
 
 ## NPU estimates **[vela]**
 
@@ -174,7 +193,8 @@ What this means:
 - **GroupNorm must go** before deployment: it has no Ethos-U lowering. Fold
   BatchNorm or drop the norm. GELU is fine.
 - **Raw-Bayer VGA input doesn't fit** (1.5 MB arena). Either bin on the M55
-  first, or have the sensor skip/crop and feed QVGA mosaic straight to the NPU.
+  first, or have the sensor subsample to 320×240 and feed that mosaic straight
+  to the NPU.
 
 ## Memory budget **[calc]**
 
@@ -182,7 +202,7 @@ What this means:
 buffer 115 KB, libmpix 80 KB, display), so a PRIMAL build replaces the
 camera/JPEG path and probably trims Lua and audio.
 
-| Item | VGA readout | Cropped/skipped QVGA readout |
+| Item | VGA readout | Subsampled 320×240 readout |
 |------|------------:|-----------------------------:|
 | CPI buffers (×3 for capture ‖ prep ‖ spare) | 900 KB | 225 KB |
 | NPU arena (trunk 120×160) | 299 KB | 299–472 KB |
@@ -255,14 +275,87 @@ over 2 h, against a 25 min session. Not measured.
    - no JPEG
 2. Sensor configuration:
    - `frame-rate` 60/90/120
-   - a cropped or skipped window via the WOI/skip registers (needs the
-     PAG7982 register datasheet, or PixArt/Brilliant support)
-   - or the 48 MHz table
+   - **`R_AE_MAX_EXPO` lowered with the frame period**: the driver leaves it at
+     ~33 ms (see [Reverse-engineering notes](#reverse-engineering-notes))
+   - either the 48 MHz table, or a subsampled readout via the skip registers
 3. Set `wait-vsync` on `&lpcam`. A late re-arm then drops a whole frame
    instead of tearing one.
 4. Timestamp in the CPI ISR with the cycle counter. The driver currently
    stamps `k_uptime_get_32()` (1 ms resolution) in a work item.
 5. TFLM + Ethos-U inference thread. The pieces are already in the tree.
+
+## Reverse-engineering notes
+
+No PAG7982 register manual was found in any source reachable from the
+research environment.
+
+- PixArt usually publishes a short spec sheet per part and gives register
+  manuals to integrators under NDA. That can keep Brilliant from republishing
+  one.
+- PixArt's product page itself was blocked here; check it directly.
+
+The open driver still gives a lot away. To reproduce the tables below:
+
+```bash
+python tools/halo_sensor/pag7982_regs.py halo-firmware/drivers/video
+```
+
+**Clock and resolution are separate controls.** A clock divider changes how
+fast pixels come out, not how many there are.
+
+| Register group | Evidence | Reading |
+|----------------|----------|---------|
+| bank 0 `0x26`, `0x2B`, `0x36` (0x82 then 0x81), `0x3C`, `0x65`; bank 2 `0xDF` (0x0B then 0x8B), `0xE7`–`0xE9` | present in only one table, or different between them; write-then-enable patterns | clock/PLL setup |
+| bank 0 `0xAF` `PARALLEL_INV` | 0x00 at 24 MHz, 0x01 at 48 MHz | which PCLK edge carries valid data |
+| bank 1 `0x69`, `0x6B` (0xD0 → 0x68), `0x7A`, `0x7B` (0x43 → 0x22) | the 24 MHz table writes the 48 MHz values, then overwrites them with half | sensor timing counts, in clock cycles |
+| bank 2 `0x21`–`0x24` = 640, 480; `0x25`–`0x28` = 8, 20–22 | identical in both tables | output size and start offset in the pixel array (likely) |
+| bank 4 `0x3A`/`0x3B` `R_AE_SIZE_DIV4_X/Y` = 160, 120 | ×4 = 640×480 | auto-exposure window |
+| bank 1 `0x4B` `R_ANALOG_SKIP_CTL`, `0x70` `CMD_AND_ROISKIP_CTL` | named by PixArt, written by neither table | **skip (subsampling) control, left at reset defaults — the full-view low-res candidates** |
+| bank 4 `0x7B`–`0x83` `R_ISP_WOI_*` | named, never written | ISP output window, i.e. a crop; not needed |
+
+**Two skip mechanisms (hypothesis).** The commented-out format list gives each
+low-res mode two variants:
+
+- 320×240 as `(2, 0)` and `(0, 2)`
+- 160×120 as `(4, 0)` and `(0, 4)`
+
+That fits two independent skip mechanisms (the two skip registers) at
+factor 2 and 4. Nothing documents it.
+
+**Exposure is tied to frame time.**
+
+- In the 24 MHz table, `R_AE_MAX_EXPO` = 397,600 = `R_FRAMETIME` (400,000) −
+  2,400. They share units, and max exposure is pinned just under the frame
+  period.
+- Halo's driver rewrites `R_FRAMETIME` from `frame-rate` but never touches
+  `R_AE_MAX_EXPO`. At 60 or 120 fps, auto-exposure would still be allowed
+  ~33 ms, 2–4 frame periods.
+- Set it to `R_FRAMETIME − 2400` along with the frame time before trusting any
+  high-fps measurement. Otherwise the sensor may stretch frames in dim light.
+
+**Probe plan.** A custom build, with the same OTA test-boot safety as the
+decisive test:
+
+1. **Dump registers.** Read back every register in banks 0–4 after reset and
+   after init, and report over BLE. The two skip registers' defaults come
+   first.
+2. **Test pattern on.** Bank 4: `0x00 = 0x01`, `0x0A = 0x04` or `0x10`, from
+   the driver's commented code. Subsampling shows as narrower bars with the
+   same count; a crop shows as bars cut off.
+3. **Measure geometry without a datasheet.**
+   - Enable the LP-CPI's `INTR_HSYNC` and `INTR_VSYNC`.
+   - Count HSYNCs per VSYNC to get lines per frame.
+   - Time VSYNC to VSYNC with the cycle counter to get the frame period.
+   - Fill the buffer with a known byte first, so a short frame shows where the
+     data stops.
+4. **Sweep the skip registers.** Set one bit at a time in each, latch with
+   bank 0 `0xEB = 0x80` (as the driver does for flip), measure, and send one
+   frame over BLE. A 2× subsample should halve both lines per frame and line
+   length while keeping the pattern whole.
+5. **Touch only named registers.** Blind sweeps of unnamed registers could hit
+   test or one-time-programmable settings. A bad value in a named control
+   register is undone by the reset line or a power cycle of the camera rail,
+   both of which the driver already controls.
 
 ## Decisive test
 
@@ -273,14 +366,20 @@ About a day of work, and reversible: OTA images test-boot and auto-revert
    continuously with 3 buffers. Have it return:
    - min/mean/max frame interval
    - count of `INTR_INFIFO_OVERRUN` / `OUTFIFO_OVERRUN` / short frames
-2. Run it at `frame-rate` 30 → 60 → 75 at 24 MHz VGA. This finds the
-   practical 24 MHz ceiling, expected 60–70 fps.
+2. Run it at `frame-rate` 30 → 60 → 75 at 24 MHz VGA, with `R_AE_MAX_EXPO`
+   lowered to match. This finds the practical 24 MHz ceiling, expected
+   60–70 fps.
 3. Swap in the commented "48M" table and try 90 → 120.
    - Overruns or garbage → the LP-CPI or the module can't take 48 MHz.
-   - Clean frames → 120 fps VGA confirmed.
-4. Independently, ask PixArt or Brilliant for the PAG7982J1 register
-   datasheet (window/skip registers, max PCLK, frame rate per mode). That
-   unlocks the cropped-readout route.
+   - Clean frames → 120 fps at full 640×480 confirmed.
+4. Independently, ask PixArt or Brilliant for:
+   - the PAG7982J1 register datasheet
+   - or just the register values for the commented 320×240 and 160×120
+     modes, which PixArt evidently has
+   - max PCLK and frame rate per mode
+
+   That replaces the guesswork in
+   [Reverse-engineering notes](#reverse-engineering-notes).
 5. Run `trunk_120x160` through TFLM on the NPU and time `Invoke()` to replace
    the Vela estimate.
 
@@ -289,7 +388,7 @@ About a day of work, and reversible: OTA images test-boot and auto-revert
 | Outcome | What it means |
 |---------|---------------|
 | Step 2 reaches ~60 fps | 60 Hz on-glasses embedding is established with no unverified parts |
-| Step 3 or a cropped mode reaches 120 | 120 Hz is established |
+| Step 3 or a subsampled mode reaches 120 | 120 Hz with the whole field of view is established |
 | Step 2 stalls far below 60 with clean timing | Unexpected; the specific limit is worth chasing before any refund decision |
 
 ## Reproduce the NPU numbers
