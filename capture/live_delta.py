@@ -159,20 +159,32 @@ class UiState:
 
 def capture_loop(source, prep: Preprocess, shm: AcSharedMemory | None, out: queue.Queue, ui: UiState,
                  stop: threading.Event) -> None:
-    count, since, checked = 0, time.monotonic(), False
+    count, since = 0, time.monotonic()
+    levels: list[tuple[float, float]] = []
+    track = None
     try:
         while not stop.is_set():
             frame, t = source.read()
             if frame is None:
                 break
             small, _, spline, ok = prep(frame)
-            if ok and not checked:
-                checked = True
-                black, white = prep.levels(frame)
-                print(f"barcode levels: black {black:.0f}, white {white:.0f} (the recordings: 0 and 254)")
-                if black > 8 or white < 245:
-                    ui.message = f"colour range differs from the recordings (black {black:.0f}, white {white:.0f}): check OBS"
             snap = shm.snapshot() if shm is not None else None
+            if snap is not None:
+                key = track_key_of(snap)
+                if track is None:
+                    track = key
+                elif key != track and snap.track:
+                    ui.message = f"AC is now on {key}, not {track}: quit (q) and start the tool again"
+                    ui.row = None
+                    continue
+            # Colour levels over a few seconds of driving, not the first frame: AC fades in.
+            if ok and len(levels) < 180 and (snap is None or snap.speed_kmh > 5):
+                levels.append(prep.levels(frame))
+                if len(levels) == 180:
+                    black, white = np.median(levels, axis=0)
+                    print(f"barcode levels while driving: black {black:.0f}, white {white:.0f} (the recordings: 0 and 254)")
+                    if black > 8 or white < 245:
+                        ui.message = f"colours differ from the recordings (black {black:.0f}, white {white:.0f})"
             if ok:
                 cam_s, s_source = spline, "barcode"
             elif snap is not None and snap.status in (STATUS_LIVE, STATUS_REPLAY) and snap.track_length_m > 0:
@@ -242,6 +254,18 @@ class Recording:
 
 def wrap(d: float, period: float) -> float:
     return (d + period / 2) % period - period / 2
+
+
+def lap_delta(elapsed: float, ref_time: float, period: float) -> float:
+    """
+    Lap elapsed minus a reference time in [0, period). Just past the line the reference
+    time can still read the end of the last lap, so a reference time more than half a
+    lap ahead of the clock belongs to it. Otherwise no wrapping: a lap may be any amount
+    slower than the reference.
+    """
+    if ref_time - elapsed > period / 2:
+        ref_time -= period
+    return elapsed - ref_time
 
 
 class Worker(threading.Thread):
@@ -362,8 +386,8 @@ class Worker(threading.Thread):
             "single_ref_time_s": round(r.single_ref_time_s, 4),
             "confidence": round(r.confidence, 4),
             "true_ref_time_s": round(true_ref, 4),
-            "primal_delta_s": round(wrap(elapsed - r.ref_time_s, period), 4),
-            "true_delta_s": round(wrap(elapsed - true_ref, period), 4),
+            "primal_delta_s": round(lap_delta(elapsed, r.ref_time_s, period), 4),
+            "true_delta_s": round(lap_delta(elapsed, true_ref, period), 4),
             "error_ms": round(1000 * wrap(r.ref_time_s - true_ref, period), 1),
             "performance_meter": snap.performance_meter if snap else float("nan"),
             "spline_pos": round(snap.spline_pos, 6) if snap else float("nan"),
@@ -410,12 +434,27 @@ def packed_reference(data: Path, spec: str, track_key: str, car: str) -> Lap:
     return same_car[int(np.argsort(times)[len(times) // 2])]
 
 
+def track_key_of(snap: AcSnapshot) -> str:
+    return f"{snap.track}__{snap.track_config}" if snap.track_config else snap.track
+
+
 def wait_for_ac(shm: AcSharedMemory) -> AcSnapshot:
-    print("waiting for AC (start a session; shared memory appears once the car is on track)...")
+    """
+    A session that is running now. Shared memory outlives AC while anything holds it
+    open (Content Manager does), so a mapping can still describe the last session:
+    trust it only once the physics packets advance with the car on track.
+    """
+    print("waiting for AC to be on track...")
+    last = None
     while True:
         snap = shm.snapshot()
-        if snap is not None and snap.track and snap.track_length_m > 0:
-            return snap
+        if (snap is not None and last is not None and snap.status == STATUS_LIVE and snap.track
+                and snap.track_length_m > 0 and snap.packet_id != last.packet_id):
+            time.sleep(1.0)
+            again = shm.snapshot()
+            if again is not None and track_key_of(again) == track_key_of(snap) and again.packet_id != snap.packet_id:
+                return again
+        last = snap
         time.sleep(0.5)
 
 
@@ -443,6 +482,9 @@ def render(ui: UiState) -> np.ndarray:
         text(img, "--", (14, 106), bold, 2.4, (150, 150, 150), 4, cv2.LINE_AA)
     else:
         p, tr, ac = row["primal_delta_s"], row["true_delta_s"], row["performance_meter"]
+        if row["clock"] != "camera":  # the lap clock starts at the line; AC's out-lap timer is no lap
+            p = tr = float("nan")
+            text(img, "deltas start when you cross the line", (14, 130), font, 0.5, (90, 200, 230), 1, cv2.LINE_AA)
         text(img, fmt(p), (14, 106), bold, 2.4, tone(p), 4, cv2.LINE_AA)
         text(img, f"true   {fmt(tr)}", (16, 146), font, 0.75, tone(tr), 2, cv2.LINE_AA)
         text(img, f"AC     {fmt(ac)}", (16, 176), font, 0.75, tone(ac), 2, cv2.LINE_AA)
@@ -514,7 +556,7 @@ def main() -> None:
     if args.source == "obs":
         shm = AcSharedMemory()
         snap = wait_for_ac(shm)
-        track_key = f"{snap.track}__{snap.track_config}" if snap.track_config else snap.track
+        track_key = track_key_of(snap)
         car, track_length = snap.car_model, snap.track_length_m
         source = ObsCamera(args.camera)
     else:

@@ -205,6 +205,7 @@ class AcSnapshot:
     lap_time_ms: int = 0                # the current lap's timer
     last_lap_ms: int = 0
     performance_meter: float = 0.0      # AC's own delta to its best lap, s
+    packet_id: int = 0                  # physics packets; advances only while AC runs
 
     @property
     def status_name(self) -> str:
@@ -321,6 +322,7 @@ class AcSharedMemory:
             lap_time_ms=int(graphics.i_current_time),
             last_lap_ms=int(graphics.i_last_time),
             performance_meter=float(physics.performance_meter) if physics else 0.0,
+            packet_id=int(physics.packet_id) if physics else 0,
         )
 
 
