@@ -438,7 +438,8 @@ class Worker(threading.Thread):
     """
 
     def __init__(self, model, clip_len: int, device: torch.device, frames: queue.Queue, ui: UiState,
-                 run_dir: Path, track_length_m: float, live_source: bool, rig: Rig | None) -> None:
+                 run_dir: Path, track_length_m: float, live_source: bool, rig: Rig | None,
+                 cameras: list[str] | None = None) -> None:
         super().__init__(daemon=True)
         self.model, self.clip_len, self.device = model, clip_len, device
         self.frames, self.ui, self.run_dir = frames, ui, run_dir
@@ -446,7 +447,8 @@ class Worker(threading.Thread):
         self.live_source = live_source
         self.rig = rig
         self.commands: queue.Queue[str] = queue.Queue()
-        self.camera = "training"
+        self.cameras = cameras or list(CAMERAS)
+        self.camera = self.cameras[0]
         self.refs: dict[str, tuple[LiveDelta, ReferenceGrid, str]] = {}
         self.engine: LiveDelta | None = None
         self.grid: ReferenceGrid | None = None
@@ -529,7 +531,7 @@ class Worker(threading.Thread):
         if self.rig is None:
             self.ui.message = "no camera rig with this source"
             return
-        names = list(CAMERAS)
+        names = self.cameras
         self.camera = names[(names.index(self.camera) + 1) % len(names)]
         label, values = CAMERAS[self.camera]
         self.rig.apply(values)
@@ -851,6 +853,8 @@ def main() -> None:
     parser.add_argument("--no-window", action="store_true")
     parser.add_argument("--pos", default="1250,770", help="overlay window position x,y")
     parser.add_argument("--log-dir", default=str(LOG_DIR))
+    parser.add_argument("--cameras", default=",".join(CAMERAS),
+                        help=f"the presets CAMERA cycles through, first one at start: {','.join(CAMERAS)}")
     args = parser.parse_args()
 
     torch.set_num_threads(args.threads)
@@ -867,7 +871,7 @@ def main() -> None:
         car, track_length = snap.car_model, snap.track_length_m
         source = ObsCamera(args.camera)
         rig = Rig()
-        rig.apply(CAMERAS["training"][1])
+        rig.apply(CAMERAS[args.cameras.split(",")[0]][1])
     else:
         shm = rig = None
         meta = json.loads((Path(args.source).parent / "run.json").read_text())
@@ -880,7 +884,7 @@ def main() -> None:
     run_dir.mkdir(parents=True)
     ui = UiState()
     frames: queue.Queue = queue.Queue(maxsize=240)
-    worker = Worker(model, clip_len, device, frames, ui, run_dir, track_length, source.live, rig)
+    worker = Worker(model, clip_len, device, frames, ui, run_dir, track_length, source.live, rig, args.cameras.split(","))
 
     start = time.perf_counter()
     if args.reference == "live":
