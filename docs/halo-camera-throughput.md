@@ -100,9 +100,41 @@ Consequences:
   the issue: 48 MB/s is ~5% of DTCM bandwidth. The open question is input
   sampling of the parallel bus.
 
-PRIMAL doesn't need VGA. The trunk eats 96×160 or 120×160. A cropped or
-skipped readout makes 120 fps a **24 MHz** problem, not a 48 MHz one, and cuts
-buffer memory 2–4×.
+### Two different resolutions
+
+Keep these apart. Only the first one sets the frame rate.
+
+| | What it is | Set by | Limits |
+|--|------------|--------|--------|
+| **Sensor readout** | pixels the sensor sends over the wire per frame | sensor registers (firmware) | capture rate (table above) |
+| **Model input** | image the trunk is fed | training: `capture/pack.py --width 160 --height 96` | NPU time and arena size |
+
+- **Downscaling after capture doesn't speed up capture.** A 640×480 readout
+  still costs 12.8 ms on the bus even if the model only sees 160×96. Software
+  crop and resize (`frame.camera.mpix.op.crop`, `resize_subsample`) run after
+  the frame has already crossed the bus.
+- **A trained model is tied to its input size.** The trunk ends in
+  `Flatten → Linear`, whose weight shape depends on the spatial size. Any size
+  works at packing time; changing it later means retraining.
+- **The readout to aim for is 320×240 Bayer.**
+  - Each 2×2 BGGR block becomes one RGB pixel, giving 160×120 RGB.
+  - Cropping 12 rows top and bottom gives exactly the 160×96 the trunk is
+    trained on, or retrain at the native 4:3 size.
+  - Bus time is 3.2 ms at 24 MHz.
+  - 160×120 Bayer is smaller still, but it only holds ~80×60 full-colour
+    pixels, so it gives the trunk less than it sees in training.
+- **The stock firmware has no lower readout.** The driver accepts only
+  640×480. PixArt's 320×240 and 160×120 entries are commented out with no
+  register values behind them, and the driver's whole git history is a single
+  "initial snapshot" commit, so nothing published shows how to enable them.
+  The sensor very likely supports them; the register sequence has to come from
+  PixArt/Brilliant or from experiment (see [Decisive test](#decisive-test)).
+- **Exposure also caps frame rate.** At 120 fps each exposure must fit in
+  well under 8.3 ms. That's easy in daylight; dim indoor tracks may not allow
+  it.
+
+A 320×240 readout makes 120 fps a **24 MHz** problem, not a 48 MHz one, and
+cuts buffer memory 4×.
 
 ## NPU estimates **[vela]**
 
@@ -116,6 +148,8 @@ Alif's HP NPU config (U55-256 @ 400 MHz), against Alif's published ~8 ms.
 |------------------------------|-----:|----------:|------------:|---:|----:|
 | PRIMAL trunk 96×160 RGB (as in `train/model.py`, ReLU) | 43 | 254 | 571 | **2.96** | **338** |
 | same, GELU | 43 | 254 | 572 | 3.16 | 316 |
+| same + 1×1 conv to 32 channels before the flatten | 43 | 254 | 395 | 2.73 | 366 |
+| same, width 24 + 1×1 to 32 | 25 | 213 | 268 | 2.29 | 437 |
 | trunk 120×160 RGB (4:3, 4× subsample) | 55 | 299 | 651 | 3.70 | 270 |
 | trunk 120×160 RGB, width 48 | 120 | 555 | 1258 | 8.34 | 120 |
 | trunk 240×320 RGB | 218 | 974 | 1611 | 14.4 | 70 |
@@ -156,15 +190,45 @@ camera/JPEG path and probably trims Lua and audio.
 | Head arena (windowed) | 77 KB | 77 KB |
 | **Total** | **~1.5 MB** — fits only after stripping the stock app | **~0.8–1.0 MB** — comfortable |
 
-**MRAM.** Trunk weights are 571–651 KB, and the stock image leaves ~207 KB free
-in its 780 KB slot.
+### Where the weights live
 
-- Shrink the weights. Swapping `Flatten → Linear` (246 K params, 43% of the
-  trunk) for global pooling + linear brings the trunk to ~350 KB.
-- And/or strip the image.
-- Or load weights into SRAM over BLE at session start: ~600 KB at ~100 KB/s
-  is ~6 s.
-- Collapsing the A/B slots works but gives up OTA rollback. Avoid it.
+**MRAM, not SRAM.**
+
+- MRAM is the B1's non-volatile memory, its "flash". The weights are written
+  once, as part of the firmware image, and survive power-off.
+- The NPU reads them straight from MRAM on every inference. All the timings
+  above already include that.
+- The Ethos-U55-128 has no model storage of its own: its internal buffer
+  (SHRAM) is **24 KB**. Its DMA streams each layer's weights in from MRAM
+  and streams activations to and from SRAM, layer by layer, every frame.
+- SRAM holds only what changes per frame (camera buffers, the arena of
+  intermediate feature maps) plus the reference-lap map, which is built on the
+  device during the reference lap.
+
+The constraint is MRAM **space**:
+
+- MRAM is 2 MB, split into MCUboot, two 780 KB A/B image slots (for safe OTA
+  updates), storage and a secure-enclave area. Nothing is unallocated.
+- The weights ship inside the image slot next to the code, and the stock image
+  leaves ~207 KB free.
+
+| Trunk variant | Weights in MRAM |
+|---------------|----------------:|
+| as in `train/model.py` | 571 KB |
+| + 1×1 conv to 32 channels before the flatten | 395 KB |
+| width 24 + 1×1 to 32 | 268 KB |
+
+How to make it fit:
+
+- **Slim the projection.** `Flatten → Linear` is 246 K of the 579 K
+  parameters. A 1×1 channel reduction before the flatten shrinks it but, unlike
+  global pooling, keeps the spatial layout an alignment descriptor needs.
+- **Trim the image.** A PRIMAL build drops the JPEG/libmpix path and may not
+  need LC3, echo cancellation or the Lua runtime. Savings not yet measured.
+- **Fallbacks:**
+  - Copy weights into SRAM over BLE at session start (~600 KB at ~100 KB/s
+    is ~6 s).
+  - Collapse the A/B slots, which gives up OTA rollback.
 
 ## Per-frame budget at 120 fps (8.33 ms) **[calc]**
 

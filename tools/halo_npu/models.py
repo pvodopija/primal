@@ -17,12 +17,18 @@ import tensorflow as tf
 L = tf.keras.layers
 
 
-def frame_encoder(h, w, c=3, width=32, dim=128, gelu=False):
-    """FrameEncoder: 5 x (3x3 stride-2 conv + act) -> flatten -> linear."""
+def frame_encoder(h, w, c=3, width=32, dim=128, gelu=False, reduce=None):
+    """FrameEncoder: 5 x (3x3 stride-2 conv + act) -> flatten -> linear.
+
+    `reduce` inserts a 1x1 conv down to that many channels before the flatten,
+    shrinking the projection's weights while keeping the spatial layout.
+    """
     x = inp = tf.keras.Input((h, w, c), batch_size=1)
     for out in [width, width * 2, width * 3, width * 4, width * 4]:
         x = L.Conv2D(out, 3, strides=2, padding="same")(x)
         x = L.Activation(tf.nn.gelu)(x) if gelu else L.ReLU()(x)
+    if reduce:
+        x = L.ReLU()(L.Conv2D(reduce, 1)(x))
     x = L.Dense(dim)(L.Flatten()(x))
     return tf.keras.Model(inp, x)
 
@@ -62,6 +68,8 @@ def mobilenet_v2(h, w, alpha):
 MODELS = {
     "trunk_96x160_rgb": lambda: frame_encoder(96, 160),
     "trunk_96x160_rgb_gelu": lambda: frame_encoder(96, 160, gelu=True),
+    "trunk_96x160_rgb_reduce32": lambda: frame_encoder(96, 160, reduce=32),
+    "trunk_96x160_rgb_w24_reduce32": lambda: frame_encoder(96, 160, width=24, reduce=32),
     "trunk_120x160_rgb": lambda: frame_encoder(120, 160),
     "trunk_120x160_gray": lambda: frame_encoder(120, 160, c=1),
     "trunk_120x160_rgb_w48": lambda: frame_encoder(120, 160, width=48),
