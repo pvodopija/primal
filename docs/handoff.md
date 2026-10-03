@@ -1743,3 +1743,79 @@ Updated wish list, in order:
    training and one holdout circuit. A kart drawn into the frame did not hurt any model,
    so only rendered traffic can tell whether traffic matters.
 4. **Human-driven laps,** when Pavle decides the machinery is ready.
+
+---
+
+## 2026-10-03 — Mac → Windows: run the model live on AC, a live delta overlay
+
+The user wants to drive AC live and watch PRIMAL's delta and reference progress in
+real time, next to the true delta and AC's own, to see whether it helps and where
+it breaks. This entry is the Mac's half; the capture and the overlay window are
+yours.
+
+### Ready (pushed)
+
+- **`train/live.py`, `LiveDelta`: the product loop, one frame at a time.** Push
+  every frame (BGR uint8, 148x80, cropped and resized exactly as `capture/pack.py`
+  does: `crop_rows` removes the timecode band, then `cv2.resize(..., INTER_AREA)`)
+  with its time in seconds; on each 15 Hz tick it returns a `Reading`:
+  `ref_time_s` (where in the reference lap the kart is, in the reference's own
+  seconds), `confidence` (low = the tracker is split between places) and
+  `single_ref_time_s` (the clip alone, no tracker). Same model, clip (12 frames,
+  1/30 s apart) and two-mode reference-time tracker as every offline number;
+  `tests/test_live.py` shows it reproduces the offline evaluation tick for tick.
+  At 60 fps it encodes every other frame (only those are used).
+- **Replay check:** `python -m train.live --checkpoint runs/v3_mobilenet_lr1_s0/best.pt
+  --data data/packed_ac_v3 --reference LAP_ID --live LAP_ID --device cpu` runs a
+  packed lap through it as if live and prints the time per frame and the error.
+  Run it first: it says whether this CPU keeps up.
+- **Checkpoints** (never in git; the user copies them to
+  `D:\Documents\Transfer\models\`): `v3_mobilenet_lr1_s0/best.pt` (4.7 MB,
+  MobileNetV3-Small, the Halo candidate: use this) and `v3_resnet_s0/best.pt`
+  (13.5 MB, ResNet-18, a little more accurate, ~25x the compute). Put each at
+  `runs/<name>/best.pt`. They need no ImageNet download; `train.eval.load_model`
+  loads them.
+
+### CPU speed: measure it
+
+On the Mac's CPU MobileNet takes 67 ms a frame, because this PyTorch build has no
+oneDNN and runs depthwise convolutions one channel at a time; on the Mac's GPU,
+2.8 ms. Windows x86 builds of PyTorch ship oneDNN, so expect far less, but measure:
+encoding 30 frames a second needs well under 33 ms a frame, and correlation, head
+and tracker add ~2 ms a tick. If it does not keep up, say so with the numbers;
+options are ONNX Runtime (a download, the user's call) or fewer encoded frames.
+
+### What to build (a suggestion; your design)
+
+1. **Reference lap.** Simplest: a packed lap of the same track and car from
+   `data/packed_ac_v3` (`LiveDelta.from_lap`). The product's way: record the
+   user's first clean live lap and use it for the next ones. Either way the rig
+   camera must be the packed data's: the same rig offsets, vertical FOV and no
+   cockpit, so the user drives with that view on screen.
+2. **Frames:** grab the AC window at 60 fps (Windows Graphics Capture, dxcam or
+   similar), crop and resize as above, timestamp with a monotonic clock.
+3. **Truth and AC's own delta** per frame from shared memory (`capture/ac_shm.py`):
+   `normalized_car_position`, the lap timer and lap count, and
+   `performance_meter` (AC's delta against its own best lap). The true reference
+   time is the reference lap's time at the live car's spline position (from its
+   `s.npy` and `t.npy`). For a like-for-like comparison with AC's meter, make AC's
+   best lap the reference.
+4. **Deltas:** PRIMAL = live lap elapsed - `ref_time_s`; true = live lap elapsed -
+   true reference time; AC = `performance_meter`.
+5. **Overlay:** an always-on-top window with the PRIMAL delta large, the true and
+   AC deltas beside it, reference progress as a bar (PRIMAL against true), the
+   confidence, and a small preview of the 148x80 input to confirm the crop.
+6. **Log every tick to CSV:** wall time, lap, lap elapsed, `ref_time_s`,
+   `single_ref_time_s`, confidence, true reference time, AC's meter, spline
+   position, speed; plus the delay from frame grab to reading. Put the logs on the
+   share; the Mac will analyse consistency, corners and latency from them.
+
+### What to expect (offline, recorded bot laps)
+
+Unseen tracks (Silverstone, Lime Rock, Oulton), MobileNet: error median ~33 ms,
+~8% of moments over 100 ms. The error is not a fixed offset: it wobbles ±30-50 ms
+over 1-2 s, so a single corner's gain is marginal and a corner-to-corner trend
+readable (`ml-pivot.md`, "Consistent or wobbly"). On the nine training tracks it is
+better; a human pace (imperfect-driver replays) roughly doubles the share over
+100 ms. AC's camera is fixed to the car, so head turns do not apply unless TrackIR
+or similar moves it.

@@ -1242,6 +1242,41 @@ lap with a second tracker given the labelled speed (`--speed-every` in ticks).
 On the cross-car Silverstone demo lap it goes from 3.87 m / 106 ms median and
 52% over budget without speed to 1.59 m / 42 ms and 6% with speed every tick.
 
+### Consistent or wobbly: the error in the delta's changes
+
+A driver reads the delta's changes ("gained a tenth through that corner"), and a
+constant offset cancels out of every change, so an offset is harmless and a wobble
+is not (`experiments/consistency.py`). Unseen tracks, every full lap against
+cross-session references, the two-mode reference-time tracker; delta error = shown
+minus true delta. Steady is the bot's laps as recorded; imperfect replays them at a
+human pace (±5% wander, a mistake a minute), where the true delta really moves:
+
+| model, pace | error: median / >100 ms | lap offset: mean / share of the error | change over 2 s: median / >100 ms | over 5 s | true change, 2 s / 5 s |
+|---|---|---|---|---|---|
+| MobileNetV3-Small, steady | 33 ms / 7.6% | 14 ms / 3% | 40 ms / 12.8% | 50 ms / 19.8% | 36 / 76 ms |
+| MobileNetV3-Small, imperfect | 46 ms / 17.6% | 15 ms / 3% | 61 ms / 28.7% | 71 ms / 35.0% | 73 / 158 ms |
+| ResNet-18, steady | 32 ms / 6.9% | 11 ms / 6% | 36 ms / 11.9% | 50 ms / 20.1% | 36 / 76 ms |
+| ResNet-18, imperfect | 45 ms / 15.8% | 12 ms / 4% | 56 ms / 25.8% | 69 ms / 33.6% | 73 / 158 ms |
+| 0.67M, steady | 40 ms / 15.0% | 20 ms / 1% | 45 ms / 19.6% | 60 ms / 29.2% | 36 / 76 ms |
+| 0.67M, imperfect | 54 ms / 24.2% | 23 ms / 1% | 67 ms / 34.0% | 84 ms / 42.7% | 73 / 158 ms |
+
+- **The delta is not consistently wrong; it wobbles.** The lap's offset is 11-23 ms
+  and carries 1-6% of the error. The rest is a wobble around zero that changes over
+  1-2 s (from tick to tick it moves only 4-8 ms, so the display is steady, not
+  flickering).
+- **So a gain or loss over a corner's length is about as uncertain as the delta
+  itself:** over 2 s the error in the change is 36-45 ms in median, 12-20% of the
+  time over 100 ms; over 5-10 s it levels off at ~50 ms median (two independent
+  errors). Corners are a little worse than straights over 1-2 s (MobileNet: 43%
+  against 38% of 2 s changes off by more than 50 ms).
+- **At a human pace the real changes are bigger, and so is the error in them:**
+  a 2 s change of 73 ms in median is read with 56-67 ms of error; a 5 s change of
+  158 ms with ~70 ms. A corner-to-corner trend is readable; a single corner's gain
+  is marginal.
+- What would make it a teaching delta: less wobble (a better encoder is only a
+  little steadier: ResNet against MobileNet), a display that smooths over a second
+  or two at the cost of lag, or gains reported between confident moments.
+
 ### Most of the unseen-track error was a lag
 
 The tracker trailed the kart. Signed errors (estimate minus truth), median over
