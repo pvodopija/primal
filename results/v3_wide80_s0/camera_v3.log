@@ -1,0 +1,30 @@
+  ks_silverstone__national     live lap02  reference 0260924T104658Z__lap01
+  ks_silverstone__national     live lap04  reference 0260924T104658Z__lap02
+  ks_silverstone__national     live lap05  reference 0260924T104658Z__lap03
+  ks_silverstone__national     live lap06  reference 0260924T104658Z__lap04
+  rt_lime_rock_park__no_chican live lap02  reference 0260928T143440Z__lap04
+  rt_lime_rock_park__no_chican live lap03  reference 0260928T143440Z__lap05
+  rt_lime_rock_park__no_chican live lap04  reference 0260928T143440Z__lap06
+  rt_lime_rock_park__no_chican live lap05  reference 0260928T143440Z__lap07
+  rt_oulton_park__fosters      live lap02  reference 0260929T195157Z__lap03
+  rt_oulton_park__fosters      live lap03  reference 0260929T195157Z__lap04
+  rt_oulton_park__fosters      live lap04  reference 0260929T195157Z__lap05
+  rt_oulton_park__fosters      live lap05  reference 0260929T195157Z__lap06
+
+                                          single >100 ms  tracker median      p90  >100 ms
+level                                              31.8%           37 ms   138 ms    16.6%
+yaw 7                                              47.3%           63 ms   193 ms    32.3%
+yaw 14                                             68.1%          107 ms   352 ms    52.6%
+pitch 5                                            49.3%           59 ms   172 ms    25.4%
+roll 10                                            46.9%           51 ms   205 ms    24.3%
+shake 1                                            31.9%           37 ms   138 ms    17.2%
+shake 2                                            33.0%           39 ms   135 ms    16.6%
+yaw 10, shake 1                                    56.5%           82 ms   240 ms    42.6%
+same session: level                                18.5%           22 ms    65 ms     3.0%
+same session: Halo level                           26.7%           27 ms    95 ms     8.7%
+same session: Halo yaw 10, shake 1                 56.4%           86 ms   284 ms    44.9%
+
+tracker >100 ms per track: level | yaw 7 | yaw 14 | pitch 5 | roll 10 | shake 1 | shake 2 | yaw 10, shake 1 | same session: level | same session: Halo level | same session: Halo yaw 10, shake 1
+  ks_silverstone__national         36.5% | 45.5% | 61.9% | 38.9% | 48.0% | 37.4% | 36.0% | 54.9% |  6.0% | 15.9% | 49.3%
+  rt_lime_rock_park__no_chicane     5.3% | 35.0% | 63.4% | 23.0% | 13.3% |  5.8% |  5.9% | 49.1% |  0.1% |  0.8% | 49.3%
+  rt_oulton_park__fosters           7.2% | 17.3% | 34.6% | 14.5% | 10.8% |  7.5% |  7.1% | 25.4% |  2.4% |  8.5% | 37.0%

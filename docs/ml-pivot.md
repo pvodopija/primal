@@ -1785,7 +1785,14 @@ trained drives), against recorded references from another session:
 
 A held 7° turn triples the errors on tracks the models trained on, the wide
 model included, although it saw these very tracks turned exactly in other laps;
-every track shows it. Pitch and roll are learnable (training on the wide renders
+every track shows it.
+
+**More turned clips trade precision for it** (`v3_wide80_s0`, `--wide-share 0.8`,
+four clips in five from the wide renders, one seed): held turns improve (7°:
+32.3% against 34.1-42.7%; 14°: 52.6% against 62.2-68.0%), but everything level
+gets worse: level under the camera 16.6% against 11.7-13.3%, unseen tracks 15.2%
+with the two-mode tracker against 13.3-15.0%, trained tracks 37.5% against
+31.7-35.3%. Ignoring a turn costs the model what tells nearby places apart. Pitch and roll are learnable (training on the wide renders
 nearly halves them; the pretrained encoder hardly minds them), but a sideways
 turn is not, at this design. The likely reason: the descriptor keeps the
 left-right layout of the picture, and where things sit left to right (where the
