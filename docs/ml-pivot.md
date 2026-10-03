@@ -1799,6 +1799,25 @@ left-right layout of the picture, and where things sit left to right (where the
 road runs, which side the trees are on) is exactly what tells two places a few
 metres apart; a turn moves all of it.
 
+**A turn, taken apart** (`experiments/edge_test.py`, held-out tracks, same-session
+references). A 7° turn at the training view drops the outer 16 px of one side (29 px
+at 14°), moves everything between by 9-16 px, and shows a band of new scenery on the
+other side. Each part added in turn, share of ticks over 100 ms:
+
+| | MobileNet + wide renders, 7° / 14° | 0.67M + wide renders, 7° / 14° |
+|---|---|---|
+| level | 0.9% | 3.6% |
+| one side's edge band hidden, no shift | 3.2% / 8.2% | 6.7% / 15.1% |
+| turned, the newly seen band hidden | 8.9% / 28.7% | 21.6% / 50.0% |
+| turned | 13.5% / 39.0% | 29.3% / 63.3% |
+
+All three parts count. The lost edge costs the least (the track sides do carry
+precise landmarks: hiding 20% of one side costs 0.9% -> 8.2%); the shift of
+everything costs the most; and the new scenery on the other side makes it worse,
+not better (8.9% -> 13.5%), because the reference never saw it. New landmarks help
+only if the reference contains them, which means a reference captured wider than
+the live view: the search below.
+
 ### Head-angle search: turn the reference instead of the model
 
 Instead of asking the model to ignore a turn, prepare the reference at several

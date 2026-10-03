@@ -1,0 +1,15 @@
+{
+  "band_px": {
+    "7": 16,
+    "14": 29
+  },
+  "report": {
+    "level": 0.009234828496042216,
+    "edge lost only (7\u00b0 worth)": 0.03201407211961302,
+    "edge lost only (14\u00b0 worth)": 0.08249780123131047,
+    "turned 7\u00b0, new side hidden": 0.08874230430958663,
+    "turned 7\u00b0": 0.13491644678979772,
+    "turned 14\u00b0, new side hidden": 0.28671943711521547,
+    "turned 14\u00b0": 0.3897097625329815
+  }
+}

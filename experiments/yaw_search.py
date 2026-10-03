@@ -5,7 +5,7 @@ A held sideways turn triples the errors of every model, on trained tracks too (a
 limit: the descriptor keeps the picture's left-right layout, which is the place signal).
 Instead of asking the model to ignore turns, prepare the reference at several head angles
 (possible when the reference is captured wider than the model's view: Halo's 81° against a
-~70° view leaves about ±5°) and, at every tick, use the angle whose reference has matched
+~74° view leaves about ±3.5°) and, at every tick, use the angle whose reference has matched
 the live frames best over the last WINDOW_S seconds. Live frames cost nothing extra.
 
 Held-out tracks, wide renders: live laps turned by THETA (sign alternating lap to lap),
