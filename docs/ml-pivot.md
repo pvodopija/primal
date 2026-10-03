@@ -1971,6 +1971,51 @@ references, share of ticks over 100 ms:
 This is camera-only and needs no retraining: the reference is turned, the model
 is not.
 
+**A gyroscope, and the search's room on Halo** (`experiments/head_angle_options.py`,
+same laps, references straight). The search reads the head angle off 10 s of
+matching, so it follows a held turn and lags a glance into a corner. A gyroscope
+reports the turn at once; with the kart's own turn taken out (the reference shows
+how much the kart turns at each place), it gives the head angle relative to the kart. Its
+ceiling, "perfect gyro": at every tick, the reference angle nearest the head's true
+angle over the clip. On Halo, one camera records both laps, so the room has to come
+from a narrower model view: the centre 112x96 (73.7°) of its 128x96 (81.2°), with
+the reference's crop turned -3.5°, 0° or +3.5° (a turned crop's corners overhang
+the frame by 2 px top and bottom; a real crop would be a few rows shorter).
+
+| MobileNet + wide renders | no search | search (10 s) | perfect gyro |
+|---|---|---|---|
+| **training view (91.5°), reference ±10.5°** | | | |
+| level | 0.9% | 0.9% | 0.9% |
+| held 7° | 13.5% | 1.1% | 1.1% |
+| into corners | 16.2% | 8.5% | **0.9%** |
+| into corners, glasses 7° crooked | 18.9% | 10.8% | 5.3% |
+| **Halo, 74° crop, reference ±3.5°** (81° full view, no search, in brackets) | | | |
+| level | 2.6% (1.5%) | 2.5% | 2.6% |
+| held 3.5° | 7.2% (5.0%) | 2.6% | 2.5% |
+| held 7° | 24.2% (21.1%) | 8.8% | 8.8% |
+| into corners | 27.8% (22.5%) | 20.4% | 16.6% |
+| into corners, glasses 7° crooked | 25.6% (23.3%) | 24.6% | 21.1% |
+
+MobileNet without the wide renders reads the same (training view into corners:
+21.0% / 12.1% / 1.0%; Halo level 3.2% cropped against 1.5% full).
+
+- **A gyro makes looking into corners free, given room to turn the reference:**
+  8.5% -> 0.9%, the level figure. Held turns gain nothing; the search already
+  finds them. What is left with crooked glasses is head angles beyond ±10.5°.
+- **On Halo, the room costs about a point when level** (1.5% -> 2.6%) **and pays
+  for held turns** (3.5°: 5.0% -> 2.6%; 7°: 21.1% -> 8.8%), so it is worth having if
+  the glasses sit even slightly differently from the reference lap. ±3.5° is far
+  too little for corner glances (median 4°, 90th percentile 11°): 22.5% -> 20.4%,
+  16.6% even with a perfect gyro.
+- **Halo's 81° is narrow for head movement:** level it costs little against the
+  training view (1.5% against 0.9%), turned much more (held 7°: 21.1% against
+  13.5%; into corners 22.5% against 16.2%).
+
+So the combination that removes head movement is a **reference wider than the live
+view plus a gyro for the fast part**. The reference only has to be wide once: a
+wider camera for the reference lap, or a reference stitched from several laps that
+looked in different directions. The live glasses keep their whole view.
+
 ---
 
 ## Not built yet

@@ -1,0 +1,82 @@
+{
+  "wide_offsets": [
+    -10.5,
+    -7.0,
+    -3.5,
+    0.0,
+    3.5,
+    7.0,
+    10.5
+  ],
+  "halo_offsets": [
+    -3.5,
+    0.0,
+    3.5
+  ],
+  "window_s": 10.0,
+  "halo_crop_px": [
+    112,
+    96
+  ],
+  "report": {
+    "training view, wide reference": {
+      "level": {
+        "no search": 0.00949868073878628,
+        "search (10 s)": 0.010202286719437115,
+        "perfect gyro": 0.00949868073878628
+      },
+      "held 3.5\u00b0": {
+        "no search": 0.03579595426561126,
+        "search (10 s)": 0.01029023746701847,
+        "perfect gyro": 0.009586631486367634
+      },
+      "held 7\u00b0": {
+        "no search": 0.2276165347405453,
+        "search (10 s)": 0.010729991204925241,
+        "perfect gyro": 0.010466138962181178
+      },
+      "into corners": {
+        "no search": 0.20958663148636764,
+        "search (10 s)": 0.12075637642919965,
+        "perfect gyro": 0.009938434476693053
+      },
+      "into corners + 7\u00b0 crooked": {
+        "no search": 0.25083553210202286,
+        "search (10 s)": 0.1357080035180299,
+        "perfect gyro": 0.052770448548812667
+      }
+    },
+    "Halo": {
+      "level": {
+        "81\u00b0 full view, no search": 0.015479331574318382,
+        "74\u00b0 crop, no search": 0.03218997361477573,
+        "74\u00b0 crop, search (10 s)": 0.03280562884784521,
+        "74\u00b0 crop, perfect gyro": 0.03218997361477573
+      },
+      "held 3.5\u00b0": {
+        "81\u00b0 full view, no search": 0.06710642040457344,
+        "74\u00b0 crop, no search": 0.08856640281442392,
+        "74\u00b0 crop, search (10 s)": 0.0297273526824978,
+        "74\u00b0 crop, perfect gyro": 0.02849604221635884
+      },
+      "held 7\u00b0": {
+        "81\u00b0 full view, no search": 0.28874230430958664,
+        "74\u00b0 crop, no search": 0.3345646437994723,
+        "74\u00b0 crop, search (10 s)": 0.10087950747581355,
+        "74\u00b0 crop, perfect gyro": 0.10175901495162709
+      },
+      "into corners": {
+        "81\u00b0 full view, no search": 0.24758135444151275,
+        "74\u00b0 crop, no search": 0.29252418645558487,
+        "74\u00b0 crop, search (10 s)": 0.20844327176781002,
+        "74\u00b0 crop, perfect gyro": 0.15364995602462622
+      },
+      "into corners + 7\u00b0 crooked": {
+        "81\u00b0 full view, no search": 0.2741424802110818,
+        "74\u00b0 crop, no search": 0.2963060686015831,
+        "74\u00b0 crop, search (10 s)": 0.2642919964819701,
+        "74\u00b0 crop, perfect gyro": 0.23051890941073
+      }
+    }
+  }
+}
