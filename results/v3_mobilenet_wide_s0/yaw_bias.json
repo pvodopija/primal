@@ -1,0 +1,93 @@
+{
+  "ticks": 11370,
+  "bands": {
+    "straight, under 5\u00b0/s": {
+      "ticks": 2697,
+      "median_rate_deg_s": 2.4152539468692,
+      "7": {
+        "toward_tracker_ms": 5.8879852294921875,
+        "toward_single_ms": 5.829811096191406,
+        "away_tracker_ms": -5.8002471923828125,
+        "away_single_ms": -11.7034912109375,
+        "predicted_ms": 2898.2459625307015,
+        "over_100ms_level": 0.016314423433444566,
+        "over_100ms_turned": 0.11012235817575083
+      },
+      "14": {
+        "toward_tracker_ms": 8.190155029296875,
+        "toward_single_ms": 6.397247314453125,
+        "away_tracker_ms": -20.559310913085938,
+        "away_single_ms": -33.39385986328125,
+        "predicted_ms": 5796.491925061403,
+        "over_100ms_level": 0.016314423433444566,
+        "over_100ms_turned": 0.317760474601409
+      }
+    },
+    "gentle bend, 5-15\u00b0/s": {
+      "ticks": 3711,
+      "median_rate_deg_s": 9.097894925227365,
+      "7": {
+        "toward_tracker_ms": 19.378662109375,
+        "toward_single_ms": 22.121429443359375,
+        "away_tracker_ms": -19.3939208984375,
+        "away_single_ms": -22.876739501953125,
+        "predicted_ms": 769.4087541712363,
+        "over_100ms_level": 0.005658852061438965,
+        "over_100ms_turned": 0.09444893559687416
+      },
+      "14": {
+        "toward_tracker_ms": 29.68597412109375,
+        "toward_single_ms": 43.43414306640625,
+        "away_tracker_ms": -51.372528076171875,
+        "away_single_ms": -53.54499816894531,
+        "predicted_ms": 1538.8175083424726,
+        "over_100ms_level": 0.005658852061438965,
+        "over_100ms_turned": 0.34087846941525196
+      }
+    },
+    "bend, 15-30\u00b0/s": {
+      "ticks": 3872,
+      "median_rate_deg_s": 21.476002854544305,
+      "7": {
+        "toward_tracker_ms": 39.841651916503906,
+        "toward_single_ms": 49.268245697021484,
+        "away_tracker_ms": -34.32822227478027,
+        "away_single_ms": -50.63056945800781,
+        "predicted_ms": 325.9452021002469,
+        "over_100ms_level": 0.008522727272727272,
+        "over_100ms_turned": 0.14863119834710745
+      },
+      "14": {
+        "toward_tracker_ms": 97.02301025390625,
+        "toward_single_ms": 101.96089744567871,
+        "away_tracker_ms": -81.83789253234863,
+        "away_single_ms": -96.44317626953125,
+        "predicted_ms": 651.8904042004938,
+        "over_100ms_level": 0.008522727272727272,
+        "over_100ms_turned": 0.4588068181818182
+      }
+    },
+    "tight bend, over 30\u00b0/s": {
+      "ticks": 1090,
+      "median_rate_deg_s": 34.48948885969406,
+      "7": {
+        "toward_tracker_ms": 63.7364387512207,
+        "toward_single_ms": 73.47679138183594,
+        "away_tracker_ms": -55.15098571777344,
+        "away_single_ms": -67.047119140625,
+        "predicted_ms": 202.9606345313335,
+        "over_100ms_level": 0.006422018348623854,
+        "over_100ms_turned": 0.20779816513761468
+      },
+      "14": {
+        "toward_tracker_ms": 125.95367431640625,
+        "toward_single_ms": 149.2624282836914,
+        "away_tracker_ms": -107.54585266113281,
+        "away_single_ms": -126.21831893920898,
+        "predicted_ms": 405.921269062667,
+        "over_100ms_level": 0.006422018348623854,
+        "over_100ms_turned": 0.5743119266055046
+      }
+    }
+  }
+}

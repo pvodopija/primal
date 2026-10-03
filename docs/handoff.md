@@ -1819,3 +1819,24 @@ readable (`ml-pivot.md`, "Consistent or wobbly"). On the nine training tracks it
 better; a human pace (imperfect-driver replays) roughly doubles the share over
 100 ms. AC's camera is fixed to the car, so head turns do not apply unless TrackIR
 or similar moves it.
+
+## 2026-10-03 (later) — Mac → Windows: wider wander, added to the wish list
+
+Moving sideways and turning the head hurt very differently. A sideways step barely
+moves distant scenery and never moves where the road points in the picture; a turn
+moves all of it, and through a bend looks like being further round it. The rig's
+wander (~2.5 m) has been in nearly every lap since the start and never showed up
+as a failure, but its effect on real footage has never been measured, and the far
+side of the track has hardly been seen. Turns can be computed exactly from the
+wide renders on the Mac; sideways steps cannot (they need depth), so they have to
+come from AC.
+
+Added to the 2026-10-02 wish list, together with its item 2 (fixed ±3 m offset laps
+on the three holdouts, `lateral_m.npy`):
+
+- **Wider-wander training sessions:** the same camera as `packed_ac_v3_wide` (90°
+  vertical, look-into-corner off), wander widened to about ±4 m and kept inside the
+  track edges, one session (~10 laps) per training track, each frame's lateral
+  position packed as `lateral_m.npy`. A separate set (`packed_ac_v3_wide4m` or
+  similar), so it can be trained with and without and compared, since tolerance
+  bought this way may cost precision on the usual line.

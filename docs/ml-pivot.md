@@ -1853,6 +1853,38 @@ not better (8.9% -> 13.5%), because the reference never saw it. New landmarks he
 only if the reference contains them, which means a reference captured wider than
 the live view: the search below.
 
+**In a bend, a turned head looks like progress** (`experiments/yaw_bias.py`, same
+laps and references, every lap level and turned both ways). Moving sideways never
+moves where the road points in the picture; turning does, and through a bend the
+kart's own heading turns, so a head turned toward the bend shows what the kart sees
+a little further on. The error leans exactly that way: ahead with the head turned
+into the bend, behind turned away, by more the sharper the bend and the bigger the
+turn. Median shift the turn causes (turned minus level error, two-mode tracker,
+toward / away), with the kart's turn rate read off the frames:
+
+| where | MobileNet + wide renders, 7° | 14° | MobileNet, 7° | 14° |
+|---|---|---|---|---|
+| straight (under 5°/s) | +6 / -6 ms | +8 / -21 ms | +8 / -15 ms | -15 / -49 ms |
+| gentle bend (5-15°/s) | +19 / -19 ms | +30 / -51 ms | +23 / -29 ms | +29 / -74 ms |
+| bend (15-30°/s) | +40 / -34 ms | +97 / -82 ms | +54 / -52 ms | +123 / -131 ms |
+| tight bend (over 30°/s) | +64 / -55 ms | +126 / -108 ms | +88 / -78 ms | +192 / -160 ms |
+
+A pure rotation would be θ divided by the turn rate (about 200 ms for 7° in a tight
+bend); the model takes about a third of that bait in tight bends and less in gentle
+ones, where the scenery's sideways and forward motion disagree with it. Training on
+turns cuts the lean by about a third and does not remove it. On straights there is
+almost no lean, yet a 7° turn still puts 11% of ticks over 100 ms (31.8% at 14°, wide-trained model):
+there the cost is scatter from the lost edge and new scenery, not a bias.
+
+For the product this is the worst kind of error: a driver who looks into every
+corner, against a reference that did not, is shown gaining on every corner entry
+and giving it back on the exit. It cancels when both laps carry the same habit
+(below: both laps into corners, 5.6%), and, being a lean the frames themselves
+reveal, it is what the head-angle search removes. Sideways line wander, which the
+rig has put in nearly every lap since the start, has no such twin in forward
+progress; its cost on real footage is still unmeasured (it needs the fixed-offset
+laps and per-frame lateral position on the Windows wish list).
+
 ### Head-angle search: turn the reference instead of the model
 
 Instead of asking the model to ignore a turn, prepare the reference at several
