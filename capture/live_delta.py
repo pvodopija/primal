@@ -26,14 +26,25 @@ used until the camera has crossed once). True delta = lap elapsed - the referenc
 time at the camera's position; PRIMAL delta = lap elapsed - Reading.ref_time_s. Both
 use one clock, so their difference is PRIMAL's position error alone.
 
-In the overlay window: q quits, r records a new reference from the next lap.
+Two wheel buttons, picked in the overlay the first time a wheel is seen (read through
+Windows' joystick API, whichever window has focus; kept in ~/.primal_live_wheel.json):
+  RECORD  arms a reference lap, recorded from the line to the line by itself. Pressed up
+          to 3 s after the line it starts from that line; around the end of the lap it
+          does nothing (the lap stops at the line anyway); mid-lap it cancels.
+  CAMERA  cycles the rig's camera presets (CAMERAS): the training view, wider, lower,
+          higher, looking into corners, and AC's own cameras (the rig lets go, so AC's
+          camera button works again). Each camera keeps its own reference; rig.txt is
+          put back as it was on exit.
+In the overlay window: q quits, r = RECORD, c = CAMERA, b picks the wheel buttons again.
 Every tick goes to ticks.csv in D:\\Documents\\Transfer\\live_logs\\<run>\\.
 """
 from __future__ import annotations
 
 import argparse
 import csv
+import ctypes
 import json
+import os
 import queue
 import threading
 import time
@@ -47,6 +58,7 @@ import numpy as np
 import torch
 
 from capture.ac_shm import STATUS_LIVE, STATUS_REPLAY, AcSharedMemory, AcSnapshot
+from capture.install_overlay import find_ac_root
 from capture.pack import crop_rows
 from capture.timecode import HIGH_REF_CELLS, LOW_REF_CELLS, OverlayGeometry, decode_frame, sample_cells
 from train.dataset import Lap, LapIndex, ReferenceGrid, _speed_from_labels, build_reference_grid
@@ -64,6 +76,23 @@ STALE_S = 0.5        # frames older than this when the worker gets to them are n
 LINE_PAD_S = 0.5
 LOG_DIR = Path(r"D:\Documents\Transfer\live_logs")
 WINDOW = "PRIMAL live delta"
+WHEEL_FILE = Path.home() / ".primal_live_wheel.json"  # the wheel buttons you picked, per wheel
+PRESS_WINDOW_S = 3.0  # RECORD pressed this soon after the line starts the lap from that line
+
+# Camera presets the CAMERA button cycles through, written into the rig's rig.txt (it
+# re-reads it twice a second). The first is the view the v3 models were trained on;
+# "ac" switches the rig off and hands the camera back to AC, whose own camera button
+# then works again. A reference only matches live laps from its own camera.
+_TRAINING = dict(enabled=1, replay_only=0, lateral_m=0, wander_m=0, forward_m=2.2, height_m=1.15, fov_deg=60, look=0)
+CAMERAS = {
+    "training": ("training view", _TRAINING),
+    "wide": ("wide, FOV 90", {**_TRAINING, "fov_deg": 90}),
+    "low": ("low, 0.6 m", {**_TRAINING, "height_m": 0.6}),
+    "high": ("high, 2 m", {**_TRAINING, "height_m": 2.0}),
+    "look": ("looks into corners", {**_TRAINING, "look": 1}),
+    "ac": ("AC's own cameras", {"enabled": 0}),
+}
+SETTLE_S = 1.0  # after a camera switch: the rig's re-read, and AC's camera settling
 
 
 @dataclass
@@ -155,6 +184,121 @@ class UiState:
     fps: float = 0.0
     drops: int = 0
     done: bool = False
+    camera: str = ""
+    rec: str = ""        # "", "armed", "recording" or "encoding"
+    prompt: str = ""     # a question that needs the wheel, drawn over the deltas
+
+
+class Rig:
+    """The camera rig's rig.txt: switch presets, and put the file back as it was on exit."""
+
+    def __init__(self) -> None:
+        root = find_ac_root()
+        self.path = root / "apps" / "lua" / "primal_rig" / "rig.txt" if root else None
+        if self.path is None or not self.path.exists():
+            raise SystemExit("camera rig not installed (apps/lua/primal_rig/rig.txt)")
+        self.original = self.path.read_text()
+
+    def apply(self, values: dict) -> None:
+        lines, seen = [], set()
+        for line in self.path.read_text().splitlines():
+            key = line.split("=")[0].strip()
+            if key in values:
+                line = f"{key} = {values[key]}"
+                seen.add(key)
+            lines.append(line)
+        lines += [f"{k} = {v}" for k, v in values.items() if k not in seen]
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text("\n".join(lines) + "\n")
+        os.replace(tmp, self.path)
+
+    def restore(self) -> None:
+        self.path.write_text(self.original)
+
+
+class _JoyInfo(ctypes.Structure):
+    _fields_ = [(name, ctypes.c_uint32) for name in ("dwSize", "dwFlags", "dwXpos", "dwYpos", "dwZpos", "dwRpos",
+                "dwUpos", "dwVpos", "dwButtons", "dwButtonNumber", "dwPOV", "dwReserved1", "dwReserved2")]
+
+
+class _JoyCaps(ctypes.Structure):
+    _fields_ = ([("wMid", ctypes.c_uint16), ("wPid", ctypes.c_uint16), ("szPname", ctypes.c_wchar * 32)]
+                + [(f"u{i}", ctypes.c_uint32) for i in range(19)]
+                + [("szRegKey", ctypes.c_wchar * 32), ("szOEMVxD", ctypes.c_wchar * 260)])
+
+
+def button_name(b: int) -> str:
+    return {101: "D-pad up", 102: "D-pad right", 103: "D-pad down", 104: "D-pad left"}.get(b, f"button {b}")
+
+
+class Wheel(threading.Thread):
+    """
+    Wheel buttons through Windows' own joystick API (winmm; nothing to install), read
+    whichever window has focus. D-pad directions count as buttons 101-104. The first
+    time a wheel is seen it asks for the two buttons in the overlay, and remembers them.
+    """
+
+    ACTIONS = {"record": "RECORD REFERENCE", "camera": "CAMERA"}
+
+    def __init__(self, on_press, ui: UiState) -> None:
+        super().__init__(daemon=True)
+        self.on_press, self.ui = on_press, ui
+        self.winmm = ctypes.windll.winmm
+        self.id, self.key = None, ""
+        for i in range(16):
+            caps = _JoyCaps()
+            if self.winmm.joyGetDevCapsW(i, ctypes.byref(caps), ctypes.sizeof(caps)) == 0 and self._read(i) is not None:
+                self.id, self.key = i, f"{caps.wMid:04x}:{caps.wPid:04x}"
+                break
+        saved = json.loads(WHEEL_FILE.read_text()) if WHEEL_FILE.exists() else {}
+        self.bindings: dict[str, int] = saved.get(self.key, {})
+        self.learning: list[str] = []
+        if self.id is not None and set(self.bindings) != set(self.ACTIONS):
+            self.learn()
+
+    @property
+    def found(self) -> bool:
+        return self.id is not None
+
+    def _read(self, i: int) -> set[int] | None:
+        info = _JoyInfo(dwSize=ctypes.sizeof(_JoyInfo), dwFlags=0xFF)
+        if self.winmm.joyGetPosEx(i, ctypes.byref(info)) != 0:
+            return None
+        pressed = {b + 1 for b in range(32) if info.dwButtons >> b & 1}
+        if info.dwPOV != 0xFFFF:
+            pressed.add(101 + int(info.dwPOV) // 9000)
+        return pressed
+
+    def learn(self) -> None:
+        self.bindings, self.learning = {}, list(self.ACTIONS)
+        self._ask()
+
+    def _ask(self) -> None:
+        self.ui.prompt = f"Press the wheel button for {self.ACTIONS[self.learning[0]]}" if self.learning else ""
+
+    def describe(self) -> str:
+        return ", ".join(f"{self.ACTIONS[a]} = {button_name(b)}" for a, b in self.bindings.items())
+
+    def run(self) -> None:
+        before: set[int] = set()
+        while True:
+            now = self._read(self.id) or set()
+            for b in sorted(now - before):
+                if self.learning:
+                    if b in self.bindings.values():
+                        continue
+                    self.bindings[self.learning.pop(0)] = b
+                    self._ask()
+                    if not self.learning:
+                        saved = json.loads(WHEEL_FILE.read_text()) if WHEEL_FILE.exists() else {}
+                        WHEEL_FILE.write_text(json.dumps({**saved, self.key: self.bindings}, indent=2))
+                        self.ui.message = f"wheel: {self.describe()}  (b in this window: pick again)"
+                else:
+                    for action, bound in self.bindings.items():
+                        if bound == b:
+                            self.on_press(action)
+            before = now
+            time.sleep(0.015)
 
 
 def capture_loop(source, prep: Preprocess, shm: AcSharedMemory | None, out: queue.Queue, ui: UiState,
@@ -269,36 +413,45 @@ def lap_delta(elapsed: float, ref_time: float, period: float) -> float:
 
 
 class Worker(threading.Thread):
-    """Lap clock, truth, LiveDelta and the log, one frame at a time in grab order."""
+    """
+    Lap clock, truth, LiveDelta and the log, one frame at a time in grab order. Each
+    camera preset keeps its own reference; button presses arrive as commands and are
+    handled between frames, at the time of the frame.
+    """
 
     def __init__(self, model, clip_len: int, device: torch.device, frames: queue.Queue, ui: UiState,
-                 run_dir: Path, track_length_m: float, live_source: bool) -> None:
+                 run_dir: Path, track_length_m: float, live_source: bool, rig: Rig | None) -> None:
         super().__init__(daemon=True)
         self.model, self.clip_len, self.device = model, clip_len, device
         self.frames, self.ui, self.run_dir = frames, ui, run_dir
         self.track_length = track_length_m
         self.live_source = live_source
+        self.rig = rig
+        self.commands: queue.Queue[str] = queue.Queue()
+        self.camera = "training"
+        self.refs: dict[str, tuple[LiveDelta, ReferenceGrid, str]] = {}
         self.engine: LiveDelta | None = None
         self.grid: ReferenceGrid | None = None
         self.ref_name = ""
-        self.want_reference = False
+        self.armed = False
         self.recording: Recording | None = None
-        self.recent: deque[Frame] = deque(maxlen=120)
+        self.recent: deque[Frame] = deque(maxlen=int(60 * (PRESS_WINDOW_S + LINE_PAD_S + 1)))
         self.lap_start: float | None = None
+        self.last_line: float | None = None      # the latest line crossing
+        self.finished_line: float | None = None  # the line that ended the latest recording
+        self.settle_until = 0.0
         self.crossings = 0
         self.prev: tuple[float, float] | None = None
         self.rows: list[dict] = []
         self.stale = 0
         self.log = open(run_dir / "ticks.csv", "w", newline="")
         self.writer: csv.DictWriter | None = None
+        self.ui.camera = CAMERAS[self.camera][0]
 
     def use(self, engine: LiveDelta, grid: ReferenceGrid, name: str) -> None:
+        self.refs[self.camera] = (engine, grid, name)
         self.engine, self.grid, self.ref_name = engine, grid, name
         self.ui.message = f"reference: {name} ({grid.lap_time_s:.2f} s)"
-
-    def request_reference(self) -> None:
-        self.want_reference = True
-        self.ui.message = "reference: recording your next lap from the line - drive it clean"
 
     def run(self) -> None:
         try:
@@ -306,12 +459,71 @@ class Worker(threading.Thread):
                 f = self.frames.get()
                 if f is None:
                     break
+                while not self.commands.empty():
+                    self.command(self.commands.get_nowait(), f.t)
                 self.step(f)
         finally:
             self.log.close()
             self.ui.done = True
 
+    # --- buttons
+
+    def command(self, what: str, t: float) -> None:
+        if what == "record":
+            self.press_record(t)
+        elif what == "camera":
+            self.next_camera(t)
+
+    def press_record(self, t: float) -> None:
+        """
+        One press arms a reference lap; it records from the line to the line by itself.
+        Pressed just after the line, it starts from that line. Pressed around the end of
+        the lap it changes nothing (the lap ends at the line anyway); mid-lap it cancels.
+        """
+        rec = self.recording
+        s = self.prev[1] if self.prev else float("nan")
+        if rec is not None:
+            if rec.ends_at is None and 0.1 < s < 0.9:
+                self.recording, self.ui.rec = None, ""
+                self.ui.message = "reference: recording cancelled"
+            return
+        if self.finished_line is not None and t - self.finished_line < PRESS_WINDOW_S:
+            return  # the press that meant "stop at the line"
+        if self.armed:
+            self.armed, self.ui.rec = False, ""
+            self.ui.message = "reference: cancelled"
+        elif self.last_line is not None and t - self.last_line < PRESS_WINDOW_S and self.last_line > self.settle_until:
+            self.start_recording(self.last_line)
+        else:
+            self.armed, self.ui.rec = True, "armed"
+            self.ui.message = f"reference ({CAMERAS[self.camera][0]}): recording starts at the line"
+
+    def next_camera(self, t: float) -> None:
+        if self.rig is None:
+            self.ui.message = "no camera rig with this source"
+            return
+        names = list(CAMERAS)
+        self.camera = names[(names.index(self.camera) + 1) % len(names)]
+        label, values = CAMERAS[self.camera]
+        self.rig.apply(values)
+        self.ui.camera = label
+        self.recording, self.armed, self.ui.rec = None, False, ""
+        # new camera, new picture: no deltas until its reference, and its own line crossing
+        self.settle_until, self.lap_start, self.prev, self.ui.row = t + SETTLE_S, None, None, None
+        if self.camera in self.refs:
+            engine, grid, name = self.refs[self.camera]
+            engine.reset()
+            self.use(engine, grid, name)
+        else:
+            self.engine = self.grid = None
+            self.ref_name = ""
+            self.ui.message = f"camera: {label}. No reference yet: press RECORD, then drive a lap from the line"
+
+    # --- frames
+
     def step(self, f: Frame) -> None:
+        if f.t < self.settle_until:
+            return
         crossed = None
         if np.isfinite(f.cam_s):
             if self.prev is not None and self.prev[1] > 0.9 and f.cam_s < 0.1 and f.t - self.prev[0] < 0.5:
@@ -319,11 +531,11 @@ class Worker(threading.Thread):
                 crossed = self.prev[0] + frac * (f.t - self.prev[0])
             self.prev = (f.t, f.cam_s)
         if crossed is not None:
-            self.lap_start = crossed
+            self.lap_start = self.last_line = crossed
             self.crossings += 1
             if self.recording is not None and self.recording.ends_at is None:
                 self.recording.ends_at = crossed + LINE_PAD_S
-            elif self.want_reference and self.recording is None:
+            elif self.armed and self.recording is None:
                 self.start_recording(crossed)
         self.recent.append(f)
         if self.recording is not None:
@@ -340,29 +552,34 @@ class Worker(threading.Thread):
             self.record(reading, f, time.monotonic())
 
     def start_recording(self, line_t: float) -> None:
+        self.armed = False
         self.recording = Recording()
         for f in self.recent:
             if f.t >= line_t - LINE_PAD_S:
                 self.recording.add(f)
-        self.ui.message = "reference: recording this lap - drive it clean"
+        self.ui.rec = "recording"
+        self.ui.message = f"reference ({CAMERAS[self.camera][0]}): recording this lap - drive it clean"
 
     def finish_recording(self) -> None:
         lap, self.recording = self.recording, None
+        self.finished_line = lap.ends_at - LINE_PAD_S
         problem = lap.problem(self.track_length)
         if problem:
-            self.ui.message = f"reference: that lap won't do ({problem}); recording the next one"
-            self.start_recording(lap.ends_at - LINE_PAD_S)
+            self.start_recording(self.finished_line)
+            self.ui.message = f"reference: that lap won't do ({problem}); recording this one instead"
             return
         frames, t, s = np.stack(lap.frames), np.asarray(lap.t), np.asarray(lap.s, dtype=np.float64)
-        out = self.run_dir / f"reference_{self.crossings:02d}"
+        out = self.run_dir / f"reference_{self.camera}_{self.crossings:02d}"
         out.mkdir()
         np.save(out / "frames.npy", frames)
         np.save(out / "t.npy", t)
         np.save(out / "s.npy", s)
-        (out / "meta.json").write_text(json.dumps({"track_length_m": self.track_length}))
+        (out / "meta.json").write_text(json.dumps({"track_length_m": self.track_length, "camera": self.camera,
+                                                   "rig": CAMERAS[self.camera][1]}))
+        self.ui.rec = "encoding"
         self.ui.message = "reference: encoding the lap you just drove..."
         engine, grid = engine_from_arrays(self.model, frames, s, t, self.track_length, self.clip_len, self.device)
-        self.want_reference = False
+        self.ui.rec = ""
         self.use(engine, grid, f"your lap ({out.name})")
 
     def record(self, r: Reading, f: Frame, now: float) -> None:
@@ -396,6 +613,7 @@ class Worker(threading.Thread):
             "speed_kmh": round(snap.speed_kmh, 2) if snap else float("nan"),
             "delay_ms": round(1000 * (now - r.t), 1) if self.live_source else float("nan"),
             "queue": self.frames.qsize(),
+            "camera": self.camera,
             "reference_lap_s": round(period, 3),
             "reference": self.ref_name,
         }
@@ -478,6 +696,13 @@ def render(ui: UiState) -> np.ndarray:
         img[12:172, w - 308:w - 12] = cv2.resize(ui.preview, (296, 160), interpolation=cv2.INTER_NEAREST)
     cv2.rectangle(img, (w - 309, 11), (w - 12, 172), (90, 90, 90), 1)
     text(img, "PRIMAL delta", (14, 30), font, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
+    if ui.camera:
+        text(img, f"cam: {ui.camera}", (150, 30), font, 0.5, (200, 200, 120), 1, cv2.LINE_AA)
+    if ui.rec:
+        colour = {"armed": (60, 200, 230), "recording": (60, 60, 240), "encoding": (200, 200, 200)}[ui.rec]
+        cv2.circle(img, (w - 290, 30), 7, colour, -1)
+        text(img, {"armed": "REC at the line", "recording": "REC", "encoding": "encoding"}[ui.rec], (w - 278, 36),
+             font, 0.55, colour, 2, cv2.LINE_AA)
     if row is None:
         text(img, "--", (14, 106), bold, 2.4, (150, 150, 150), 4, cv2.LINE_AA)
     else:
@@ -507,6 +732,13 @@ def render(ui: UiState) -> np.ndarray:
     if ui.drops:
         text(img, f"dropped {ui.drops}", (w - 120, 194), font, 0.45, (80, 80, 235), 1, cv2.LINE_AA)
     text(img, ui.message[:90], (14, 258), font, 0.45, (90, 200, 230), 1, cv2.LINE_AA)
+    if ui.prompt:
+        cv2.rectangle(img, (0, 40), (w - 320, 240), (40, 40, 40), -1)
+        text(img, "Wheel setup", (14, 80), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
+        words = ui.prompt.split(" for ")
+        text(img, words[0] + " for", (14, 130), font, 0.65, (90, 200, 230), 2, cv2.LINE_AA)
+        text(img, words[-1], (14, 170), bold, 0.9, (90, 230, 255), 2, cv2.LINE_AA)
+        text(img, "pick one AC doesn't use; not triangle", (14, 215), font, 0.45, (170, 170, 170), 1, cv2.LINE_AA)
     return img
 
 
@@ -559,8 +791,10 @@ def main() -> None:
         track_key = track_key_of(snap)
         car, track_length = snap.car_model, snap.track_length_m
         source = ObsCamera(args.camera)
+        rig = Rig()
+        rig.apply(CAMERAS["training"][1])
     else:
-        shm = None
+        shm = rig = None
         meta = json.loads((Path(args.source).parent / "run.json").read_text())
         track_key = f"{meta['track']}__{meta['track_config']}" if meta.get("track_config") else meta["track"]
         car, track_length = meta["car_model"], float(meta["track_length_m"])
@@ -571,11 +805,12 @@ def main() -> None:
     run_dir.mkdir(parents=True)
     ui = UiState()
     frames: queue.Queue = queue.Queue(maxsize=240)
-    worker = Worker(model, clip_len, device, frames, ui, run_dir, track_length, source.live)
+    worker = Worker(model, clip_len, device, frames, ui, run_dir, track_length, source.live, rig)
 
     start = time.perf_counter()
     if args.reference == "live":
-        worker.request_reference()
+        worker.armed, ui.rec = True, "armed"
+        ui.message = "reference: recording starts at the line"
         ref_desc = "live"
     elif Path(args.reference).is_dir():
         d = Path(args.reference)
@@ -598,6 +833,11 @@ def main() -> None:
         "checkpoint": args.checkpoint, "source": args.source, "threads": args.threads, "device": args.device,
         "crop_rows": [prep.lo, prep.hi], "frame_size": list(prep.size)}, indent=2))
 
+    wheel = Wheel(worker.commands.put, ui) if args.source == "obs" else None
+    if wheel is not None and wheel.found:
+        wheel.start()
+        if wheel.bindings:
+            print(f"wheel {wheel.key}: {wheel.describe()}")
     stop = threading.Event()
     grabber = threading.Thread(target=capture_loop, args=(source, prep, shm, frames, ui, stop), daemon=True)
     worker.start()
@@ -617,7 +857,11 @@ def main() -> None:
                 if key == ord("q") or cv2.getWindowProperty(WINDOW, cv2.WND_PROP_VISIBLE) < 1:
                     break
                 if key == ord("r"):
-                    worker.request_reference()
+                    worker.commands.put("record")
+                elif key == ord("c"):
+                    worker.commands.put("camera")
+                elif key == ord("b") and wheel is not None and wheel.found:
+                    wheel.learn()
             cv2.destroyAllWindows()
     except KeyboardInterrupt:
         pass
@@ -632,6 +876,8 @@ def main() -> None:
         source.close()
         if shm is not None:
             shm.close()
+        if rig is not None:
+            rig.restore()
     summary = summarize(worker.rows, worker, ui)
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2))

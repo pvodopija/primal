@@ -55,6 +55,7 @@ class LiveDelta:
         with torch.no_grad():
             self.ref = torch.cat([self._encode(reference_frames[i:i + 256]) for i in range(0, len(reference_frames), 256)])
         self.scale = model.logit_scale.exp()
+        self.seed = seed
         self.tracker = ProgressEstimator(self.times, self.lap_time, EstimatorConfig(**TRACKER), seed=seed)
         self.history: deque[tuple[float, torch.Tensor]] = deque()
         # Frames between the ones clips use are skipped, when ticks fall on the clip spacing.
@@ -68,6 +69,12 @@ class LiveDelta:
         grid = reference.reference_grid("time")
         return cls(model, np.asarray(reference.frames()[grid.frame_idx]), grid.time_s, grid.lap_time_s,
                    int(payload["args"]["clip_len"]), device)
+
+    def reset(self) -> None:
+        """Forget the live frames and the tracker's belief; keep the encoded reference."""
+        self.tracker = ProgressEstimator(self.times, self.lap_time, EstimatorConfig(**TRACKER), seed=self.seed)
+        self.history.clear()
+        self.next_tick = self.last_tick = None
 
     def _encode(self, frames: np.ndarray) -> torch.Tensor:
         return self.model.encode_reference(torch.from_numpy(_to_chw(np.asarray(frames))).to(self.device), use_checkpoint=False)
