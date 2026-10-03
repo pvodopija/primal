@@ -465,6 +465,7 @@ class Worker(threading.Thread):
         self.lap_flags: set[str] = {"out lap"}       # reset at each line: what made this lap unclean
         self.primal_line: float | None = None         # the line, as PRIMAL's own position crosses it
         self.prev_reading: Reading | None = None
+        self.primal_ahead = False  # PRIMAL has passed the line and the lap clock hasn't yet
         self.prev: tuple[float, float] | None = None
         self.rows: list[dict] = []
         self.stale = 0
@@ -577,6 +578,7 @@ class Worker(threading.Thread):
             self.prev = (f.t, f.cam_s)
         if crossed is not None:
             self.lap_start = self.last_line = crossed
+            self.primal_ahead = False
             self.crossings += 1
             self.lap_flags = set()
             self.ui.lap_flags = ""
@@ -644,7 +646,11 @@ class Worker(threading.Thread):
         if last is not None and last.ref_time_s > 0.75 * period and r.ref_time_s < 0.25 * period:
             frac = (period - last.ref_time_s) / (r.ref_time_s + period - last.ref_time_s)
             self.primal_line = last.t + frac * (r.t - last.t)
+            # Passing the line late in the clock's lap means PRIMAL got there first: until
+            # the clock's own crossing, its reference time belongs to the next lap.
+            self.primal_ahead = np.isfinite(elapsed) and elapsed > period / 2
         self.prev_reading = r
+        ref_for_delta = r.ref_time_s + period if self.primal_ahead else r.ref_time_s
         primal_only = (lap_delta(r.t - self.primal_line, r.ref_time_s, period) if self.primal_line is not None
                        else float("nan"))
         row = {
@@ -660,7 +666,7 @@ class Worker(threading.Thread):
             "single_ref_time_s": round(r.single_ref_time_s, 4),
             "confidence": round(r.confidence, 4),
             "true_ref_time_s": round(true_ref, 4),
-            "primal_delta_s": round(lap_delta(elapsed, r.ref_time_s, period), 4),
+            "primal_delta_s": round(lap_delta(elapsed, ref_for_delta, period), 4),
             "true_delta_s": round(lap_delta(elapsed, true_ref, period), 4),
             "error_ms": round(1000 * wrap(r.ref_time_s - true_ref, period), 1),
             "camera_only_delta_s": round(primal_only, 4),
