@@ -1,0 +1,42 @@
+{
+  "offsets": [
+    -10.5,
+    -7.0,
+    -3.5,
+    0.0,
+    3.5,
+    7.0,
+    10.5
+  ],
+  "window_s": 10.0,
+  "report": {
+    "0": {
+      "no search": 0.009234828496042216,
+      "right angle given": 0.009234828496042216,
+      "search \u00b110.5\u00b0": 0.009410729991204925,
+      "search \u00b13.5\u00b0 (Halo)": 0.009234828496042216,
+      "search picks the right angle": 0.991820580474934
+    },
+    "3.5": {
+      "no search": 0.025329815303430078,
+      "right angle given": 0.010817941952506595,
+      "search \u00b110.5\u00b0": 0.01108179419525066,
+      "search \u00b13.5\u00b0 (Halo)": 0.01108179419525066,
+      "search picks the right angle": 0.9949868073878628
+    },
+    "7": {
+      "no search": 0.13491644678979772,
+      "right angle given": 0.010554089709762533,
+      "search \u00b110.5\u00b0": 0.010905892700087952,
+      "search \u00b13.5\u00b0 (Halo)": 0.022691292875989446,
+      "search picks the right angle": 0.990589270008795
+    },
+    "14": {
+      "no search": 0.3897097625329815,
+      "right angle given": 0.030343007915567283,
+      "search \u00b110.5\u00b0": 0.030343007915567283,
+      "search \u00b13.5\u00b0 (Halo)": 0.2612137203166227,
+      "search picks the right angle": 1.0
+    }
+  }
+}

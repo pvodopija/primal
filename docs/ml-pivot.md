@@ -1792,6 +1792,55 @@ left-right layout of the picture, and where things sit left to right (where the
 road runs, which side the trees are on) is exactly what tells two places a few
 metres apart; a turn moves all of it.
 
+### Head-angle search: turn the reference instead of the model
+
+Instead of asking the model to ignore a turn, prepare the reference at several
+head angles and use, at every tick, the angle whose reference matched the live
+frames best over the last 10 s (`experiments/yaw_search.py`). Head posture changes
+slowly, so the angle holds still while the delta runs. Live frames cost nothing
+extra: the reference is encoded once per angle before the session, and only the
+correlation is repeated. On the glasses it needs the reference captured wider than
+the model's view: Halo's 81° against a ~74° view leaves ±3.5° (3 angles); the
+wide renders allow ±10.5° in 3.5° steps (7 angles).
+
+**A held turn, same-session references** (the only exact way to turn a reference;
+four laps per unseen track, share of ticks over 100 ms, two-mode tracker):
+
+| model | held turn | no search | right angle given | search ±10.5° | search ±3.5° (Halo) | search picks the right angle |
+|---|---|---|---|---|---|---|
+| MobileNetV3-Small + wide renders | 0° | 0.9% | 0.9% | 0.9% | 0.9% | 99% |
+| | 3.5° | 2.5% | 1.1% | 1.1% | 1.1% | 99% |
+| | 7° | 13.5% | 1.1% | 1.1% | 2.3% | 99% |
+| | 14° | 39.0% | 3.0% | 3.0% | 26.1% | 100% (10.5°) |
+| MobileNetV3-Small | 7° | 22.8% | 1.0% | 1.1% | 3.1% | 100% |
+| | 14° | 54.7% | 4.2% | 4.2% | 39.3% | 100% (10.5°) |
+| 0.67M + wide renders | 7° | 29.3% | 3.2% | 3.3% | 8.0% | 97% |
+| | 14° | 63.3% | 8.9% | 8.9% | 48.8% | 100% (10.5°) |
+
+The search finds the turn almost every time and undoes it completely: a held 7°
+turn goes back to the level error for every model, 14° to within a few points
+(the grid stops at 10.5°). With Halo's ±3.5° a 7° turn keeps a 3.5° remainder,
+which the models mostly tolerate (2-8%).
+
+**Across sessions, where there is no turn to find** (references wide laps of the
+held-out tracks, lives recorded laps of another session, the other car when
+straight ahead; the turning-into-corners lives are the three look re-renders not
+of the reference's own drive):
+
+| model | straight ahead: no search / ±10.5° / ±3.5° | turning into corners: no search / ±10.5° / ±3.5° | stays at 0° |
+|---|---|---|---|
+| MobileNetV3-Small + wide renders | 17.9% / 17.4% / 14.3% | 2.9% / 5.7% / 5.7% | 67-74% |
+| MobileNetV3-Small | 15.6% / 15.0% / 15.8% | 1.8% / 5.9% / 5.9% | 63-75% |
+| 0.67M + wide renders | 14.7% / 16.1% / 15.9% | 5.9% / 8.2% / 7.9% | 75-80% |
+
+Straight ahead it is neutral within 1.5 points either way, but on the laps that
+turn into corners it costs 2-4 points (three laps): it leaves 0° on a quarter to a
+third of the ticks, and an angle picked in a corner lingers into the next straight.
+Two cars on two lines may also differ in heading by a few degrees at the same
+place, which a search would legitimately absorb. The search needs a pull towards
+0°, switching only when another angle is clearly better, tuned on the trained
+tracks; as it stands it fixes the hard case and taxes the easy one.
+
 ---
 
 ## Not built yet
