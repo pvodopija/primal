@@ -60,8 +60,8 @@ right lessons: a driver must be able to trust "I gained in that corner".
 | O5 | Pretraining was the biggest single lever; more general or real driving video may push it further |
 | O6 | Indoor karting: GPS timers cannot work there |
 | O7 | Train on how people actually look: both laps following the road ahead, so the common case is the trained case (see *Decisions in progress*) |
-| O9 | **Head coaching, which no GPS timer can do:** the camera sits where the driver looks, so it can measure how early and how far the head turns into each corner and tie that to the corner's time gain from the delta. Head only: telling tangent point from future path needs an eye tracker |
 | O8 | Motorcycles: a delta in the helmet, where a dash is hard to read leaned over. Needs large roll tolerance (40-55° lean); GPS timers with predictive delta already exist there, so the edge is the display, not the sensor |
+| O9 | **Head coaching, which no GPS timer can do:** the camera sits where the driver looks, so it can measure how early and how far the head turns into each corner and tie that to the corner's time gain from the delta. Head only: telling tangent point from future path needs an eye tracker |
 
 ### Threats
 
@@ -101,8 +101,8 @@ a human driving (W2), real footage (W1), the glasses (W5).
 | 10 | Later | Lap aligner -> voting across laps, a self-improving reference; an abstain signal | W7 | Weeks | | |
 | 11 | Later | Wider data: the kart driver's view (wheel, hands pasted in), kart tracks, indoor AC mods | W1 | Ongoing | | |
 | 12 | Later | Patent freedom-to-operate check before anything commercial | T6 | A patent attorney | | |
-| 14 | Later | Head coaching: head angle against the direction of travel (the point the scene flows out of), per corner, related to the corner's time across laps. Needs steps 2, 5 and 8 first | O9 | Weeks | Idea | If head habits do not relate to corner times in real laps, drop it |
 | 13 | Later | Motorcycles: roll tolerance to 40-55° (de-rotate by a measured roll, or a roll search), bike footage, helmet fit | O8 | Weeks | | |
+| 14 | Later | Head coaching: head angle against the direction of travel (the point the scene flows out of), per corner, related to the corner's time across laps. Needs steps 2, 5 and 8 first | O9 | Weeks | Idea | If head habits do not relate to corner times in real laps, drop it |
 
 **Paused:** more AC precision tuning (new backbones, more seeds) and the FOV sweep
 (Halo's view is fixed; the sweep only informs later glasses). Either comes back if
