@@ -1,10 +1,16 @@
 """
 Drive AC and watch PRIMAL's camera-only delta live, beside the true delta and AC's own.
 
-    python -m capture.live_delta --reference auto     # a packed lap of this track (and car, if there is one)
-    python -m capture.live_delta --reference live     # your first clean lap becomes the reference
-    python -m capture.live_delta --reference LAP_ID   # a packed lap from --data
-    python -m capture.live_delta --reference DIR      # a lap an earlier `live` run saved
+    python -m capture.live_delta                      # your fastest legal lap is the reference
+    python -m capture.live_delta --reference LAP_ID   # a packed lap from --data, until your first legal lap
+    python -m capture.live_delta --reference DIR      # a best lap an earlier run saved, likewise
+
+The reference is the fastest legal lap of the session, per camera. Every lap is
+recorded with the descriptors the live loop computes anyway, so a new best swaps in
+the moment it ends (LINE_PAD_S past the line), with no encoding. Legal: a flying lap
+with no pause, pits, 3+ wheels off, stop, camera change or barcode gap (Recording.problem).
+With --reference auto (the default) a packed lap of this track holds the place until
+then, if there is one. Each new best is saved as best_<camera>_lapNN/ in the run's folder.
 
     # no AC: replay a recorded session through the same loop
     python -m capture.live_delta --source data/sessions/<session>/video.mp4 --reference LAP_ID --no-window
@@ -28,15 +34,13 @@ use one clock, so their difference is PRIMAL's position error alone.
 
 Two wheel buttons, picked in the overlay the first time a wheel is seen (read through
 Windows' joystick API, whichever window has focus; kept in ~/.primal_live_wheel.json):
-  RECORD  arms a reference lap, recorded from the line to the line by itself. Pressed up
-          to 3 s after the line it starts from that line; around the end of the lap it
-          does nothing (the lap stops at the line anyway); mid-lap it cancels.
+  RECORD  locks the reference (faster laps stop replacing it), and unlocks it.
   CAMERA  cycles the rig's camera presets (CAMERAS): the training view, wider, lower,
           higher, looking into corners, and AC's own cameras (the rig lets go, so AC's
           camera button works again). Each camera keeps its own reference; rig.txt is
           put back as it was on exit.
 In the overlay window: q quits, r = RECORD, c = CAMERA, b picks the wheel buttons again.
-Every tick goes to ticks.csv in D:\\Documents\\Transfer\\live_logs\\<run>\\.
+Every tick goes to ticks.csv, every lap to laps.json, in D:\\Documents\\Transfer\\live_logs\\<run>\\.
 """
 from __future__ import annotations
 
@@ -62,7 +66,7 @@ from capture.install_overlay import find_ac_root
 from capture.pack import crop_rows
 from capture.timecode import HIGH_REF_CELLS, LOW_REF_CELLS, OverlayGeometry, decode_frame, sample_cells
 from train.dataset import Lap, LapIndex, ReferenceGrid, _speed_from_labels, build_reference_grid
-from train.live import LiveDelta, Reading
+from train.live import SPACING_S, LiveDelta, Reading, encode_frames
 
 GEOMETRY = OverlayGeometry(x0=458.0, y0=692.0, cell=14.0)  # every recorded session calibrated to this
 SOURCE_SIZE = (1280, 720)
@@ -77,7 +81,6 @@ LINE_PAD_S = 0.5
 LOG_DIR = Path(r"D:\Documents\Transfer\live_logs")
 WINDOW = "PRIMAL live delta"
 WHEEL_FILE = Path.home() / ".primal_live_wheel.json"  # the wheel buttons you picked, per wheel
-PRESS_WINDOW_S = 3.0  # RECORD pressed this soon after the line starts the lap from that line
 
 # Camera presets the CAMERA button cycles through, written into the rig's rig.txt (it
 # re-reads it twice a second). The first is the view the v3 models were trained on;
@@ -189,7 +192,8 @@ class UiState:
     camera: str = ""
     paused: bool = False
     lap_flags: str = ""  # why the current lap won't count as clean, if it won't
-    rec: str = ""        # "", "armed", "recording" or "encoding"
+    rec: str = ""        # "" or "locked"
+    ref: str = ""        # which lap is the reference
     prompt: str = ""     # a question that needs the wheel, drawn over the deltas
 
 
@@ -242,7 +246,7 @@ class Wheel(threading.Thread):
     time a wheel is seen it asks for the two buttons in the overlay, and remembers them.
     """
 
-    ACTIONS = {"record": "RECORD REFERENCE", "camera": "CAMERA"}
+    ACTIONS = {"record": "LOCK REFERENCE", "camera": "CAMERA"}
 
     def __init__(self, on_press, ui: UiState) -> None:
         super().__init__(daemon=True)
@@ -366,18 +370,34 @@ def capture_loop(source, prep: Preprocess, shm: AcSharedMemory | None, out: queu
 
 @dataclass
 class Recording:
-    """One lap's frames, line to line plus LINE_PAD_S either side, on its way to being a reference."""
+    """
+    One lap as it was driven: every encoded frame (1/30 s apart) from LINE_PAD_S before
+    its line to LINE_PAD_S past the next, with its descriptor, so the lap can become
+    the reference at once, without encoding it again.
+    """
 
-    ends_at: float | None = None
+    start_line: float
+    end_line: float | None = None
+    flags: set = field(default_factory=set)   # what made it unclean, as of its end
     frames: list = field(default_factory=list)
+    descriptors: list = field(default_factory=list)
     t: list = field(default_factory=list)
     s: list = field(default_factory=list)
     barcode: list = field(default_factory=list)
     pit: list = field(default_factory=list)
 
-    def add(self, f: Frame) -> None:
+    @property
+    def ends_at(self) -> float | None:
+        return None if self.end_line is None else self.end_line + LINE_PAD_S
+
+    @property
+    def lap_time(self) -> float:
+        return self.end_line - self.start_line
+
+    def add(self, f: Frame, descriptor: torch.Tensor) -> None:
         if np.isfinite(f.cam_s):
             self.frames.append(f.small)
+            self.descriptors.append(descriptor)
             self.t.append(f.t)
             self.s.append(f.cam_s)
             self.barcode.append(f.s_source == "barcode")
@@ -385,7 +405,7 @@ class Recording:
 
     def problem(self, track_length_m: float) -> str | None:
         """Why this lap can't be a reference, or None."""
-        if len(self.t) < 600:
+        if len(self.t) < 2 or self.t[-1] - self.t[0] < 15.0:
             return "too short"
         t, s = np.asarray(self.t), np.asarray(self.s, dtype=np.float64)
         if np.mean(self.barcode) < 0.95:
@@ -432,9 +452,14 @@ def lap_delta(elapsed: float, ref_time: float, period: float) -> float:
 
 class Worker(threading.Thread):
     """
-    Lap clock, truth, LiveDelta and the log, one frame at a time in grab order. Each
-    camera preset keeps its own reference; button presses arrive as commands and are
-    handled between frames, at the time of the frame.
+    Lap clock, truth, LiveDelta and the log, one frame at a time in grab order.
+
+    Every lap is recorded with the descriptors the live loop computes anyway, and the
+    fastest legal lap of the session, per camera, becomes that camera's reference as
+    soon as it ends: no encoding, no pause. A starting reference (a packed lap, a
+    saved one) only holds the place until the first legal lap of yours. RECORD locks
+    the reference against further updates, and unlocks it. Button presses arrive as
+    commands and are handled between frames, at the time of the frame.
     """
 
     def __init__(self, model, clip_len: int, device: torch.device, frames: queue.Queue, ui: UiState,
@@ -450,15 +475,15 @@ class Worker(threading.Thread):
         self.cameras = cameras or list(CAMERAS)
         self.camera = self.cameras[0]
         self.refs: dict[str, tuple[LiveDelta, ReferenceGrid, str]] = {}
+        self.best: dict[str, float] = {}     # lap time of each camera's reference, once it's one of yours
+        self.locked = False
         self.engine: LiveDelta | None = None
         self.grid: ReferenceGrid | None = None
         self.ref_name = ""
-        self.armed = False
-        self.recording: Recording | None = None
-        self.recent: deque[Frame] = deque(maxlen=int(60 * (PRESS_WINDOW_S + LINE_PAD_S + 1)))
+        self.laps: list[Recording] = []      # the lap being driven, and the last one for LINE_PAD_S past its end
+        self.recent: deque[tuple[Frame, torch.Tensor]] = deque(maxlen=int((LINE_PAD_S + 0.5) / SPACING_S) + 2)
+        self.last_encoded: float | None = None
         self.lap_start: float | None = None
-        self.last_line: float | None = None      # the latest line crossing
-        self.finished_line: float | None = None  # the line that ended the latest recording
         self.settle_until = 0.0
         self.crossings = 0
         self.last_t: float | None = None
@@ -468,6 +493,7 @@ class Worker(threading.Thread):
         self.primal_ahead = False  # PRIMAL has passed the line and the lap clock hasn't yet
         self.prev: tuple[float, float] | None = None
         self.rows: list[dict] = []
+        self.lap_log: list[dict] = []
         self.stale = 0
         self.log = open(run_dir / "ticks.csv", "w", newline="")
         self.writer: csv.DictWriter | None = None
@@ -479,9 +505,10 @@ class Worker(threading.Thread):
 
     def use(self, engine: LiveDelta, grid: ReferenceGrid, name: str) -> None:
         self.primal_line = self.prev_reading = None
+        self.primal_ahead = False
         self.refs[self.camera] = (engine, grid, name)
         self.engine, self.grid, self.ref_name = engine, grid, name
-        self.ui.message = f"reference: {name} ({grid.lap_time_s:.2f} s)"
+        self.ui.ref = name
 
     def run(self) -> None:
         try:
@@ -494,39 +521,19 @@ class Worker(threading.Thread):
                 self.step(f)
         finally:
             self.log.close()
+            (self.run_dir / "laps.json").write_text(json.dumps(self.lap_log, indent=2))
             self.ui.done = True
 
     # --- buttons
 
     def command(self, what: str, t: float) -> None:
         if what == "record":
-            self.press_record(t)
+            self.locked = not self.locked
+            self.ui.rec = "locked" if self.locked else ""
+            self.ui.message = ("reference locked: faster laps won't replace it" if self.locked
+                               else "reference unlocked: your fastest legal lap becomes it")
         elif what == "camera":
             self.next_camera(t)
-
-    def press_record(self, t: float) -> None:
-        """
-        One press arms a reference lap; it records from the line to the line by itself.
-        Pressed just after the line, it starts from that line. Pressed around the end of
-        the lap it changes nothing (the lap ends at the line anyway); mid-lap it cancels.
-        """
-        rec = self.recording
-        s = self.prev[1] if self.prev else float("nan")
-        if rec is not None:
-            if rec.ends_at is None and 0.1 < s < 0.9:
-                self.recording, self.ui.rec = None, ""
-                self.ui.message = "reference: recording cancelled"
-            return
-        if self.finished_line is not None and t - self.finished_line < PRESS_WINDOW_S:
-            return  # the press that meant "stop at the line"
-        if self.armed:
-            self.armed, self.ui.rec = False, ""
-            self.ui.message = "reference: cancelled"
-        elif self.last_line is not None and t - self.last_line < PRESS_WINDOW_S and self.last_line > self.settle_until:
-            self.start_recording(self.last_line)
-        else:
-            self.armed, self.ui.rec = True, "armed"
-            self.ui.message = f"reference ({CAMERAS[self.camera][0]}): recording starts at the line"
 
     def next_camera(self, t: float) -> None:
         if self.rig is None:
@@ -537,7 +544,8 @@ class Worker(threading.Thread):
         label, values = CAMERAS[self.camera]
         self.rig.apply(values)
         self.ui.camera = label
-        self.recording, self.armed, self.ui.rec = None, False, ""
+        self.laps = []
+        self.recent.clear()
         # new camera, new picture: no deltas until its reference, and its own line crossing
         self.settle_until, self.lap_start, self.prev, self.ui.row = t + SETTLE_S, None, None, None
         self.flag("camera change")
@@ -546,10 +554,11 @@ class Worker(threading.Thread):
             engine, grid, name = self.refs[self.camera]
             engine.reset()
             self.use(engine, grid, name)
+            self.ui.message = f"camera: {label}"
         else:
             self.engine = self.grid = None
-            self.ref_name = ""
-            self.ui.message = f"camera: {label}. No reference yet: press RECORD, then drive a lap from the line"
+            self.ref_name = self.ui.ref = ""
+            self.ui.message = f"camera: {label}. No reference yet: drive a clean flying lap"
 
     # --- frames
 
@@ -557,6 +566,8 @@ class Worker(threading.Thread):
         if self.last_t is not None and f.t - self.last_t > GAP_S:
             # AC was paused (or frames stopped): nothing since is known, start the lap over
             self.flag("pause")
+            self.laps = []
+            self.recent.clear()
             self.lap_start = self.prev = self.primal_line = self.prev_reading = None
             if self.engine is not None:
                 self.engine.reset()
@@ -577,59 +588,78 @@ class Worker(threading.Thread):
                 crossed = self.prev[0] + frac * (f.t - self.prev[0])
             self.prev = (f.t, f.cam_s)
         if crossed is not None:
-            self.lap_start = self.last_line = crossed
-            self.primal_ahead = False
-            self.crossings += 1
-            self.lap_flags = set()
-            self.ui.lap_flags = ""
-            if self.recording is not None and self.recording.ends_at is None:
-                self.recording.ends_at = crossed + LINE_PAD_S
-            elif self.armed and self.recording is None:
-                self.start_recording(crossed)
-        self.recent.append(f)
-        if self.recording is not None:
-            self.recording.add(f)
-            if self.recording.ends_at is not None and f.t >= self.recording.ends_at:
-                self.finish_recording()
-        if self.engine is None:
+            self.cross(crossed)
+
+        # Clips use frames 1/30 s apart: encode those, keep them with the lap, feed the engine.
+        if self.last_encoded is not None and f.t - self.last_encoded < SPACING_S - 0.002:
             return
         if self.live_source and time.monotonic() - f.t > STALE_S:
             self.stale += 1
             return
-        reading = self.engine.push(f.small, f.t)
-        if reading is not None:
-            self.record(reading, f, time.monotonic())
+        self.last_encoded = f.t
+        descriptor = encode_frames(self.model, f.small[None], self.device)[0]
+        self.recent.append((f, descriptor))
+        for lap in list(self.laps):
+            lap.add(f, descriptor)
+            if lap.ends_at is not None and f.t >= lap.ends_at:
+                self.laps.remove(lap)
+                self.finish(lap)
+        if self.engine is not None:
+            reading = self.engine.push_descriptor(descriptor, f.t)
+            if reading is not None:
+                self.record(reading, f, time.monotonic())
 
-    def start_recording(self, line_t: float) -> None:
-        self.armed = False
-        self.recording = Recording()
-        for f in self.recent:
-            if f.t >= line_t - LINE_PAD_S:
-                self.recording.add(f)
-        self.ui.rec = "recording"
-        self.ui.message = f"reference ({CAMERAS[self.camera][0]}): recording this lap - drive it clean"
+    def cross(self, line: float) -> None:
+        self.lap_start = line
+        self.primal_ahead = False
+        self.crossings += 1
+        for lap in self.laps:
+            if lap.end_line is None:
+                lap.end_line, lap.flags = line, set(self.lap_flags)
+        self.lap_flags = set()
+        self.ui.lap_flags = ""
+        lap = Recording(start_line=line)
+        for f, descriptor in self.recent:
+            if f.t >= line - LINE_PAD_S:
+                lap.add(f, descriptor)
+        self.laps.append(lap)
 
-    def finish_recording(self) -> None:
-        lap, self.recording = self.recording, None
-        self.finished_line = lap.ends_at - LINE_PAD_S
-        problem = lap.problem(self.track_length)
-        if problem:
-            self.start_recording(self.finished_line)
-            self.ui.message = f"reference: that lap won't do ({problem}); recording this one instead"
+    def finish(self, lap: Recording) -> None:
+        """A lap and its padding are in: log it, and make it the reference if it's the fastest legal one."""
+        why = sorted(lap.flags) + list(filter(None, [lap.problem(self.track_length)]))
+        best = self.best.get(self.camera)
+        entry = {"lap": self.crossings - 1, "camera": self.camera, "lap_time_s": round(lap.lap_time, 3),
+                 "legal": not why, "why_not": why, "best_before_s": best}
+        self.lap_log.append(entry)
+        shown = f"{lap.lap_time:.2f} s"
+        if why:
+            self.ui.message = f"lap {shown}: doesn't count ({', '.join(why)})"
             return
-        frames, t, s = np.stack(lap.frames), np.asarray(lap.t), np.asarray(lap.s, dtype=np.float64)
-        out = self.run_dir / f"reference_{self.camera}_{self.crossings:02d}"
-        out.mkdir()
-        np.save(out / "frames.npy", frames)
-        np.save(out / "t.npy", t)
-        np.save(out / "s.npy", s)
-        (out / "meta.json").write_text(json.dumps({"track_length_m": self.track_length, "camera": self.camera,
-                                                   "rig": CAMERAS[self.camera][1]}))
-        self.ui.rec = "encoding"
-        self.ui.message = "reference: encoding the lap you just drove..."
-        engine, grid = engine_from_arrays(self.model, frames, s, t, self.track_length, self.clip_len, self.device)
-        self.ui.rec = ""
-        self.use(engine, grid, f"your lap ({out.name})")
+        if self.locked:
+            self.ui.message = f"lap {shown} (reference locked)"
+            return
+        if best is not None and lap.lap_time >= best:
+            self.ui.message = f"lap {shown}, best {best:.2f} s"
+            return
+        t, s = np.asarray(lap.t), np.asarray(lap.s, dtype=np.float64)
+        n_bins = max(int(round(self.track_length / REF_SPACING_M)), 8)
+        grid = build_reference_grid(s, t, _speed_from_labels(s, t, self.track_length), n_bins, self.track_length, "time")
+        descriptors = torch.stack(lap.descriptors)[torch.from_numpy(grid.frame_idx)]
+        engine = LiveDelta(self.model, None, grid.time_s, grid.lap_time_s, self.clip_len, self.device,
+                           reference_descriptors=descriptors)
+        if self.engine is not None:  # the clip so far carries over: readings go on without a gap
+            engine.history = deque(self.engine.history)
+        name = f"lap {entry['lap']} ({lap.lap_time:.2f} s)"
+        self.best[self.camera] = lap.lap_time
+        entry["became_reference"] = True
+        self.use(engine, grid, name)
+        self.ui.message = (f"new best: {shown}, now the reference" if best is not None
+                           else f"your first legal lap, {shown}, is now the reference")
+        out = self.run_dir / f"best_{self.camera}_lap{entry['lap']:02d}"
+        frames = np.stack(lap.frames)
+        threading.Thread(target=save_lap, args=(out, frames, t, s, torch.stack(lap.descriptors).cpu().numpy(),
+                         {"track_length_m": self.track_length, "camera": self.camera, "rig": CAMERAS[self.camera][1],
+                          "lap_time_s": lap.lap_time}), daemon=True).start()
 
     def record(self, r: Reading, f: Frame, now: float) -> None:
         snap, grid = f.snap, self.grid
@@ -692,6 +722,17 @@ class Worker(threading.Thread):
         self.ui.row = row
 
 
+def save_lap(out: Path, frames: np.ndarray, t: np.ndarray, s: np.ndarray, descriptors: np.ndarray,
+             meta: dict) -> None:
+    """A reference lap on disk, loadable with --reference <folder>: the frames, times, places, descriptors."""
+    out.mkdir(parents=True, exist_ok=True)
+    np.save(out / "frames.npy", frames)
+    np.save(out / "t.npy", t)
+    np.save(out / "s.npy", s)
+    np.save(out / "descriptors.npy", descriptors)
+    (out / "meta.json").write_text(json.dumps(meta, indent=2))
+
+
 def engine_from_arrays(model, frames: np.ndarray, s: np.ndarray, t: np.ndarray, track_length_m: float,
                        clip_len: int, device: torch.device) -> tuple[LiveDelta, ReferenceGrid]:
     """A reference from a lap recorded here, gridded the way packed laps are."""
@@ -701,7 +742,7 @@ def engine_from_arrays(model, frames: np.ndarray, s: np.ndarray, t: np.ndarray, 
     return engine, grid
 
 
-def packed_reference(data: Path, spec: str, track_key: str, car: str) -> Lap:
+def packed_reference(data: Path, spec: str, track_key: str, car: str) -> Lap | None:
     laps = [lap for split in ("train", "holdout") for lap in LapIndex.load(data, split=split, variants=None).laps]
     if spec != "auto":
         found = [lap for lap in laps if lap.lap_id == spec]
@@ -710,7 +751,7 @@ def packed_reference(data: Path, spec: str, track_key: str, car: str) -> Lap:
         return found[0]
     here = [lap for lap in laps if lap.track == track_key and lap.usable_as_reference(0.98, "time")]
     if not here:
-        raise SystemExit(f"no packed lap of {track_key} in {data}; use --reference live")
+        return None
     same_car = [lap for lap in here if lap.car_model == car] or here
     # a typical lap: the median lap time among this car's
     times = [lap.reference_grid("time").lap_time_s for lap in same_car]
@@ -763,11 +804,11 @@ def render(ui: UiState) -> np.ndarray:
     text(img, "PRIMAL delta", (14, 30), font, 0.6, (200, 200, 200), 1, cv2.LINE_AA)
     if ui.camera:
         text(img, f"cam: {ui.camera}", (150, 30), font, 0.5, (200, 200, 120), 1, cv2.LINE_AA)
-    if ui.rec:
-        colour = {"armed": (60, 200, 230), "recording": (60, 60, 240), "encoding": (200, 200, 200)}[ui.rec]
-        cv2.circle(img, (w - 290, 30), 7, colour, -1)
-        text(img, {"armed": "REC at the line", "recording": "REC", "encoding": "encoding"}[ui.rec], (w - 278, 36),
-             font, 0.55, colour, 2, cv2.LINE_AA)
+    if ui.ref:
+        text(img, f"ref: {ui.ref}"[:30], (150, 50), font, 0.45, (170, 170, 170), 1, cv2.LINE_AA)
+    if ui.rec == "locked":
+        cv2.circle(img, (w - 290, 30), 7, (60, 200, 230), -1)
+        text(img, "reference locked", (w - 278, 36), font, 0.55, (60, 200, 230), 2, cv2.LINE_AA)
     if row is None:
         text(img, "--", (14, 106), bold, 2.4, (150, 150, 150), 4, cv2.LINE_AA)
     else:
@@ -893,10 +934,12 @@ def main() -> None:
     worker = Worker(model, clip_len, device, frames, ui, run_dir, track_length, source.live, rig, args.cameras.split(","))
 
     start = time.perf_counter()
-    if args.reference == "live":
-        worker.armed, ui.rec = True, "armed"
-        ui.message = "reference: recording starts at the line"
-        ref_desc = "live"
+    lap = None
+    if args.reference not in ("live", "best") and not Path(args.reference).is_dir():
+        lap = packed_reference(Path(args.data), args.reference, track_key, car)
+    if args.reference in ("live", "best") or (args.reference == "auto" and lap is None):
+        ui.message = "no reference yet: drive a clean flying lap"
+        ref_desc = "your best lap"
     elif Path(args.reference).is_dir():
         d = Path(args.reference)
         engine, grid = engine_from_arrays(model, np.load(d / "frames.npy"), np.load(d / "s.npy"), np.load(d / "t.npy"),
@@ -904,13 +947,13 @@ def main() -> None:
         worker.use(engine, grid, d.name)
         ref_desc = str(d)
     else:
-        lap = packed_reference(Path(args.data), args.reference, track_key, car)
         if lap.track != track_key:
             raise SystemExit(f"{lap.lap_id} is {lap.track}, but you're on {track_key}")
         worker.use(LiveDelta.from_lap(model, payload, lap, device), lap.reference_grid("time"), lap.lap_id)
         ref_desc = lap.lap_id
+        ui.message = f"reference: packed lap {lap.lap_id[-20:]} until you drive a legal lap"
         if lap.car_model != car:
-            ui.message += f"  (its car: {lap.car_model})"
+            ui.message += f" (its car: {lap.car_model})"
     print(f"{track_key}, {car}; reference {worker.ref_name or 'from your first clean lap'} "
           f"({time.perf_counter() - start:.1f} s to encode); logging to {run_dir}")
     (run_dir / "meta.json").write_text(json.dumps({

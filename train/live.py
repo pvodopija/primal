@@ -44,16 +44,32 @@ class Reading:
     single_ref_time_s: float   # the same read off this clip alone, no tracker
 
 
+@torch.no_grad()
+def encode_frames(model: SequenceAligner, frames: np.ndarray, device: torch.device) -> torch.Tensor:
+    """Descriptors of (N, H, W, 3) BGR uint8 frames, the same for reference and live frames."""
+    return model.encode_reference(torch.from_numpy(_to_chw(np.asarray(frames))).to(device), use_checkpoint=False)
+
+
 class LiveDelta:
-    def __init__(self, model: SequenceAligner, reference_frames: np.ndarray, reference_times_s: np.ndarray,
+    def __init__(self, model: SequenceAligner, reference_frames: np.ndarray | None, reference_times_s: np.ndarray,
                  lap_time_s: float, clip_len: int, device: torch.device, spacing_s: float = SPACING_S,
-                 hz: float = STREAM_HZ, seed: int = 0, window: int = 8) -> None:
+                 hz: float = STREAM_HZ, seed: int = 0, window: int = 8,
+                 reference_descriptors: torch.Tensor | None = None) -> None:
+        """
+        The reference is either its frames, encoded here, or `reference_descriptors`
+        already encoded by this model (one per bin), as a live loop that kept the
+        descriptors of a lap it pushed can swap that lap in without encoding it again.
+        """
         self.model, self.device, self.clip_len = model.eval(), device, clip_len
         self.spacing, self.period, self.window = spacing_s, 1.0 / hz, window
         self.times = np.asarray(reference_times_s, dtype=np.float64)
         self.lap_time = float(lap_time_s)
-        with torch.no_grad():
-            self.ref = torch.cat([self._encode(reference_frames[i:i + 256]) for i in range(0, len(reference_frames), 256)])
+        if reference_descriptors is not None:
+            self.ref = reference_descriptors.to(device)
+        else:
+            with torch.no_grad():
+                self.ref = torch.cat([self._encode(reference_frames[i:i + 256])
+                                      for i in range(0, len(reference_frames), 256)])
         self.scale = model.logit_scale.exp()
         self.seed = seed
         self.tracker = ProgressEstimator(self.times, self.lap_time, EstimatorConfig(**TRACKER), seed=seed)
@@ -77,11 +93,20 @@ class LiveDelta:
         self.next_tick = self.last_tick = None
 
     def _encode(self, frames: np.ndarray) -> torch.Tensor:
-        return self.model.encode_reference(torch.from_numpy(_to_chw(np.asarray(frames))).to(self.device), use_checkpoint=False)
+        return encode_frames(self.model, frames, self.device)
 
     def _ref_time(self, bins: float) -> float:
         cycle = np.r_[self.times, self.lap_time]
         return float(np.interp(bins % self.times.size, np.arange(self.times.size + 1), cycle))
+
+    def wants(self, t: float) -> bool:
+        """Whether a frame at `t` is one clips use (1/30 s apart); at 60 fps every other one is not."""
+        return not (self.skip and self.history and t - self.history[-1][0] < self.spacing - 0.002)
+
+    @torch.no_grad()
+    def encode(self, frame: np.ndarray) -> torch.Tensor:
+        """One frame's descriptor, as the reference's are made."""
+        return self._encode(frame[None])[0]
 
     @torch.no_grad()
     def push(self, frame: np.ndarray, t: float) -> Reading | None:
@@ -89,9 +114,14 @@ class LiveDelta:
         One camera frame and its time in seconds; a Reading on each 15 Hz tick, else None.
         Clips use frames 1/30 s apart, so at 60 fps every other frame is skipped unencoded.
         """
-        if self.skip and self.history and t - self.history[-1][0] < self.spacing - 0.002:
+        if not self.wants(t):
             return None
-        self.history.append((t, self._encode(frame[None])[0]))
+        return self.push_descriptor(self.encode(frame), t)
+
+    @torch.no_grad()
+    def push_descriptor(self, descriptor: torch.Tensor, t: float) -> Reading | None:
+        """`push`, for a frame the caller encoded (with `encode`) and wants kept."""
+        self.history.append((t, descriptor))
         span = (self.clip_len - 1) * self.spacing
         while self.history and self.history[0][0] < t - span - 0.25:
             self.history.popleft()
