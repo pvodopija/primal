@@ -12,6 +12,8 @@ The parent checkout is `hotlapp`. This folder is a **submodule** at
 ## Reading order
 
 1. **This file** — scope, closed paths, product constraints.
+   [`roadmap.md`](roadmap.md) — the working plan: where it stands, strengths and
+   weak spots, and the next steps in order.
 2. [`ml-pivot.md`](ml-pivot.md) — the design: what is built, what it measures,
    what is not built yet, and what has been ruled out.
    [`training.md`](training.md) — how a training step is built: data, sampling,
@@ -42,6 +44,10 @@ reaches the output only through a dot product, so the weights structurally
 cannot memorize a circuit.
 
 ## Where the project stands
+
+> The latest numbers and the plan are in [`roadmap.md`](roadmap.md) (2026-10-04).
+> The table below is the original 0.67M encoder's; the Halo-sized
+> MobileNetV3-Small now reaches 7.6% on the unseen circuits.
 
 Trained on **real Assetto Corsa footage** (`data/packed_ac_v3`: 380 laps on 12
 circuits, 9 for training and 3 never seen), with both negative controls passing.
