@@ -1,0 +1,43 @@
+{
+  "current": {
+    "steady": 0.07979513250950092,
+    "imperfect": 0.17441381633951858,
+    "stop": 0.3156718000115645,
+    "fast": 0.27304941376269637,
+    "stop window median ms": 401.0362548828125,
+    "fast window median ms": 5429.5634765625
+  },
+  "can stop": {
+    "steady": 0.08067601238265422,
+    "imperfect": 0.17385227797396957,
+    "stop": 0.2538210974693059,
+    "fast": 0.27522126784022993,
+    "stop window median ms": 177.92320251464844,
+    "fast window median ms": 5307.6513671875
+  },
+  "can stop, up to 4x": {
+    "steady": 0.07978254851131301,
+    "imperfect": 0.17493791881403098,
+    "stop": 0.26285103020257117,
+    "fast": 0.28181847872236193,
+    "stop window median ms": 211.8663787841797,
+    "fast window median ms": 76.03836059570312
+  },
+  "jump 0-4x, revert 0.5": {
+    "steady": 0.14281579543452547,
+    "imperfect": 0.2299686786378327,
+    "stop": 0.3665458820808357,
+    "fast": 0.24620333779679285,
+    "stop window median ms": 374.624267578125,
+    "fast window median ms": 146.4385986328125
+  },
+  "jump 0-4x, revert 1": {
+    "steady": 0.1641960083557748,
+    "imperfect": 0.24359534297515506,
+    "stop": 0.37868858778405257,
+    "fast": 0.24625232698651164,
+    "stop window median ms": 377.3841857910156,
+    "fast window median ms": 145.22933959960938
+  },
+  "agreement_auroc_over_300ms": 0.9298197431613529
+}

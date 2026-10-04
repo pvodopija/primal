@@ -61,7 +61,8 @@ def warp_clock(duration_s: float, wander: float, mistakes: float, rng: np.random
 
 @torch.no_grad()
 def warped_stream(model, clip_len: int, reference, live, axis: str, device, rng, wander: float,
-                  mistakes: float) -> dict:
+                  mistakes: float, clock: tuple[np.ndarray, np.ndarray] | None = None) -> dict:
+    """`clock`, if given, is (play times, recording time shown at each) instead of a drawn warp."""
     grid = reference.reference_grid(axis)
     ref = model.encode_reference(torch.from_numpy(_to_chw(np.asarray(reference.frames()[grid.frame_idx]))).to(device),
                                  use_checkpoint=False)
@@ -69,7 +70,7 @@ def warped_stream(model, clip_len: int, reference, live, axis: str, device, rng,
     desc = torch.cat([model.encode_reference(torch.from_numpy(_to_chw(np.asarray(frames[i:i + 256]))).to(device),
                                              use_checkpoint=False) for i in range(0, live.n_frames, 256)])
     t_rec = live.t().astype(np.float64)
-    play, clock = warp_clock(float(t_rec[-1]), wander, mistakes, rng)
+    play, clock = warp_clock(float(t_rec[-1]), wander, mistakes, rng) if clock is None else clock
     frame_at = lambda seconds: np.clip(np.searchsorted(t_rec, seconds), 0, live.n_frames - 1)
     spacing = 1 / 30  # stride 2 at 60 fps, in play time
     ticks = np.arange((clip_len - 1) * spacing, play[-1], 1 / STREAM_HZ)

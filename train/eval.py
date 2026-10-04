@@ -526,8 +526,11 @@ REFERENCE_TIME = dict(accel_noise=0.01, likelihood_power=0.15, position_noise=0.
 # late brake, a mistake): tuned on G1 laps replayed at an imperfect pace
 # (experiments/pace_tracker.py). Near the single mode for steady driving, far better
 # when the pace varies, never worse than the filter in metres.
-REFERENCE_TIME_TWO_MODES = dict(REFERENCE_TIME, speed_range=(0.05, 1.6), accel_noise_free=0.3,
-                                to_free_per_s=0.1, to_follow_per_s=1.0)
+# Speeds from a standstill to 4x the reference's pace: the live overlay found the tracker
+# creeping forward while stopped and lagging seconds behind a lap far faster than the
+# reference (experiments/tracker_live_fixes.py: steady and imperfect pace unchanged).
+REFERENCE_TIME_TWO_MODES = dict(REFERENCE_TIME, speed_range=(0.0, 4.0), accel_noise_free=0.3,
+                                to_free_per_s=0.1, to_follow_per_s=1.0, free_speed_floor=0.0)
 # The lag correction's memory: the running median of the forward-backward gap over the
 # last LAG_HISTORY_S of frames whose following clip has been seen, once LAG_MIN_S of them.
 LAG_HISTORY_S = 10.0

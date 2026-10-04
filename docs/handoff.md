@@ -1957,3 +1957,51 @@ ticks). 883 MB in all.
 
 `rig.txt` is back to the recording settings (wander 2.5 m, FOV 60, look off). The
 live tool sets its own preset on start (wander 0) and restores the file on exit.
+
+## 2026-10-04 (evening) — Mac → Windows: live fixes, and what to drive next
+
+Thanks for the overlay and the logs: they found three real tracker faults in two
+evenings. `train/live.py` changes reviewed, fine; `tests/test_live.py` now also
+checks a reference given as descriptors and `reset()` (3 pass, 67 in all).
+
+### Changed (pull before the next drive)
+
+1. **Tracker speeds 0-4x the reference's pace** (`REFERENCE_TIME_TWO_MODES` in
+   `train/eval.py` and `TRACKER` in `train/live.py`, still equal). Offline on the
+   unseen tracks (`experiments/tracker_live_fixes.py`): steady and imperfect pace
+   unchanged (8.0%, 17.5% over 100 ms); a 20 s stop 401 -> 212 ms median error
+   while stopped; a stretch at 2.5x the reference's pace 5430 -> 76 ms. While
+   standing still it still drifts about 0.2 s: reaching zero speed takes seconds.
+2. **`confidence` now means something:** the share of the last second's single-clip
+   reads within 0.25 s of the tracker. On your logs it picks out ticks more than
+   300 ms off with AUROC 0.91 (Noja), 0.97 (Brands), 0.83 (Silverstone), against
+   0.54-0.62 before. At Noja, below 0.5 on 12% of ticks, half of them over 300 ms
+   off: a fair point to grey out the delta.
+3. **`_speed_from_labels`:** the first and last 3 frames take the median speed of
+   their end's 15, so one glitch no longer bends the extrapolation to the line.
+   The Laguna lap was a late first timestamp (0.1 s for 0.68 m), not a repeat:
+   106.5 -> 104.2 s (session median 104.1); the Highlands laps move to within 70 ms
+   of theirs. Your recorded references go through the same function.
+
+### The Noja lean: not the reference
+
+`experiments/live_logs.py`: +0.7 to +1.0 m with every one of the 7 reference laps,
+so it belongs to the place or the model. It grows with acceleration (+30 ms
+braking, +157 ms in the hardest fifth of acceleration); Brands shows none. Suspects:
+the cockpit view (AC can move the cockpit camera with g-forces) or the kart
+scenery at a kart's eye height. The camera-only lap clock's 70-340 ms at Noja is
+this same lean at the line.
+
+### Drive next
+
+1. **Noja with the rig's training-view preset** (no cockpit), ~10 laps, your own
+   reference. If the lean goes, it was the cockpit view. If AC's cockpit camera has
+   a g-force or head-movement setting, one more cockpit run with it off.
+2. **A stop:** at Brands or Noja, stop for 20-30 s mid-lap and drive on. Expect
+   ~0.2 s error while standing instead of 1 s of creep, and quick recovery.
+3. **A pace far from the reference:** let the tool accept one slow-start reference
+   (or drive Silverstone against the bot) and check that the 2-3 s lag after the
+   line is gone.
+4. **Watch the confidence:** does it drop when the delta is visibly wrong?
+
+Logs to the share as before.

@@ -1536,6 +1536,33 @@ than 10 m out from 16% to 9%. An "unavailable" readout needs a sharper signal,
 most likely the disagreement between the filter's prediction and the incoming
 belief.
 
+**That disagreement works.** The share of the last second's single-clip reads within
+0.25 s of the tracker picks out ticks more than 300 ms off with AUROC 0.83-0.97 on
+the live overlay's logs (Silverstone, Brands, Noja) and 0.93 offline, against
+0.54-0.62 for the cluster share, which reads 1.00 even 3 s wrong. It is the live
+loop's `confidence` (`train/live.py`); `experiments/live_logs.py` and
+`tracker_live_fixes.py` measure it.
+
+### Driven live: stops and a pace far from the reference's
+
+The live overlay on AC (`capture/live_delta.py`, docs/handoff.md 2026-10-04) found
+the tracker creeping 1 s forward over 28 s stopped while the single clips stayed
+right, and lagging 2-3 s behind laps three times the reference's pace at the line:
+no particle could stop (speed floor 0.05 of the reference's pace) or exceed 1.6x.
+Replayed offline on the unseen tracks' laps (`experiments/tracker_live_fixes.py`,
+MobileNet; share of ticks over 100 ms, median error inside the stop or fast stretch):
+
+| tracker | steady | imperfect pace | 20 s stop mid-lap | first 10 s at 2.5x |
+|---|---|---|---|---|
+| speeds 0.05-1.6x (before) | 8.0% | 17.4% | 31.6% (401 ms) | 27.3% (5430 ms) |
+| speeds 0-1.6x | 8.1% | 17.4% | 25.4% (178 ms) | 27.5% (5308 ms) |
+| **speeds 0-4x (now)** | **8.0%** | **17.5%** | **26.3% (212 ms)** | **28.2% (76 ms)** |
+| off-script particles redraw any speed 0-4x | 14.3-16.4% | 23.0-24.4% | 36.7-37.9% | 24.6% (145 ms) |
+
+A stop still costs about 200 ms while the kart stands: speeds change by a slow
+random walk, so reaching zero takes seconds. Redrawing speeds finds it at once
+but costs every normal lap.
+
 ## Using more than one lap as the reference
 
 A track day produces dozens of laps. Two ways to use them were measured: vote

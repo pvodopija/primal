@@ -31,16 +31,18 @@ from train.model import SequenceAligner, soft_argmax_circular
 
 STREAM_HZ = 15.0
 SPACING_S = 1 / 30  # stride 2 at 60 fps
+AGREE_S = 0.25  # a single clip this close to the tracker agrees with it
 # The two-mode reference-time tracker (train/eval.py, REFERENCE_TIME_TWO_MODES).
-TRACKER = dict(accel_noise=0.01, likelihood_power=0.15, position_noise=0.01, speed_range=(0.05, 1.6),
-               reinject_speed_sd=0.05, cluster_m=0.5, accel_noise_free=0.3, to_free_per_s=0.1, to_follow_per_s=1.0)
+TRACKER = dict(accel_noise=0.01, likelihood_power=0.15, position_noise=0.01, speed_range=(0.0, 4.0),
+               reinject_speed_sd=0.05, cluster_m=0.5, accel_noise_free=0.3, to_free_per_s=0.1, to_follow_per_s=1.0,
+               free_speed_floor=0.0)
 
 
 @dataclass
 class Reading:
     t: float                   # live time of this tick, s
     ref_time_s: float          # the tracker: where in the reference lap the kart is
-    confidence: float          # share of the tracker's weight at that place; low = unsure
+    confidence: float          # share of the last second's single-clip reads that agree with the tracker; low = unsure
     single_ref_time_s: float   # the same read off this clip alone, no tracker
 
 
@@ -74,6 +76,10 @@ class LiveDelta:
         self.seed = seed
         self.tracker = ProgressEstimator(self.times, self.lap_time, EstimatorConfig(**TRACKER), seed=seed)
         self.history: deque[tuple[float, torch.Tensor]] = deque()
+        # Agreement over the last second: whether each tick's single clip lands within
+        # AGREE_S of the tracker. On the live logs it picks out ticks more than 300 ms off
+        # far better than the tracker's own cluster share (AUROC 0.83-0.97 against 0.54-0.62).
+        self.agree: deque[bool] = deque(maxlen=max(int(round(hz)), 1))
         # Frames between the ones clips use are skipped, when ticks fall on the clip spacing.
         ratio = self.period / self.spacing
         self.skip = abs(ratio - round(ratio)) < 1e-3 and round(ratio) >= 1
@@ -91,6 +97,7 @@ class LiveDelta:
         self.tracker = ProgressEstimator(self.times, self.lap_time, EstimatorConfig(**TRACKER), seed=self.seed)
         self.history.clear()
         self.next_tick = self.last_tick = None
+        self.agree.clear()
 
     def _encode(self, frames: np.ndarray) -> torch.Tensor:
         return encode_frames(self.model, frames, self.device)
@@ -140,7 +147,10 @@ class LiveDelta:
         dt = self.period if self.last_tick is None else t - self.last_tick
         self.last_tick = t
         estimate = self.tracker.step(belief, dt)
-        return Reading(t, float(estimate.position_m) % self.lap_time, float(estimate.confidence), self._ref_time(single))
+        ref_time, single_time = float(estimate.position_m) % self.lap_time, self._ref_time(single)
+        gap = (single_time - ref_time + self.lap_time / 2) % self.lap_time - self.lap_time / 2
+        self.agree.append(abs(gap) < AGREE_S)
+        return Reading(t, ref_time, float(np.mean(self.agree)), single_time)
 
 
 def main() -> None:

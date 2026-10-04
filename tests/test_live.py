@@ -34,3 +34,31 @@ def test_pushing_frames_one_by_one_reproduces_the_offline_stream():
     ref_time = np.interp(offline.numpy() % grid.n_bins, np.arange(grid.n_bins + 1), np.r_[grid.time_s, grid.lap_time_s])
     gap = (np.array([r.ref_time_s for r in readings]) - ref_time + grid.lap_time_s / 2) % grid.lap_time_s - grid.lap_time_s / 2
     assert np.abs(gap).max() < 1e-3
+
+
+def test_descriptors_and_reset_reproduce_a_fresh_engine():
+    """A reference given as descriptors, and an engine reset after a lap, read as a fresh one."""
+    index = _dataset()
+    track = sorted(index.by_track)[0]
+    reference, live = [lap for lap in index.by_track[track] if lap.usable_as_reference(0.9, "time")][:2]
+    torch.manual_seed(0)
+    model = SequenceAligner(clip_len=4, dim=16, width=8, hidden=16, frame_size=(40, 64)).eval()
+    device = torch.device("cpu")
+    grid = reference.reference_grid("time")
+    every = max(int(round(live.fps / 15.0)), 1)
+    kwargs = dict(spacing_s=2 / live.fps, hz=live.fps / every)
+    ref_frames = np.asarray(reference.frames()[grid.frame_idx])
+    from_frames = LiveDelta(model, ref_frames, grid.time_s, grid.lap_time_s, 4, device, **kwargs)
+    from_desc = LiveDelta(model, None, grid.time_s, grid.lap_time_s, 4, device, **kwargs,
+                          reference_descriptors=from_frames.ref.clone())
+    frames, t = live.frames(), live.t().astype(np.float64)
+
+    def drive(engine):
+        return [(r.ref_time_s, r.confidence) for i in range(live.n_frames)
+                if (r := engine.push(np.asarray(frames[i]), float(t[i]))) is not None]
+
+    first = drive(from_frames)
+    assert first and all(0.0 <= c <= 1.0 for _, c in first)
+    assert drive(from_desc) == first
+    from_frames.reset()
+    assert drive(from_frames) == first

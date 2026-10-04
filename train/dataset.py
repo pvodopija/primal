@@ -106,7 +106,12 @@ def _speed_from_labels(s: np.ndarray, t: np.ndarray, track_length_m: float) -> n
         return np.full(s.size, 1e-3)
     ds = np.gradient(np.unwrap(s * 2 * np.pi) / (2 * np.pi)) * track_length_m
     dt = np.gradient(t)
-    return np.abs(ds / np.maximum(dt, 1e-6)).clip(0.5, 120.0)
+    speed = np.abs(ds / np.maximum(dt, 1e-6))
+    # The grid extrapolates to the line from the end frames' speed, so one glitch there (a
+    # repeated label, a late timestamp) would cost seconds: they take their ends' median.
+    k = min(15, s.size)
+    speed[:3], speed[-3:] = np.median(speed[:k]), np.median(speed[-k:])
+    return speed.clip(0.5, 120.0)
 
 
 @dataclass

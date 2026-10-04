@@ -88,7 +88,7 @@ a human driving (W2), real footage (W1), the glasses (W5).
 
 | # | When | Step | Fixes | Effort | Status | What would change the plan |
 |---|---|---|---|---|---|---|
-| 1 | Now | **Live AC overlay, driven by Pavle** (Windows builds it, [`handoff.md`](handoff.md) 2026-10-03) | W2, W3, T3 | Driving + log analysis | Windows building | If it feels useless even when accurate, step 2 matters more than accuracy |
+| 1 | Now | **Live AC overlay, driven by Pavle** (Windows builds it, [`handoff.md`](handoff.md) 2026-10-03) | W2, W3, T3 | Driving + log analysis | Driven 2026-10-03/04: works (Brands 40-57 ms, Noja 87 ms median); stops, pace and confidence fixed; Noja lean open | If it feels useless even when accurate, step 2 matters more than accuracy |
 | 2 | Now | **A delta for teaching:** continuous vs smoothed vs per corner / sector, scored on existing laps, then on the live logs | W3, T3 | Hours, Mac | Not started | |
 | 3 | Now | **Compile MobileNet for Halo with Vela:** size, NPU time, unsupported layers | W5 | ~1 hour, Mac | Not started | If it does not fit: a smaller backbone or distillation, before anything else |
 | 4 | Now | **Wider wander from Windows:** wide-FOV re-renders of existing replays, wander about ±4 m, look-into-corner off, `lateral_m.npy`; fixed ±3 m offset laps on the holdouts. Then fine-tune the current model on it | W6 | Windows rendering, ~1 h Mac | Requested | If lines far apart cost precision on the usual line, keep it to a share of clips |
