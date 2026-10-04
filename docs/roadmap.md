@@ -33,7 +33,7 @@ right lessons: a driver must be able to trust "I gained in that corner".
 |---|---|
 | S1 | The method works on unseen AC tracks: 7.6% over 100 ms with a Halo-sized model |
 | S2 | It carries over to real footage it never saw (median ~55-60 ms) |
-| S3 | Head movement is understood and mostly fixable without retraining: the head-angle search takes a held 7° turn from 13.5% to 1.1%; a perfect gyro takes corner glances to 0.9% |
+| S3 | Head movement is understood and mostly fixable without retraining: the head-angle search takes a held 7° turn from 13.5% to 1.1%; knowing the head angle at every moment takes corner glances to 0.9%. Roll is the cheap one: a held 10° lean costs about 4-5 points, against about 26 for a 7° turn |
 | S4 | Tools: the AC rig, the virtual camera, the imperfect-driver test, consistency metrics, the live loop (2.8 ms a frame on the Mac's GPU), the wrong-reference and leakage controls on every run |
 | S5 | Camera only, nothing to install, works where GPS cannot (indoor tracks) |
 
@@ -55,11 +55,12 @@ right lessons: a driver must be able to trust "I gained in that corner".
 |---|---|
 | O1 | The sim rig with the live overlay: unlimited human laps with exact truth, and the "does it feel useful?" test |
 | O2 | Fix it in the reference, not the model: a wide or stitched reference, the angle search, voting across laps. Cheap, no retraining |
-| O3 | A gyro for the fast part of head movement, kept honest by the image search (this answers the old "a gyro drifts" objection) |
+| O3 | A "visual gyro" for the fast part of head movement: Halo has no gyroscope, but the camera measures its own rotation from frame to frame; take out the turn the reference made at that place, and keep it honest with the search |
 | O4 | A display built for teaching: per corner or sector rather than a jittery number. Over 5 s the true change (158 ms) is twice the error (71 ms); over 2 s they are about equal |
 | O5 | Pretraining was the biggest single lever; more general or real driving video may push it further |
 | O6 | Indoor karting: GPS timers cannot work there |
 | O7 | Train on how people actually look: both laps following the road ahead, so the common case is the trained case (see *Decisions in progress*) |
+| O8 | Motorcycles: a delta in the helmet, where a dash is hard to read leaned over. Needs large roll tolerance (40-55° lean); GPS timers with predictive delta already exist there, so the edge is the display, not the sensor |
 
 ### Threats
 
@@ -90,14 +91,16 @@ a human driving (W2), real footage (W1), the glasses (W5).
 | 2 | Now | **A delta for teaching:** continuous vs smoothed vs per corner / sector, scored on existing laps, then on the live logs | W3, T3 | Hours, Mac | Not started | |
 | 3 | Now | **Compile MobileNet for Halo with Vela:** size, NPU time, unsupported layers | W5 | ~1 hour, Mac | Not started | If it does not fit: a smaller backbone or distillation, before anything else |
 | 4 | Now | **Wider wander from Windows:** wide-FOV re-renders of existing replays, wander about ±4 m, look-into-corner off, `lateral_m.npy`; fixed ±3 m offset laps on the holdouts. Then fine-tune the current model on it | W6 | Windows rendering, ~1 h Mac | Requested | If lines far apart cost precision on the usual line, keep it to a share of clips |
-| 5 | Now | **Natural gaze on both laps:** both live and reference follow the road ahead (per-lap habits), made exactly from the wide renders on the Mac; fine-tune and compare | W4, O7 | Half a day + ~1 h fine-tune | Proposed | If both-laps-looking (5.6% today) does not drop, the search and gyro carry it alone |
+| 5 | Now | **Measure how much heads really move:** on the real kart clip, the yaw, pitch and roll between laps at the same place (from the ORB matches); at the track day, a helmet GoPro's own gyro log | W4 | ~1 hour Mac; then the track day | Proposed | Sets the ranges for step 5b and how much head-turn work is needed at all |
+| 5b | Now | **Natural head on both laps:** both live and reference follow the road ahead with the head doing part of what the eyes do, and lean (roll) into corners, each lap with its own habit, made exactly from the wide renders on the Mac; fine-tune and compare | W4, O7 | Half a day + ~1 h fine-tune | Proposed | If both-laps-looking (5.6% today) does not drop, the search carries it alone |
 | 6 | Next | **Real footage of our own with truth:** a helmet camera at eye height plus a GPS logger, several sessions and days, an indoor track if possible; evaluate, then fine-tune on it | W1, T1 | A track day or two | Waiting on a track day | If still over ~40% after fine-tuning, rethink before hardware work |
 | 7 | Next | **Halo on hardware:** continuous capture, NPU speed, Bluetooth, 25 minutes of power and heat, helmet fit | W5, T2 | Needs the glasses | Waiting on the glasses | If capture or fit fails, change the hardware path |
-| 8 | Meanwhile | **Head turns:** a reference stitched from several laps (simulated on the wide renders), and a realistic gyro (drift, the kart's turn taken out) with the search | W4, O2, O3 | Days, Mac | Not started | |
+| 8 | Meanwhile | **Head turns:** a reference stitched from several laps (simulated on the wide renders), and the visual gyro (the camera's own frame-to-frame rotation, the kart's turn taken out) with the search | W4, O2, O3 | Days, Mac | Not started | |
 | 9 | Meanwhile | **Tracker for human pace,** tuned on the live AC laps from step 1 | W2 | Days, Mac | Waiting on step 1 | |
 | 10 | Later | Lap aligner -> voting across laps, a self-improving reference; an abstain signal | W7 | Weeks | | |
 | 11 | Later | Wider data: the kart driver's view (wheel, hands pasted in), kart tracks, indoor AC mods | W1 | Ongoing | | |
 | 12 | Later | Patent freedom-to-operate check before anything commercial | T6 | A patent attorney | | |
+| 13 | Later | Motorcycles: roll tolerance to 40-55° (de-rotate by a measured roll, or a roll search), bike footage, helmet fit | O8 | Weeks | | |
 
 **Paused:** more AC precision tuning (new backbones, more seeds) and the FOV sweep
 (Halo's view is fixed; the sweep only informs later glasses). Either comes back if
@@ -123,5 +126,16 @@ normalisation) or after several fine-tunes stack up.
   laps follow the road ahead, that difference stays small. Today's models were
   trained mostly on views fixed to the car plus random held poses. Measured: both
   laps looking into corners costs 5.6% against 0.9% straight ahead.
+- **The camera follows the head, not the eyes.** For small shifts of gaze the eyes do
+  most of the work, so the head turns less than the gaze. The test head that turns
+  into corners (median 4°, 90th percentile 11°) aims at where the kart will be in
+  a second, which is where the eyes look; the head probably turns less. Step 5
+  measures it.
+- **Roll is handled in part:** training includes ±8° of roll, and a held 10° roll
+  costs about 4-5 points (MobileNet 9.2% -> 13.9%, cross-session) where a 7° turn
+  costs about 26. Roll leaves the middle of the picture in place and loses only
+  its corners, and a lean that repeats every lap cancels against the reference.
+- **Halo has no gyroscope** (accelerometer and compass only, [`ml-pivot.md`](ml-pivot.md),
+  *Motion sensors*): the fast head angle has to come from the camera itself.
 - **Pending answers from Pavle:** when the Halo glasses are in hand; when a kart
   track day is possible. They set the order of steps 6 and 7.

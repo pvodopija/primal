@@ -2012,7 +2012,10 @@ MobileNet without the wide renders reads the same (training view into corners:
   13.5%; into corners 22.5% against 16.2%).
 
 So the combination that removes head movement is a **reference wider than the live
-view plus a gyro for the fast part**. The reference only has to be wide once: a
+view plus a fast head angle**. Halo has no gyroscope (*Motion sensors*), so on Halo the fast
+angle has to come from the camera: its own rotation from frame to frame (the
+phase correlation `yaw_search.corner_look` uses reads a +5° turn as +5.5°), less
+the turn the reference made at the same place. The reference only has to be wide once: a
 wider camera for the reference lap, or a reference stitched from several laps that
 looked in different directions. The live glasses keep their whole view.
 
