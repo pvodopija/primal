@@ -1840,3 +1840,120 @@ on the three holdouts, `lateral_m.npy`):
   position packed as `lateral_m.npy`. A separate set (`packed_ac_v3_wide4m` or
   similar), so it can be trained with and without and compared, since tolerance
   bought this way may cost precision on the usual line.
+
+## 2026-10-04 — Windows → Mac: the live overlay, driven
+
+Answers "run the model live on AC". Built, then driven by the user for two
+evenings: Silverstone (unseen), Brands Hatch Indy (training) and the kart track
+Noja (unseen, a Sodi SR4 kart). Code only in git; logs on the share.
+
+### Speed on this PC (i5-6600, 4 cores, torch 2.14 CPU with oneDNN)
+
+- `python -m train.live` replay check, MobileNet: **5.6 ms a frame** mean (p99
+  15.7), and 6.6 ms (p99 19.9) on a second run; error median 23 ms, 0.2% over
+  100 ms; 4.1 ms median from the offline evaluation. Well under 33 ms.
+- **Grab to reading, live with AC running: 21-26 ms median, p95 30-41 ms**, on
+  two torch threads (AC keeps the other two). No dropped frames in any run; the
+  3-4 s stalls that re-encoding a new reference used to cause are gone (below).
+
+### The tool: `capture/live_delta.py`
+
+- **Frames:** OBS's Virtual Camera through `cv2.VideoCapture(0, CAP_DSHOW)`, no
+  install: 1280x720 at 60 fps, OBS's canvas uncompressed (GDI BitBlt took 26 ms a
+  grab). Cropped and resized as `capture/pack.py` does (rows 0-688, INTER_AREA,
+  148x80); the barcode (rows 692-720) never reaches the model. Colour levels match
+  the recordings: barcode black 0 / white 255 live, 0 / 254 decoded from H.264.
+- **Truth:** the barcode in every frame (the camera's own spline position), so it
+  holds for any camera, AC's cockpit view included. True delta = lap clock minus
+  the reference's time at that position; PRIMAL delta = lap clock minus
+  `ref_time_s`. The lap clock starts at the barcode's line crossing, so the shown
+  PRIMAL delta borrows that one instant from the truth; `camera_only_delta_s`
+  logs the alternative where PRIMAL's own position crossing the line starts it.
+- **Reference: the fastest legal lap of the session, per camera.** Every lap is
+  recorded with the descriptors the loop encodes anyway (frames 1/30 s apart),
+  0.5 s past the line at both ends so the grid never extrapolates to the line;
+  a faster legal lap becomes the reference 0.5 s after it ends, with nothing to
+  encode and the clip history carried over. Legal: no pause, pits, 3+ tyres out,
+  stop under 20 km/h, camera change or barcode gap, and a flying start (it must
+  cross the line at no less than 3/4 of its finishing speed). A packed lap holds
+  the place on the training tracks until then. Replaying a recorded Silverstone
+  session, the best-lap reference from 30 fps descriptors gave 19.8 ms median
+  against 20.2 ms for the same lap re-encoded from 60 fps frames.
+- **Wheel buttons** (winmm, picked once on screen): CAMERA cycles rig presets
+  (training view, FOV 90, 0.6 m, 2 m, look-into-corners, AC's own cameras: the rig
+  lets go and AC's camera button works); RECORD locks the reference.
+- **AC shared memory** outlives AC while Content Manager holds it: at first the
+  tool read the last session's track (Oulton) while the user drove Silverstone.
+  It now waits for advancing physics packets and watches the track.
+- **`train/live.py` changes (yours to review):** `LiveDelta.reset()`;
+  `encode_frames()` shared; `LiveDelta(..., reference_frames=None,
+  reference_descriptors=...)`; `push` split into `wants` / `encode` /
+  `push_descriptor`. `tests/test_live.py` passes (run by hand: pytest isn't
+  installed here) and the replay check prints the same numbers as before.
+
+### What the deltas looked like (clean laps; error = PRIMAL against the true reference time)
+
+| run (live_logs/) | track, camera, reference | median | over 100 ms | over 1 s |
+|---|---|---|---|---|
+| `20261003T144813__ks_silverstone__national__auto` | Silverstone (unseen), training view, bot lap | 90 ms | ~47% | ~5% |
+| `20261003T175742__ks_brands_hatch__indy__auto` | Brands Indy (training), training view, bot lap (lap 1) | 57 ms | 26% | 0% |
+| same run, laps 2-5 | own lap (started slowly, see 2.) | 40-48 ms | 18-32% | 4-5% |
+| `20261003T183700__noja__live` | Noja kart (unseen), AC cockpit view, own lap | 90 ms (1.0 m) | 44% | 0% |
+| `20261004T182851__noja__auto` | Noja, AC cockpit, own best lap, 18 laps | 87 ms (0.8 m) | 44% | 0% |
+
+The user's verdict: works surprisingly well on Brands and Noja, the delta
+consistent. At kart speed (40-50 km/h) the error in metres is as good as at Brands
+(1.0 m against 1.3 m); the milliseconds grow because each metre takes longer. The
+cockpit view works because the reference carries the same cockpit; it would not
+against a packed (no-cockpit) lap. Human driving at Silverstone, 30-40% slower
+than the bot reference, was the worst case.
+
+### For the Mac: what broke, and needs model or tracker work
+
+1. **Standing still, the tracker creeps forward.** Kart stopped 28 s at Noja: the
+   single clips stayed within 0.07 s of the truth, the tracker advanced 1.0 s of
+   reference (error 0.3 to 1.3 s, confidence 1.00 throughout). Its motion model
+   never lets the speed reach zero (`speed_range` 0.05-1.6 of the reference's
+   pace). Stops and spins at Silverstone: 3.2 s median error under 20 km/h. It
+   needs a stopped state, or to trust the clips when they don't move.
+2. **A pace far from the reference's makes it lag.** At Brands the reference lap
+   crossed the line at 40-60 km/h, the flying laps at 165: every lap the tracker
+   lagged 2-3 s for 2.6 s after the line while the single clips were right. The
+   tool now refuses such references, but the stickiness is general.
+3. **A place-dependent forward lean at Noja:** +0.8 to +1.0 m overall, ~2 m (about
+   200 ms) in the stretch around the start/finish line, ~0 in places mid-lap;
+   single clips and tracker alike; uncorrelated with speed (r = 0.06). The camera
+   was constant (frame log: cockpit, 0.3 m behind the kart origin, 0.71 m up, FOV
+   60, no yaw). Not seen at Brands with an own reference (+0.2 m). The user sees
+   it as PRIMAL's delta turning green at the line while the true one is red.
+   Guesses: the repeating start-grid boxes on the straight, unseen kart scenery,
+   or the cockpit view; a training-view run at Noja would separate the last two.
+4. **Confidence is uninformative:** 1.00 on nearly every tick, including 3 s errors.
+5. **Camera-only lap clock** (PRIMAL's own line crossing instead of the barcode's):
+   +27-55 ms a lap on a replayed bot session, +70-340 ms at Noja (the lean at the
+   line).
+6. **Data quirk, `build_reference_grid`:** when a lap's first or last two frames
+   repeat, `_speed_from_labels` gives 0.5 m/s there and the extrapolation to the
+   line is off: 3 of 279 full laps in `packed_ac_v3` by more than 50 ms
+   (`ks_laguna_seca__default__20260929T204231Z__lap01` by ~2.3 s;
+   `ks_highlands__layout_short__20260927T212549Z__lap01` and `__lap17`, ~0.05-0.09 s).
+   Not changed here.
+
+### Logs
+
+`D:\Documents\Transfer\live_logs\<start>__<track>__<reference>\`: `ticks.csv` (a
+row per 15 Hz tick: lap, lap_flags, clock, ref/single/true reference times, both
+deltas, error_ms, camera_only_delta_s, AC's meter, spline and camera position,
+speed, tyres out, delay, camera, reference), `laps.json` (every lap: time, legal
+or why not, whether it became the reference), `summary.json` and
+`best_<camera>_lapNN/` (each new best: frames, t, s, descriptors). Silverstone's
+folder also holds the AC replay of the drive. Ignore `20261003T142500__rt_oulton…`
+(the wrong-track bug), `20261003T172842__ks_brands…` (playing with cameras and
+pauses), `…181302__losarcos` (no reference accepted, no data) and
+`20261004T182851__noja__live` (a second copy of the tool started alongside; 0
+ticks). 883 MB in all.
+
+### Rig
+
+`rig.txt` is back to the recording settings (wander 2.5 m, FOV 60, look off). The
+live tool sets its own preset on start (wander 0) and restores the file on exit.
