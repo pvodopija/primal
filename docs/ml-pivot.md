@@ -1125,14 +1125,21 @@ the same scripts. The hand-noted crossings are refined by ORB matches to the fir
 crossing (raw pixels jumped up to 2 s here); the reference is the fastest lap (lap 6),
 as the product picks it; the ORB truth leaves the cockpit out and searches ±3 s.
 
-| model | single shot: median / >100 ms | tracker: median / p90 / >100 ms |
+Clip frames 1/30 s apart (every frame at 30 fps; a first run took every other frame,
+0.73 s clips, and read 77 / 86 / 78 ms for the three models). SeqSLAM, the classical
+baseline (`train/seqslam.py`, `eval lines`' settings), goes through the same clips,
+tracker and truth:
+
+| matcher | single shot: median / p90 / >100 ms | tracker: median / p90 / >100 ms |
 |---|---|---|
-| MobileNetV3-Small (`v3_mobilenet_lr1_s0`) | 102 ms / 50.6% | **77 ms / 258 ms / 39.4%** |
-| MobileNet + wide renders | 104 ms / 51.4% | 86 ms / 304 ms / 43.9% |
-| ResNet-18 | 104 ms / 51.3% | 78 ms / 284 ms / 40.6% |
+| MobileNetV3-Small (`v3_mobilenet_lr1_s0`) | 105 ms / 915 ms / 51.7% | **74 ms / 269 ms / 38.0%** |
+| ResNet-18 | 100 ms / 746 ms / 49.9% | 69 ms / 286 ms / 35.1% |
+| SeqSLAM | 330 ms / 30 s / 76.6% | 218 ms / 1780 ms / 68.9% |
 
 - **It works at racing speed, in traffic, on a camera it never saw:** lap 4's delta at
   the line reads +0.67 s against a true +0.60 s.
+- **SeqSLAM is three times further off in median and loses the place outright** (single
+  shots up to a lap away; p90 1.8 s even through the tracker).
 - **The models agree with each other within 24-34 ms in median**, far closer than
   with the truth: the truth is weaker here (about 100 ORB inliers a frame against
   275-365 on the kart clip), so part of the 77 ms is its own.

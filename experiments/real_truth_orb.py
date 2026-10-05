@@ -29,6 +29,7 @@ from train.dataset import _to_chw
 from train.estimator import EstimatorConfig
 from train.eval import REFERENCE_TIME_TWO_MODES, _run_estimator, load_model
 from train.model import soft_argmax_circular
+from train.seqslam import SeqSLAM
 
 TRUTH_HZ, WINDOW_S = 5.0, _S["window_s"]
 
@@ -158,24 +159,33 @@ def main() -> None:
     grid = SimpleNamespace(time_s=np.arange(n_bins) * T / n_bins, lap_time_s=T, n_bins=n_bins,
                            pos_m=np.arange(n_bins, dtype=float), track_length_m=float(n_bins))
     answers, report = {}, {}
+    stride = max(int(round(SPACING_S / np.median(np.diff(t)))), 1)  # clip frames 1/30 s apart at any frame rate
     for run in runs:
-        model, payload = load_model(Path("runs") / run / "best.pt", device)
-        clip_len = int(payload["args"]["clip_len"])
-        with torch.no_grad():
-            desc = torch.cat([model.encode_reference(torch.from_numpy(_to_chw(f[i:i + 256])).to(device), use_checkpoint=False)
-                              for i in range(0, len(f), 256)])
-        ref = desc[torch.from_numpy(bin_frame).to(device)]
-        scale = model.logit_scale.exp()
+        if run == "seqslam":  # the classical baseline through the same clips, tracker and truth (eval lines' settings)
+            clip_len = 12
+            matcher = SeqSLAM(clip_len, down=(48, 64), temperature=6.0).to(device).eval()
+            ref_img = torch.from_numpy(_to_chw(f[bin_frame])).to(device)
+            logits_of = lambda rows: matcher(torch.from_numpy(_to_chw(f[rows.reshape(-1)])).to(device)
+                                             .view(*rows.shape, *ref_img.shape[1:]), ref_img)[0]
+        else:
+            model, payload = load_model(Path("runs") / run / "best.pt", device)
+            clip_len = int(payload["args"]["clip_len"])
+            with torch.no_grad():
+                desc = torch.cat([model.encode_reference(torch.from_numpy(_to_chw(f[i:i + 256])).to(device), use_checkpoint=False)
+                                  for i in range(0, len(f), 256)])
+            ref = desc[torch.from_numpy(bin_frame).to(device)]
+            logits_of = lambda rows, desc=desc, ref=ref, model=model: model.head(
+                torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(rows).to(device)], ref) * model.logit_scale.exp())
         errs = {"single": [], "tracker": []}
         answers[run] = {}
         for k, (a, b) in live:
             stream_t = np.arange(a + 11 * SPACING_S, b, 1 / HZ)
             tf = np.array([int(np.argmin(np.abs(t - x))) for x in stream_t])
-            idx = np.clip(tf[:, None] - np.arange(clip_len - 1, -1, -1)[None, :] * 2, 0, len(t) - 1)
+            idx = np.clip(tf[:, None] - np.arange(clip_len - 1, -1, -1)[None, :] * stride, 0, len(t) - 1)
             beliefs, single = [], []
             with torch.no_grad():
-                for chunk in np.array_split(np.arange(len(idx)), max(1, len(idx) // 64)):
-                    logits = model.head(torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(idx[chunk]).to(device)], ref) * scale)
+                for chunk in np.array_split(np.arange(len(idx)), max(1, len(idx) // (2 if run == "seqslam" else 64))):
+                    logits = logits_of(idx[chunk])
                     beliefs.append(logits.softmax(-1).cpu().double())
                     single.append(soft_argmax_circular(logits, window=8).float().cpu())
             tracked = _run_estimator({"grid": grid, "belief": torch.cat(beliefs).numpy(), "t": stream_t},

@@ -26,7 +26,7 @@ with torch.no_grad():
     ref = desc[torch.from_numpy(bin_frame).to(device)]
     ticks = np.arange(a + 11 * SPACING_S, b, 1 / HZ)
     tf = np.array([int(np.argmin(np.abs(t - x))) for x in ticks])
-    idx = np.clip(tf[:, None] - np.arange(K - 1, -1, -1)[None, :] * 2, 0, len(t) - 1)
+    idx = np.clip(tf[:, None] - np.arange(K - 1, -1, -1)[None, :] * max(int(round(SPACING_S / np.median(np.diff(t)))), 1), 0, len(t) - 1)
     beliefs = [model.head(torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(idx[c]).to(device)], ref) * model.logit_scale.exp()).softmax(-1).cpu().double()
                for c in np.array_split(np.arange(len(idx)), max(1, len(idx) // 64))]
 bins = _run_estimator({"grid": grid, "belief": torch.cat(beliefs).numpy(), "t": ticks}, EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None, 0, reference_time=True).numpy()
