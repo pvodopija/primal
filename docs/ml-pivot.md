@@ -1144,6 +1144,11 @@ tracker and truth:
   with the truth: the truth is weaker here (about 100 ORB inliers a frame against
   275-365 on the kart clip), so part of the 77 ms is its own.
 - At ~46 m/s, 77 ms is about 3.5 m: in metres this is the hardest case yet.
+- **Its field of view, measured from the laps** (`experiments/real_fov.py`: a lap turns
+  360°, so the scenery's summed sideways slide gives the focal length): about 782 px
+  (717-909 across laps), so 79-94° across the frame and only **56-61° in the model's
+  crop**, against the 91.5° it was trained on. The edges slide 1.17x the centre's
+  (pinhole 1.38x, fisheye 1.0x): a wide lens with some barrel distortion.
 
 ## Estimator
 
