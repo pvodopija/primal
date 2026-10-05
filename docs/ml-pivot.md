@@ -1136,6 +1136,19 @@ tracker and truth:
 | ResNet-18 | 100 ms / 746 ms / 49.9% | 69 ms / 286 ms / 35.1% |
 | SeqSLAM | 330 ms / 30 s / 76.6% | 218 ms / 1780 ms / 68.9% |
 
+**Cropped to the training view, it does much better.** The crop above shows only 56-61°
+(measured below), 1.5x zoomed in against the 91.5° the models trained on. The whole
+width, 1280x692 (`REAL_CROP=full`: ~80-94°, the cockpit in the bottom third of every lap
+alike), same truth:
+
+| matcher, full-width crop | single shot: median / p90 / >100 ms | tracker: median / p90 / >100 ms |
+|---|---|---|
+| MobileNetV3-Small | 76 ms / 361 ms / 40.0% | **58 ms / 214 ms / 29.4%** |
+| ResNet-18 | 75 ms / 386 ms / 40.0% | 58 ms / 202 ms / 28.0% |
+
+The rule in *Cameras and field of view* holds on real footage: crop to the training
+field of view first. The kart clip's crop was chosen the same way and is unmeasured.
+
 - **It works at racing speed, in traffic, on a camera it never saw:** lap 4's delta at
   the line reads +0.67 s against a true +0.60 s.
 - **SeqSLAM is three times further off in median and loses the place outright** (single

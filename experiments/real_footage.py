@@ -45,19 +45,23 @@ _SETS = {
                            crop=(250, 1030, 0, 422), truth_crop=(250, 1030, 0, 422), reference="first", refine_s=1.5, window_s=1.5),
     # Historic F1 at Brands Hatch GP, a helmet camera at 30 fps; before 3:34 a warm-up lap.
     "BHGP": dict(video="BHGP-POV-super-realistic.mp4", crossings=[214, 305, 392, 476, 561, 645, 728, 813],
-                 crop=(224, 1056, 120, 570), truth_crop=(224, 1056, 120, 430), reference="fastest", refine_s=2.0, window_s=3.0, refine="orb"),
+                 crop=(224, 1056, 120, 570), truth_crop=(224, 1056, 120, 430), reference="fastest", refine_s=2.0, window_s=3.0, refine="orb",
+                 crop_full=(0, 1280, 14, 706)),  # REAL_CROP=full: the whole width, ~80-94°, near the training view
+
 }
 _S = _SETS[FOOTAGE]
 ROOT = Path("data/real-footage") / FOOTAGE
 ROOT.mkdir(parents=True, exist_ok=True)
 VIDEO = Path("data/real-footage") / _S["video"]
 CROSSINGS_S = _S["crossings"]
-CROP, TRUTH_CROP = _S["crop"], _S["truth_crop"]
+CROP_NAME = os.environ.get("REAL_CROP", "")
+CROP, TRUTH_CROP = _S[f"crop_{CROP_NAME}" if CROP_NAME else "crop"], _S["truth_crop"]
+SUFFIX = f"_{CROP_NAME}" if CROP_NAME else ""
 HZ, SPACING_S, BIN_S = 15.0, 1 / 30, 0.052
 
 
 def frames() -> tuple[np.ndarray, np.ndarray]:
-    cache = ROOT / "frames_148x80.npz"
+    cache = ROOT / f"frames_148x80{SUFFIX}.npz"
     if cache.exists():
         z = np.load(cache)
         return z["frames"], z["t"]

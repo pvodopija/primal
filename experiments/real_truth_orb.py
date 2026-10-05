@@ -23,7 +23,7 @@ import cv2
 import numpy as np
 import torch
 
-from experiments.real_footage import (_S, BIN_S, CROSSINGS_S, HZ, ROOT, SPACING_S, TRUTH_CROP, VIDEO, frames, pixels, reference_lap,
+from experiments.real_footage import (_S, BIN_S, CROSSINGS_S, HZ, ROOT, SUFFIX, SPACING_S, TRUTH_CROP, VIDEO, frames, pixels, reference_lap,
                                       refine_crossings)
 from train.dataset import _to_chw
 from train.estimator import EstimatorConfig
@@ -206,7 +206,7 @@ def main() -> None:
         for y in names[i + 1:]:
             d = np.abs((np.concatenate(answers[x]["tracker"]) - np.concatenate(answers[y]["tracker"]) + T / 2) % T - T / 2) * 1000
             print(f"  agreement {x} vs {y}: median {np.median(d):4.0f} ms, p90 {np.percentile(d, 90):5.0f} ms")
-    out = ROOT / "results_orb.json"
+    out = ROOT / f"results_orb{SUFFIX}.json"
     old = json.loads(out.read_text())["report"] if out.exists() else {}
     out.write_text(json.dumps({"starts": starts, "report": {**old, **report}}, indent=2))
 
