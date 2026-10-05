@@ -21,6 +21,7 @@ Usage: PYTHONPATH=. python experiments/real_footage.py RUN [RUN ...]
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -34,10 +35,24 @@ from train.estimator import EstimatorConfig
 from train.eval import REFERENCE_TIME_TWO_MODES, _run_estimator, load_model
 from train.model import soft_argmax_circular
 
-ROOT = Path("data/real-footage/adventure-solo")
-VIDEO = ROOT / "adventure-pov.mp4"
-CROSSINGS_S = [12, 50, 87, 125, 163, 201, 238, 276, 313, 350]  # hand-noted, to the second
-CROP = (250, 1030, 0, 422)  # x0, x1, y0, y1 of 1280x720: above the wheel, AC's aspect
+# Which footage: REAL_FOOTAGE=adventure-solo (default) or BHGP. Crossings hand-noted to the
+# second; CROP is x0, x1, y0, y1 of 1280x720 at AC's aspect; TRUTH_CROP what the ORB truth
+# sees (the cockpit out: it looks the same in every frame and would match anywhere);
+# the reference lap is the first, or the fastest as the product picks it.
+FOOTAGE = os.environ.get("REAL_FOOTAGE", "adventure-solo")
+_SETS = {
+    "adventure-solo": dict(video="adventure-solo/adventure-pov.mp4", crossings=[12, 50, 87, 125, 163, 201, 238, 276, 313, 350],
+                           crop=(250, 1030, 0, 422), truth_crop=(250, 1030, 0, 422), reference="first", refine_s=1.5, window_s=1.5),
+    # Historic F1 at Brands Hatch GP, a helmet camera at 30 fps; before 3:34 a warm-up lap.
+    "BHGP": dict(video="BHGP-POV-super-realistic.mp4", crossings=[214, 305, 392, 476, 561, 645, 728, 813],
+                 crop=(224, 1056, 120, 570), truth_crop=(224, 1056, 120, 430), reference="fastest", refine_s=2.0, window_s=3.0, refine="orb"),
+}
+_S = _SETS[FOOTAGE]
+ROOT = Path("data/real-footage") / FOOTAGE
+ROOT.mkdir(parents=True, exist_ok=True)
+VIDEO = Path("data/real-footage") / _S["video"]
+CROSSINGS_S = _S["crossings"]
+CROP, TRUTH_CROP = _S["crop"], _S["truth_crop"]
 HZ, SPACING_S, BIN_S = 15.0, 1 / 30, 0.052
 
 
@@ -72,12 +87,19 @@ def pixels(f: np.ndarray) -> np.ndarray:
     return g / (np.linalg.norm(g, axis=1, keepdims=True) + 1e-6)
 
 
+def reference_lap(laps: list[tuple[float, float]]) -> int:
+    """Index of the reference among the laps: the first, or the fastest."""
+    return 0 if _S["reference"] == "first" else int(np.argmin([b - a for a, b in laps]))
+
+
 def refine_crossings(px: np.ndarray, t: np.ndarray) -> list[float]:
+    if _S.get("refine") == "orb":  # refined by features: real_truth_orb.orb_crossings writes them
+        return json.loads((ROOT / "starts_orb.json").read_text())
     anchor = int(np.argmin(np.abs(t - CROSSINGS_S[0])))
     clip = np.arange(-8, 9, 2)
     refined = [float(t[anchor])]
     for c in CROSSINGS_S[1:]:
-        cand = np.flatnonzero(np.abs(t - c) <= 1.5)
+        cand = np.flatnonzero(np.abs(t - c) <= _S["refine_s"])
         cand = cand[(cand + clip.min() >= 0) & (cand + clip.max() < len(t))]
         score = [float(np.mean(np.sum(px[k + clip] * px[anchor + clip], 1))) for k in cand]
         refined.append(float(t[cand[int(np.argmax(score))]]))

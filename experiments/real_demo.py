@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 import cv2, numpy as np, torch
-from experiments.real_footage import BIN_S, CROP, HZ, ROOT, SPACING_S, VIDEO, frames, pixels, refine_crossings
+from experiments.real_footage import BIN_S, CROP, HZ, ROOT, SPACING_S, VIDEO, frames, pixels, reference_lap, refine_crossings
 from train.dataset import _to_chw
 from train.estimator import EstimatorConfig
 from train.eval import REFERENCE_TIME_TWO_MODES, _run_estimator, load_model
@@ -13,7 +13,7 @@ run, lap_no = sys.argv[1], int(sys.argv[2])
 f, t = frames()
 starts = refine_crossings(pixels(f), t)
 laps = list(zip(starts[:-1], starts[1:]))
-(r0, r1), (a, b) = laps[0], laps[lap_no - 1]
+(r0, r1), (a, b) = laps[reference_lap(laps)], laps[lap_no - 1]
 T = r1 - r0
 n = int(round(T / BIN_S))
 bin_frame = np.array([int(np.argmin(np.abs(t - (r0 + i * T / n)))) for i in range(n)])
@@ -45,7 +45,7 @@ for i, x in enumerate(ticks):
     canvas = np.full((360, 1050, 3), 25, np.uint8)
     canvas[10:291, :520] = live; canvas[10:291, 530:] = picked
     cv2.putText(canvas, f"LIVE lap {lap_no}  {x - a:5.1f} s", (10, 320), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (240, 240, 240), 2)
-    cv2.putText(canvas, f"REFERENCE lap 1 at {ref_t:5.1f} s (model's pick)", (540, 320), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (240, 240, 240), 2)
+    cv2.putText(canvas, f"REFERENCE lap {reference_lap(laps) + 1} at {ref_t:5.1f} s (model's pick)", (540, 320), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (240, 240, 240), 2)
     colour = (80, 220, 80) if delta < 0 else (80, 80, 240)
     cv2.putText(canvas, f"DELTA {delta:+.2f} s", (400, 352), cv2.FONT_HERSHEY_SIMPLEX, 0.9, colour, 2)
     writer.write(canvas)

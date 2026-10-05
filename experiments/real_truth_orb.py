@@ -23,21 +23,22 @@ import cv2
 import numpy as np
 import torch
 
-from experiments.real_footage import BIN_S, CROP, HZ, ROOT, SPACING_S, VIDEO, frames, pixels, refine_crossings
+from experiments.real_footage import (_S, BIN_S, CROSSINGS_S, HZ, ROOT, SPACING_S, TRUTH_CROP, VIDEO, frames, pixels, reference_lap,
+                                      refine_crossings)
 from train.dataset import _to_chw
 from train.estimator import EstimatorConfig
 from train.eval import REFERENCE_TIME_TWO_MODES, _run_estimator, load_model
 from train.model import soft_argmax_circular
 
-TRUTH_HZ, WINDOW_S = 5.0, 1.5
+TRUTH_HZ, WINDOW_S = 5.0, _S["window_s"]
 
 
 def half_res_crops(times: np.ndarray) -> dict[int, np.ndarray]:
-    """Grey half-resolution crops (390x211) of the video frames nearest the given times."""
+    """Grey half-resolution crops of the video frames nearest the given times."""
     cap = cv2.VideoCapture(str(VIDEO))
     fps = cap.get(cv2.CAP_PROP_FPS)
     wanted = {int(round(x * fps)) for x in times}
-    x0, x1, y0, y1 = CROP
+    x0, x1, y0, y1 = TRUTH_CROP
     out, i = {}, 0
     last = max(wanted)
     while i <= last:
@@ -45,7 +46,8 @@ def half_res_crops(times: np.ndarray) -> dict[int, np.ndarray]:
         if not ok:
             break
         if i in wanted:
-            out[i] = cv2.resize(cv2.cvtColor(f[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY), (390, 211), interpolation=cv2.INTER_AREA)
+            out[i] = cv2.resize(cv2.cvtColor(f[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY), ((x1 - x0) // 2, (y1 - y0) // 2),
+                                interpolation=cv2.INTER_AREA)
         i += 1
     return out, fps
 
@@ -70,6 +72,27 @@ def inliers(a, b) -> int:
     return int(mask.sum()) if mask is not None else 0
 
 
+def orb_crossings() -> list[float]:
+    """
+    The hand-noted crossings, each moved within ±refine_s to the frame with the most
+    geometrically consistent ORB matches to the first crossing's frame. Raw pixels jumped
+    up to 2 s at speed, with traffic and a moving head.
+    """
+    cache = ROOT / "starts_orb.json"
+    if cache.exists():
+        return json.loads(cache.read_text())
+    cands = [np.arange(c - _S["refine_s"], c + _S["refine_s"] + 1e-6, 1 / 30) for c in CROSSINGS_S[1:]]
+    crops, fps = half_res_crops(np.concatenate([[CROSSINGS_S[0]]] + cands))
+    anchor = features(crops[int(round(CROSSINGS_S[0] * fps))])
+    starts = [float(CROSSINGS_S[0])]
+    for c in cands:
+        scores = [inliers(anchor, features(crops[int(round(x * fps))])) for x in c]
+        starts.append(float(c[int(np.argmax(scores))]))
+        print(f"  crossing {starts[-1]:.2f} s (noted {c[len(c) // 2]:.0f}), {max(scores)} inliers", flush=True)
+    cache.write_text(json.dumps(starts))
+    return starts
+
+
 def match_tick(args):
     live_feat, cand = args
     scores = [inliers(live_feat, c) for c in cand]
@@ -79,12 +102,15 @@ def match_tick(args):
 def main() -> None:
     runs = sys.argv[1:]
     f, t = frames()
-    starts = refine_crossings(pixels(f), t)
+    starts = orb_crossings() if _S.get("refine") == "orb" else refine_crossings(pixels(f), t)
     laps = list(zip(starts[:-1], starts[1:]))
-    ref_start, ref_end = laps[0]
+    r = reference_lap(laps)
+    ref_start, ref_end = laps[r]
+    live = [(k, lap) for k, lap in enumerate(laps, start=1) if k - 1 != r]
+    print(f"reference: lap {r + 1} ({ref_end - ref_start:.2f} s); lap times", [round(b - a, 2) for a, b in laps])
     T = ref_end - ref_start
     ref_times = np.arange(ref_start, ref_end, 1 / 30)  # reference candidates at 30 Hz
-    ticks = {k: np.arange(a + 11 * SPACING_S + 2.0, b, 1 / TRUTH_HZ) for k, (a, b) in enumerate(laps[1:], start=2)}
+    ticks = {k: np.arange(a + 11 * SPACING_S + 2.0, b, 1 / TRUTH_HZ) for k, (a, b) in live}
     crops, fps = half_res_crops(np.concatenate([ref_times] + list(ticks.values())))
     feat = {i: features(img) for i, img in crops.items()}
     ref_idx = [int(round(x * fps)) for x in ref_times]
@@ -96,7 +122,7 @@ def main() -> None:
         truth = {int(k[1:]): (z[f"t{k[1:]}"], z[f"e{k[1:]}"], z[f"p{k[1:]}"]) for k in z.files if k.startswith("t")}
         print("truth loaded from", cache)
     with ProcessPoolExecutor(max_workers=6) as pool:
-        for k, (a, b) in enumerate(laps[1:], start=2):
+        for k, (a, b) in live:
             if k in truth:
                 continue
             jobs, windows = [], []
@@ -142,7 +168,7 @@ def main() -> None:
         scale = model.logit_scale.exp()
         errs = {"single": [], "tracker": []}
         answers[run] = {}
-        for k, (a, b) in enumerate(laps[1:], start=2):
+        for k, (a, b) in live:
             stream_t = np.arange(a + 11 * SPACING_S, b, 1 / HZ)
             tf = np.array([int(np.argmin(np.abs(t - x))) for x in stream_t])
             idx = np.clip(tf[:, None] - np.arange(clip_len - 1, -1, -1)[None, :] * 2, 0, len(t) - 1)

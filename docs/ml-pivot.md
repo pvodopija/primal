@@ -1115,6 +1115,29 @@ off:
   within two points. MobileNetV3-Large cut to Halo's size scores the same again
   (25.0%), though it is clearly worse on AC's unseen circuits (12.0%).
 
+### Second real footage: historic F1 at Brands Hatch GP
+
+A helmet camera in a historic F1 car (`data/real-footage/BHGP-POV-super-realistic.mp4`,
+from the internet, not in git; 1280x720 at 30 fps): seven racing laps of 83.7-91.2 s,
+real head roll and vibration, other cars ahead, the driver's hands and cockpit at the
+bottom of the crop (x 224-1056, y 120-570). Never trained on. `REAL_FOOTAGE=BHGP` runs
+the same scripts. The hand-noted crossings are refined by ORB matches to the first
+crossing (raw pixels jumped up to 2 s here); the reference is the fastest lap (lap 6),
+as the product picks it; the ORB truth leaves the cockpit out and searches ±3 s.
+
+| model | single shot: median / >100 ms | tracker: median / p90 / >100 ms |
+|---|---|---|
+| MobileNetV3-Small (`v3_mobilenet_lr1_s0`) | 102 ms / 50.6% | **77 ms / 258 ms / 39.4%** |
+| MobileNet + wide renders | 104 ms / 51.4% | 86 ms / 304 ms / 43.9% |
+| ResNet-18 | 104 ms / 51.3% | 78 ms / 284 ms / 40.6% |
+
+- **It works at racing speed, in traffic, on a camera it never saw:** lap 4's delta at
+  the line reads +0.67 s against a true +0.60 s.
+- **The models agree with each other within 24-34 ms in median**, far closer than
+  with the truth: the truth is weaker here (about 100 ORB inliers a frame against
+  275-365 on the kart clip), so part of the 77 ms is its own.
+- At ~46 m/s, 77 ms is about 3.5 m: in metres this is the hardest case yet.
+
 ## Estimator
 
 `train/estimator.py` is a particle filter over (track position, speed) that folds
