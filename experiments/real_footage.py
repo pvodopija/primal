@@ -47,6 +47,13 @@ _SETS = {
     "BHGP": dict(video="BHGP-POV-super-realistic.mp4", crossings=[214, 305, 392, 476, 561, 645, 728, 813],
                  crop=(224, 1056, 120, 570), truth_crop=(224, 1056, 120, 430), reference="fastest", refine_s=2.0, window_s=3.0, refine="orb",
                  crop_full=(0, 1280, 14, 706)),  # REAL_CROP=full: the whole width, ~80-94°, near the training view
+    # A RaceChrono Pro video (car, dash camera, 60 fps) with its GPS delta drawn on: the
+    # overlays are greyed out before anything sees a frame. Crossings from RaceChrono's own
+    # lap clock (experiments/racechrono_read.py); lap 2 starts from a standstill.
+    "race-chrono": dict(video="race-chrono/race-chrono.mp4", crossings=None, crop=(0, 1280, 14, 706), truth_crop=(0, 1280, 285, 490),
+                        reference=1, refine_s=1.0, window_s=3.0, refine="orb",
+                        masks=[(0, 0, 225, 165), (225, 0, 872, 94), (860, 98, 1280, 282), (438, 492, 668, 720),
+                               (678, 558, 832, 718), (0, 696, 160, 720)]),
 
 }
 _S = _SETS[FOOTAGE]
@@ -54,6 +61,19 @@ ROOT = Path("data/real-footage") / FOOTAGE
 ROOT.mkdir(parents=True, exist_ok=True)
 VIDEO = Path("data/real-footage") / _S["video"]
 CROSSINGS_S = _S["crossings"]
+if CROSSINGS_S is None:  # read off the video's own lap clock
+    import pandas as _pd
+    _ocr = _pd.read_csv(ROOT / "ocr.csv").dropna()
+    _laps = [lap for lap, n in _ocr.lap.value_counts().items() if lap >= 2 and n > 100]  # stray reads are single rows
+    CROSSINGS_S = [float((_ocr.t - _ocr.clock_s)[_ocr.lap == lap].median()) for lap in sorted(_laps)]
+    CROSSINGS_S.append(float(CROSSINGS_S[-1] + _S.get("last_lap_s", 87.6)))
+
+
+def mask(frame: np.ndarray) -> np.ndarray:
+    """Overlays drawn on the video (another product's numbers) greyed out."""
+    for x0, y0, x1, y1 in _S.get("masks", []):
+        frame[y0:y1, x0:x1] = 128
+    return frame
 CROP_NAME = os.environ.get("REAL_CROP", "")
 CROP, TRUTH_CROP = _S[f"crop_{CROP_NAME}" if CROP_NAME else "crop"], _S["truth_crop"]
 SUFFIX = f"_{CROP_NAME}" if CROP_NAME else ""
@@ -75,7 +95,7 @@ def frames() -> tuple[np.ndarray, np.ndarray]:
             break
         t = i / fps
         if CROSSINGS_S[0] - 3 <= t <= CROSSINGS_S[-1] + 3:
-            out.append(cv2.resize(f[y0:y1, x0:x1], (148, 80), interpolation=cv2.INTER_AREA))
+            out.append(cv2.resize(mask(f)[y0:y1, x0:x1], (148, 80), interpolation=cv2.INTER_AREA))
             times.append(t)
         i += 1
     frames_, t_ = np.stack(out), np.array(times)
@@ -93,6 +113,8 @@ def pixels(f: np.ndarray) -> np.ndarray:
 
 def reference_lap(laps: list[tuple[float, float]]) -> int:
     """Index of the reference among the laps: the first, or the fastest."""
+    if isinstance(_S["reference"], int):
+        return _S["reference"]
     return 0 if _S["reference"] == "first" else int(np.argmin([b - a for a, b in laps]))
 
 

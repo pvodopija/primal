@@ -23,7 +23,7 @@ import cv2
 import numpy as np
 import torch
 
-from experiments.real_footage import (_S, BIN_S, CROSSINGS_S, HZ, ROOT, SUFFIX, SPACING_S, TRUTH_CROP, VIDEO, frames, pixels, reference_lap,
+from experiments.real_footage import (_S, BIN_S, CROSSINGS_S, HZ, ROOT, SUFFIX, mask, SPACING_S, TRUTH_CROP, VIDEO, frames, pixels, reference_lap,
                                       refine_crossings)
 from train.dataset import _to_chw
 from train.estimator import EstimatorConfig
@@ -47,7 +47,7 @@ def half_res_crops(times: np.ndarray) -> dict[int, np.ndarray]:
         if not ok:
             break
         if i in wanted:
-            out[i] = cv2.resize(cv2.cvtColor(f[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY), ((x1 - x0) // 2, (y1 - y0) // 2),
+            out[i] = cv2.resize(cv2.cvtColor(mask(f)[y0:y1, x0:x1], cv2.COLOR_BGR2GRAY), ((x1 - x0) // 2, (y1 - y0) // 2),
                                 interpolation=cv2.INTER_AREA)
         i += 1
     return out, fps

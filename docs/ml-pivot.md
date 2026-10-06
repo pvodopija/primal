@@ -1252,6 +1252,43 @@ field of view first. The kart clip's crop was chosen the same way and is unmeasu
   crop**, against the 91.5° it was trained on. The edges slide 1.17x the centre's
   (pinhole 1.38x, fisheye 1.0x): a wide lens with some barrel distortion.
 
+### Third real footage: against RaceChrono (GPS), on its own video
+
+A RaceChrono Pro video from the internet (`data/real-footage/race-chrono`, not in git:
+a car, a dash camera, 60 fps, three laps of 91.8 / 87.3 / 87.6 s, the first from a
+standstill) with RaceChrono's live GPS delta drawn on, one decimal, against its own
+comparison lap R1 (1:26.5, not in the video). `experiments/racechrono_read.py` reads its
+lap clock and delta off every tenth of a second with macOS's Vision text recognition
+(`experiments/tools/vision_ocr.swift`, 99-100% readable). Its R1 time at the car's place
+is the clock minus the delta, so two laps are at the same place where those agree: that
+gives RaceChrono's own delta of each lap against lap 2 from GPS alone.
+PRIMAL sees the video with every overlay greyed out (`REAL_FOOTAGE=race-chrono`); the
+ORB truth matches frames above the bonnet. `experiments/racechrono_compare.py` puts all
+three on the same lap starts; the truth's own glitches (jumps of over 0.25 s from its
+3 s running median, 4-7% of ticks) are left out. MobileNet, never trained on real
+footage:
+
+| lap 3 against lap 2 (a flying lap) | median | p90 | >100 ms | gaining/losing agree, 2 s / 5 s |
+|---|---|---|---|---|
+| **PRIMAL vs truth** | **28 ms** | **80 ms** | **4.9%** | **83.5% / 92.8%** |
+| RaceChrono vs truth | 57 ms | 148 ms | 23.0% | 70.0% / 64.3% |
+| PRIMAL vs RaceChrono | 49 ms | 124 ms | 19.8% | 67.4% / 75.1% |
+
+At the line: PRIMAL +0.36 s, RaceChrono +0.34 s, the truth +0.34 s. Lap 1 (a standing
+start, 4.6 s slower): PRIMAL 34 ms median against the truth, RaceChrono 67 ms; at the
+line +4.60 / +4.58 / +4.63 s.
+
+- **On this footage the camera matches GPS at the line and follows the lap more
+  closely.** RaceChrono's figures here carry its one-decimal display, read twice per lap
+  and differenced (rounding alone is worth roughly 30-40 ms), so the comparison is with
+  what it shows, not with its raw GPS. The truth is video-based, like PRIMAL; RaceChrono
+  is the independent check, and the two agree within 49 ms in median.
+- **Gaining or losing reads well here** (83.5% over 2 s, 92.8% over 5 s), unlike on the
+  Brands Hatch helmet camera (65% / 75%): a camera fixed to the car, no traffic.
+- **SeqSLAM is competitive on this easy case** (27 ms against the unfiltered truth, PRIMAL
+  34 ms, ResNet-18 33 ms): one session, one light, a rigid mount. Its 218 ms on the helmet
+  camera in traffic is where PRIMAL's robustness shows.
+
 ## Estimator
 
 `train/estimator.py` is a particle filter over (track position, speed) that folds
