@@ -1314,6 +1314,9 @@ Green or red (c80, truth clear, balanced): ahead or behind 98.8%; gaining or los
 - **Cropping toward the training field of view helps again** (21.2% -> 16.5%).
 - **SeqSLAM's median is close but its tail is not** (p90 607 ms; single shots up to 10 s
   off).
+- **Abstaining works indoors:** hiding ticks under confidence 0.5 shows the delta 90% of
+  the time with 10.4% of it over 100 ms (16.4% overall); 69% of what it hides is wrong
+  (on Brands Hatch GP it barely helped: 27% -> 25%).
 
 ## Estimator
 
