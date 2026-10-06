@@ -1161,6 +1161,21 @@ What it hides is mostly wrong, but most misses here are 100-250 ms with the trac
 the clips agreeing, which a 0.25 s agreement cannot see (part of them is the truth's own
 error). It removes the big failures, not the moderate ones.
 
+**Green or red** (`experiments/real_signs.py`): does PRIMAL's colour match the truth's,
+tick by tick? Agreement, against always showing the commoner colour, and balanced (the
+mean of the hit rates when truly green and truly red), MobileNet, full-width crop:
+
+| question | every tick | truth clear (0.1 s / 0.05 s from zero) | always one colour | balanced |
+|---|---|---|---|---|
+| ahead or behind (the delta's sign) | 95.7% | **99.4%** | 93.9% | **96.1%** |
+| gaining or losing over the last 2 s | 63.8% | 68.7% | 65.4% | 64.8% |
+| gaining or losing over the last 5 s | 74.0% | 79.7% | 72.4% | 74.9% |
+
+"Am I ahead" is answered right nearly always once the truth is clear. "Am I gaining
+right now" barely beats always saying "losing" over 2 s and is only fair over 5 s: the
+delta's wobble (*Consistent or wobbly*) is the size of real changes over a few seconds,
+on real footage as on AC. Abstaining does not change either.
+
 The rule in *Cameras and field of view* holds on real footage: crop to the training
 field of view first. The kart clip's crop was chosen the same way and is unmeasured.
 

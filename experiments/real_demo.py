@@ -51,13 +51,12 @@ def text(img, s, xy, colour=WHITE, scale=0.6, thick=1):
     cv2.putText(img, s, xy, cv2.FONT_HERSHEY_SIMPLEX, scale, colour, thick, cv2.LINE_AA)
 
 
-def main() -> None:
-    run = sys.argv[1]
+def setup(run: str) -> SimpleNamespace:
+    """The laps, the reference lap's grid, the model and every frame's descriptor, the ORB truth."""
     f, t = frames()
     starts = refine_crossings(pixels(f), t)
     laps = list(zip(starts[:-1], starts[1:]))
     r = reference_lap(laps)
-    wanted = [int(x) for x in sys.argv[2:]] or [k for k in range(1, len(laps) + 1) if k != r + 1]
     (r0, r1) = laps[r]
     T = r1 - r0
     n = int(round(T / BIN_S))
@@ -65,14 +64,45 @@ def main() -> None:
     grid = SimpleNamespace(time_s=np.arange(n) * T / n, lap_time_s=T, n_bins=n, pos_m=np.arange(n, dtype=float), track_length_m=float(n))
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model, payload = load_model(Path("runs") / run / "best.pt", device)
-    K = int(payload["args"]["clip_len"])
-    stride = max(int(round(SPACING_S / np.median(np.diff(t)))), 1)
-    truth = np.load(ROOT / "truth_orb.npz")
     with torch.no_grad():
         desc = torch.cat([model.encode_reference(torch.from_numpy(_to_chw(f[i:i + 256])).to(device), use_checkpoint=False)
                           for i in range(0, len(f), 256)])
-        ref = desc[torch.from_numpy(bin_frame).to(device)]
+    return SimpleNamespace(t=t, laps=laps, r=r, r0=r0, T=T, n=n, grid=grid, device=device, model=model,
+                           K=int(payload["args"]["clip_len"]), stride=max(int(round(SPACING_S / np.median(np.diff(t)))), 1),
+                           desc=desc, ref=desc[torch.from_numpy(bin_frame).to(device)], truth=np.load(ROOT / "truth_orb.npz"))
 
+
+def lap_series(S: SimpleNamespace, lap_no: int, fps: float) -> SimpleNamespace:
+    """One live lap at runtime settings: ticks, PRIMAL's reference time and delta, the true delta, confidence."""
+    a, b = S.laps[lap_no - 1]
+    T, n, t = S.T, S.n, S.t
+    ticks = np.arange(a + (S.K - 1) * S.stride / fps, b, 1 / HZ)
+    tf = np.array([int(np.argmin(np.abs(t - x))) for x in ticks])
+    idx = np.clip(tf[:, None] - np.arange(S.K - 1, -1, -1)[None, :] * S.stride, 0, len(t) - 1)
+    beliefs, single = [], []
+    with torch.no_grad():
+        for c in np.array_split(np.arange(len(idx)), max(1, len(idx) // 64)):
+            logits = S.model.head(torch.einsum("tkd,nd->tkn", S.desc[torch.from_numpy(idx[c]).to(S.device)], S.ref)
+                                  * S.model.logit_scale.exp())
+            beliefs.append(logits.softmax(-1).cpu().double())
+            single.append(soft_argmax_circular(logits, window=8).float().cpu())
+    bins = _run_estimator({"grid": S.grid, "belief": torch.cat(beliefs).numpy(), "t": ticks},
+                          EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None, 0, reference_time=True).numpy()
+    ref_t = np.interp(bins % n, np.arange(n), S.grid.time_s)
+    single_t = np.interp(torch.cat(single).numpy() % n, np.arange(n), S.grid.time_s)
+    agree = np.abs((single_t - ref_t + T / 2) % T - T / 2) < AGREE_S
+    conf = np.convolve(agree.astype(float), np.ones(int(HZ)))[: len(agree)] / np.minimum(np.arange(1, len(agree) + 1), int(HZ))
+    delta = ((ticks - a) - ref_t + T / 2) % T - T / 2  # reaching the line before the camera is not a lap behind
+    tt, te = S.truth[f"t{lap_no}"], S.truth[f"e{lap_no}"]
+    true = np.where((ticks >= tt[0]) & (ticks <= tt[-1]), (ticks - a) - np.interp(ticks, tt, te), np.nan)
+    return SimpleNamespace(a=a, b=b, ticks=ticks, ref_t=ref_t, delta=delta, true=true, conf=conf)
+
+
+def main() -> None:
+    run = sys.argv[1]
+    S = setup(run)
+    laps, r, r0, T = S.laps, S.r, S.r0, S.T
+    wanted = [int(x) for x in sys.argv[2:]] or [k for k in range(1, len(laps) + 1) if k != r + 1]
     cap = cv2.VideoCapture(str(VIDEO))
     fps = cap.get(cv2.CAP_PROP_FPS)
     x0, x1, y0, y1 = CROP
@@ -85,24 +115,8 @@ def main() -> None:
     every_err, every_conf = [], []
     for lap_no in wanted:
         a, b = laps[lap_no - 1]
-        ticks = np.arange(a + (K - 1) * stride / fps, b, 1 / HZ)
-        tf = np.array([int(np.argmin(np.abs(t - x))) for x in ticks])
-        idx = np.clip(tf[:, None] - np.arange(K - 1, -1, -1)[None, :] * stride, 0, len(t) - 1)
-        beliefs, single = [], []
-        with torch.no_grad():
-            for c in np.array_split(np.arange(len(idx)), max(1, len(idx) // 64)):
-                logits = model.head(torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(idx[c]).to(device)], ref) * model.logit_scale.exp())
-                beliefs.append(logits.softmax(-1).cpu().double())
-                single.append(soft_argmax_circular(logits, window=8).float().cpu())
-        bins = _run_estimator({"grid": grid, "belief": torch.cat(beliefs).numpy(), "t": ticks},
-                              EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None, 0, reference_time=True).numpy()
-        ref_t = np.interp(bins % n, np.arange(n), grid.time_s)
-        single_t = np.interp(torch.cat(single).numpy() % n, np.arange(n), grid.time_s)
-        agree = np.abs((single_t - ref_t + T / 2) % T - T / 2) < AGREE_S
-        conf = np.convolve(agree.astype(float), np.ones(int(HZ)))[: len(agree)] / np.minimum(np.arange(1, len(agree) + 1), int(HZ))
-        delta = ((ticks - a) - ref_t + T / 2) % T - T / 2  # reaching the line before the camera is not a lap behind
-        tt, te = truth[f"t{lap_no}"], truth[f"e{lap_no}"]
-        true = np.where((ticks >= tt[0]) & (ticks <= tt[-1]), (ticks - a) - np.interp(ticks, tt, te), np.nan)
+        L = lap_series(S, lap_no, fps)
+        ticks, ref_t, delta, true, conf = L.ticks, L.ref_t, L.delta, L.true, L.conf
         err = np.abs(delta - true) * 1000
         abstain = conf < CONF_MIN
         good = np.where(np.isfinite(err), err <= 100, True)
