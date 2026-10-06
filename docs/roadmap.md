@@ -9,7 +9,7 @@ plan when a result changes it.
 **Goal:** a lap delta within 100 ms, from the glasses' camera, that teaches the
 right lessons: a driver must be able to trust "I gained in that corner".
 
-**Last reviewed:** 2026-10-04.
+**Last reviewed:** 2026-10-06.
 
 ---
 
@@ -18,10 +18,41 @@ right lessons: a driver must be able to trust "I gained in that corner".
 - **In the sim it works.** On Assetto Corsa (AC) tracks it never trained on, the
   Halo-sized MobileNetV3-Small is more than 100 ms off 7.6% of the time, median
   about 33 ms (ResNet-18: 7%, too big for Halo).
-- **On real footage it works too, less well.** One internet GoPro clip of a kart,
-  never trained on: median about 55-60 ms, about 25% of the time over 100 ms.
-- **Everything left is the step from bot laps in a sim to a human in a real kart
-  wearing glasses.**
+- **On real footage it works, never trained on real footage.** A kart GoPro clip:
+  median about 58 ms, 26% over 100 ms. A historic F1 helmet camera at Brands Hatch GP
+  (racing speed, traffic, head motion), cropped to the training field of view: median
+  58 ms, 29% over 100 ms; every lap's final delta within 0.15 s; SeqSLAM, the
+  classical baseline, 218 ms.
+- **Driven live on AC** by Pavle with the overlay (Brands 40-57 ms, Noja 87 ms median).
+- **Ahead or behind is answered right ~99% of the time** where the truth is clear, in
+  the sim and on the F1 footage. **Gaining or losing over a few seconds is not yet
+  reliable on real footage** (65% over 2 s, 75% over 5 s, balanced; 86-91% in the sim),
+  and a second of hindsight does not fix it there: the real error is slow, either the
+  matcher's or the reconstructed truth's. An independent truth (a GPS logger) decides.
+- **Everything left is the step from a sim and internet clips to a human in a real
+  kart with our own camera.**
+
+---
+
+## Two products, one engine
+
+The same matcher and tracker can ship two ways:
+
+1. **Video analysis, first:** a web or desktop tool. Upload a session video from any
+   camera, get the delta drawn over it and the time gained or lost in every corner.
+   No hardware to build, no real-time limit (hindsight is free), the field of view is
+   measured from the laps themselves (`experiments/real_fov.py`), and it can earn money
+   and, with permission, collect real footage before the glasses product exists.
+2. **Live in the glasses, second:** the delta in the driver's view, Halo first. The
+   premium product once the hardware is proven.
+
+Hardware independence comes from a short camera contract (frame rate, field of view
+wide enough to crop to the training view, a steady mount, timestamps; field of view
+calibrated from the first laps) and one 8-bit model exported to common runtimes.
+
+**The business side** (user conversations, competitors and how they started, licensing,
+costs, funding, the business plan) runs in a separate chat; its results come back here
+as decisions.
 
 ---
 
@@ -88,8 +119,10 @@ a human driving (W2), real footage (W1), the glasses (W5).
 
 | # | When | Step | Fixes | Effort | Status | What would change the plan |
 |---|---|---|---|---|---|---|
-| 1 | Now | **Live AC overlay, driven by Pavle** (Windows builds it, [`handoff.md`](handoff.md) 2026-10-03) | W2, W3, T3 | Driving + log analysis | Driven 2026-10-03/04: works (Brands 40-57 ms, Noja 87 ms median); stops, pace and confidence fixed; Noja lean open | If it feels useless even when accurate, step 2 matters more than accuracy |
-| 2 | Now | **A delta for teaching:** continuous vs smoothed vs per corner / sector, scored on existing laps, then on the live logs | W3, T3 | Hours, Mac | Not started | |
+| 1 | Now | **Live AC overlay, driven by Pavle** (Windows builds it, [`handoff.md`](handoff.md) 2026-10-03) | W2, W3, T3 | Driving + log analysis | Done 2026-10-04: stops, pace and confidence fixed; Noja lean open, its drive tests sent to Windows | If it feels useless even when accurate, step 2 matters more than accuracy |
+| 2 | Now | **A delta for teaching:** per corner / sector gained or lost (live ahead/behind is ~99% right; gaining/losing over 2-5 s is not), a 1 s hindsight option in the live loop, scored on existing laps, then on the live logs | W3, T3 | Hours, Mac | Not started | |
+| 2b | Now | **Video analysis prototype (product 1):** a session video in, the delta drawn over it and a per-corner gained/lost table out; any camera, its field of view measured from the laps; shown on the F1 and kart footage | Products | 1-2 days, Mac | Proposed | If per-corner calls are not reliable on real footage, it waits for the GPS-truth footage |
+| 2c | Now | **Camera contract and export:** the few things any camera must provide, and the model in 8-bit ONNX and TensorFlow Lite | Products, W5 | ~1 day, Mac | Proposed | |
 | 3 | Now | **Compile MobileNet for Halo with Vela:** size, NPU time, unsupported layers | W5 | ~1 hour, Mac | Not started | If it does not fit: a smaller backbone or distillation, before anything else |
 | 4 | Now | **Wider wander from Windows:** wide-FOV re-renders of existing replays, wander about ±4 m, look-into-corner off, `lateral_m.npy`; fixed ±3 m offset laps on the holdouts. Then fine-tune the current model on it | W6 | Windows rendering, ~1 h Mac | Requested | If lines far apart cost precision on the usual line, keep it to a share of clips |
 | 5 | Now | **Measure how much heads really move:** on the real kart clip, the yaw, pitch and roll between laps at the same place (from the ORB matches); at the track day, a helmet GoPro's own gyro log | W4 | ~1 hour Mac; then the track day | Proposed | Sets the ranges for step 5b and how much head-turn work is needed at all |
