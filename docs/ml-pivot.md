@@ -1146,6 +1146,21 @@ alike), same truth:
 | MobileNetV3-Small | 76 ms / 361 ms / 40.0% | **58 ms / 214 ms / 29.4%** |
 | ResNet-18 | 75 ms / 386 ms / 40.0% | 58 ms / 202 ms / 28.0% |
 
+**Abstaining when unsure** (`experiments/real_demo.py`, the live loop's confidence: the
+share of the last second's single clips within 0.25 s of the tracker). Of all ticks
+27.4% are over 100 ms; hiding those under a threshold:
+
+| threshold | shown | over 100 ms among shown (median) | among hidden |
+|---|---|---|---|
+| 0.3 | 98% | 26.4% (53 ms) | 77% |
+| 0.5 | 95% | 25.4% (52 ms) | 62% |
+| 0.7 | 86% | 23.4% (50 ms) | 52% |
+| 0.9 | 70% | 21.2% (48 ms) | 42% |
+
+What it hides is mostly wrong, but most misses here are 100-250 ms with the tracker and
+the clips agreeing, which a 0.25 s agreement cannot see (part of them is the truth's own
+error). It removes the big failures, not the moderate ones.
+
 The rule in *Cameras and field of view* holds on real footage: crop to the training
 field of view first. The kart clip's crop was chosen the same way and is unmeasured.
 
