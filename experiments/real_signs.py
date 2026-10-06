@@ -42,7 +42,7 @@ def main() -> None:
     S = setup(run)
     fps = cv2.VideoCapture(str(VIDEO)).get(cv2.CAP_PROP_FPS)
     rows = {"delta": [], "change 2 s": [], "change 5 s": []}
-    for lap_no in [k for k in range(1, len(S.laps) + 1) if k != S.r + 1]:
+    for lap_no in S.live:
         L = lap_series(S, lap_no, fps)
         ok = np.isfinite(L.true)
         rows["delta"].append((L.delta[ok], L.true[ok], L.conf[ok]))

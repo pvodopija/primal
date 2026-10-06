@@ -107,7 +107,7 @@ def main() -> None:
     laps = list(zip(starts[:-1], starts[1:]))
     r = reference_lap(laps)
     ref_start, ref_end = laps[r]
-    live = [(k, lap) for k, lap in enumerate(laps, start=1) if k - 1 != r]
+    live = [(k, lap) for k, lap in enumerate(laps, start=1) if k - 1 != r and k not in _S.get("skip_laps", ())]
     print(f"reference: lap {r + 1} ({ref_end - ref_start:.2f} s); lap times", [round(b - a, 2) for a, b in laps])
     T = ref_end - ref_start
     ref_times = np.arange(ref_start, ref_end, 1 / 30)  # reference candidates at 30 Hz

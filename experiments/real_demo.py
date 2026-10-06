@@ -18,7 +18,7 @@ import cv2
 import numpy as np
 import torch
 
-from experiments.real_footage import (BIN_S, CROP, HZ, ROOT, SPACING_S, SUFFIX, VIDEO, frames, pixels, reference_lap,
+from experiments.real_footage import (_S, BIN_S, CROP, HZ, ROOT, SPACING_S, SUFFIX, VIDEO, frames, pixels, reference_lap,
                                       refine_crossings)
 from train.dataset import _to_chw
 from train.estimator import EstimatorConfig
@@ -67,7 +67,8 @@ def setup(run: str) -> SimpleNamespace:
     with torch.no_grad():
         desc = torch.cat([model.encode_reference(torch.from_numpy(_to_chw(f[i:i + 256])).to(device), use_checkpoint=False)
                           for i in range(0, len(f), 256)])
-    return SimpleNamespace(t=t, laps=laps, r=r, r0=r0, T=T, n=n, grid=grid, device=device, model=model,
+    live = [k for k in range(1, len(laps) + 1) if k != r + 1 and k not in _S.get("skip_laps", ())]
+    return SimpleNamespace(t=t, laps=laps, r=r, r0=r0, T=T, n=n, grid=grid, device=device, model=model, live=live,
                            K=int(payload["args"]["clip_len"]), stride=max(int(round(SPACING_S / np.median(np.diff(t)))), 1),
                            desc=desc, ref=desc[torch.from_numpy(bin_frame).to(device)], truth=np.load(ROOT / "truth_orb.npz"))
 
@@ -103,7 +104,7 @@ def main() -> None:
     run = sys.argv[1]
     S = setup(run)
     laps, r, r0, T = S.laps, S.r, S.r0, S.T
-    wanted = [int(x) for x in sys.argv[2:]] or [k for k in range(1, len(laps) + 1) if k != r + 1]
+    wanted = [int(x) for x in sys.argv[2:]] or S.live
     cap = cv2.VideoCapture(str(VIDEO))
     fps = cap.get(cv2.CAP_PROP_FPS)
     x0, x1, y0, y1 = CROP

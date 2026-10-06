@@ -23,6 +23,10 @@ right lessons: a driver must be able to trust "I gained in that corner".
   (racing speed, traffic, head motion), cropped to the training field of view: median
   58 ms, 29% over 100 ms; every lap's final delta within 0.15 s; SeqSLAM, the
   classical baseline, 218 ms.
+- **Indoors works too:** a GoPro on a rental-kart driver, cropped toward the training view: 40 ms
+  median, 16.5% over 100 ms; gaining or losing over 5 s right 90% of the time (balanced).
+- **Against RaceChrono (GPS) on its own video:** the same final delta (+0.36 vs +0.34 s,
+  truth +0.34 s) and closer to the truth through the lap (28 vs 57 ms median).
 - **Driven live on AC** by Pavle with the overlay (Brands 40-57 ms, Noja 87 ms median).
 - **Ahead or behind is answered right ~99% of the time** where the truth is clear, in
   the sim and on the F1 footage. **Gaining or losing over a few seconds is not yet

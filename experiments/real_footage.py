@@ -44,9 +44,16 @@ _SETS = {
     "adventure-solo": dict(video="adventure-solo/adventure-pov.mp4", crossings=[12, 50, 87, 125, 163, 201, 238, 276, 313, 350],
                            crop=(250, 1030, 0, 422), truth_crop=(250, 1030, 0, 422), reference="first", refine_s=1.5, window_s=1.5),
     # Historic F1 at Brands Hatch GP, a helmet camera at 30 fps; before 3:34 a warm-up lap.
-    "BHGP": dict(video="BHGP-POV-super-realistic.mp4", crossings=[214, 305, 392, 476, 561, 645, 728, 813],
+    "BHGP": dict(video="BHGP/BHGP-POV-super-realistic.mp4", crossings=[214, 305, 392, 476, 561, 645, 728, 813],
                  crop=(224, 1056, 120, 570), truth_crop=(224, 1056, 120, 430), reference="fastest", refine_s=2.0, window_s=3.0, refine="orb",
                  crop_full=(0, 1280, 14, 706)),  # REAL_CROP=full: the whole width, ~80-94°, near the training view
+    # Indoor rental karting, a GoPro on the driver (60 fps, a very wide lens, dark, motion
+    # blur, the kart and driver in the lower 40%); laps 9-10 slowed by a hazard are not scored.
+    "indoor-pov": dict(video="indoor-pov.mp4", crossings=[24, 64, 103, 141, 181, 219, 257, 295, 334, 383, 429, 468],
+                       crop=(0, 1280, 14, 706), truth_crop=(0, 1280, 0, 400), reference="fastest", refine_s=1.5, window_s=3.0,
+                       refine="orb", skip_laps=(9, 10),
+                       # centre crops toward the training view: ~1000 px and ~820 px of a ~515 px focal length
+                       crop_c100=(140, 1140, 0, 540), crop_c80=(229, 1051, 0, 444)),
     # A RaceChrono Pro video (car, dash camera, 60 fps) with its GPS delta drawn on: the
     # overlays are greyed out before anything sees a frame. Crossings from RaceChrono's own
     # lap clock (experiments/racechrono_read.py); lap 2 starts from a standstill.

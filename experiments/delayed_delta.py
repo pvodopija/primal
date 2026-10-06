@@ -63,7 +63,7 @@ def laps(source: str, run: str):
         from experiments.real_footage import VIDEO
         S = setup(run)
         fps = cv2.VideoCapture(str(VIDEO)).get(cv2.CAP_PROP_FPS)
-        for lap_no in [k for k in range(1, len(S.laps) + 1) if k != S.r + 1]:
+        for lap_no in S.live:
             L = lap_series(S, lap_no, fps)
             ok = np.isfinite(L.true)
             yield L.delta[ok], L.single[ok], L.true[ok]

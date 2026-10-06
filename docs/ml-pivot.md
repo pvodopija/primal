@@ -1289,6 +1289,32 @@ line +4.60 / +4.58 / +4.63 s.
   34 ms, ResNet-18 33 ms): one session, one light, a rigid mount. Its 218 ms on the helmet
   camera in traffic is where PRIMAL's robustness shows.
 
+### Fourth real footage: indoor rental karting
+
+A GoPro on the driver at a local indoor track (`data/real-footage/indoor-pov.mp4`, not in
+git; 60 fps, a very wide lens, dark, heavy motion blur, strong head roll, the kart and
+driver in the lower 40% of the frame): eleven laps of 38.0-40.1 s, two slowed by a hazard
+(49 s, 46 s) and not scored. `REAL_FOOTAGE=indoor-pov`; the ORB truth matches the scene
+above the kart (280-360 inliers in median, the steadiest truth yet), against the fastest
+lap (lap 7, 38.03 s). The lens's focal length from its laps is ~515 px (102° across as a
+pinhole, 142° as a fisheye), so centre crops were tried toward the training view:
+
+| MobileNet, crop | tracker: median / p90 / >100 ms |
+|---|---|
+| full width (1280 px) | 46 ms / 192 ms / 21.2% |
+| centre 1000 px | 41 ms / 169 ms / 18.7% |
+| **centre 822 px (`REAL_CROP=c80`)** | **40 ms / 144 ms / 16.5%** |
+| SeqSLAM, full width | 44 ms / 607 ms / 25.4% |
+
+Green or red (c80, truth clear, balanced): ahead or behind 98.8%; gaining or losing over
+5 s 90.0% (95.9% where confidence lets it show), over 2 s 74.1%.
+
+- **Indoors works**, the domain the roadmap flagged as a risk (repetitive walls and
+  banners, artificial light): 40 ms is about 0.45 m at rental-kart speed.
+- **Cropping toward the training field of view helps again** (21.2% -> 16.5%).
+- **SeqSLAM's median is close but its tail is not** (p90 607 ms; single shots up to 10 s
+  off).
+
 ## Estimator
 
 `train/estimator.py` is a particle filter over (track position, speed) that folds
