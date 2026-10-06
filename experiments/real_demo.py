@@ -95,7 +95,8 @@ def lap_series(S: SimpleNamespace, lap_no: int, fps: float) -> SimpleNamespace:
     delta = ((ticks - a) - ref_t + T / 2) % T - T / 2  # reaching the line before the camera is not a lap behind
     tt, te = S.truth[f"t{lap_no}"], S.truth[f"e{lap_no}"]
     true = np.where((ticks >= tt[0]) & (ticks <= tt[-1]), (ticks - a) - np.interp(ticks, tt, te), np.nan)
-    return SimpleNamespace(a=a, b=b, ticks=ticks, ref_t=ref_t, delta=delta, true=true, conf=conf)
+    single = ((ticks - a) - single_t + T / 2) % T - T / 2
+    return SimpleNamespace(a=a, b=b, ticks=ticks, ref_t=ref_t, delta=delta, true=true, conf=conf, single=single)
 
 
 def main() -> None:

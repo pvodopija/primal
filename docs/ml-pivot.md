@@ -1192,6 +1192,26 @@ over 2 s (AC's imperfect pace: 73 ms). Either the delta wobbles more on real foo
 (it is smooth within a second: 90% within 8 ms of its 1 s running median). Real
 footage with an independent truth (a GPS logger) is what separates the two.
 
+**Trading delay for accuracy** (`experiments/delayed_delta.py`): show the delta of a
+moment L seconds ago, a running median over ±L around it, from the tracker or from the
+single clips; against smoothing only the past (no delay). Unseen AC tracks at an
+imperfect pace / Brands Hatch GP:
+
+| shown | median | >100 ms | gaining or losing over 2 s (balanced) |
+|---|---|---|---|
+| live, now | 48 / 55 ms | 17.6% / 27.3% | 86.1% / 64.8% |
+| no delay, past 1 s median | 59 / 62 ms | 26.3% / 32.2% | 80.3% / 60.7% |
+| 0.5 s late, single clips | 39 / 55 ms | 15.7% / 28.4% | 84.5% / 64.4% |
+| 1 s late, single clips | 33 / 51 ms | 10.2% / 25.8% | 88.3% / 65.3% |
+| 2 s late, single clips | 30 / 48 ms | 7.3% / 23.8% | 91.7% / 64.5% |
+| 1 s late, tracker | 46 / 53 ms | 15.3% / 26.3% | 87.5% / 66.3% |
+
+Hindsight, not averaging, is what helps (smoothing the past alone is worse than live). On
+AC a second of delay cuts the share over 100 ms from 17.6% to 10.2%; on the real footage
+it barely moves (27.3% -> 25.8%), and gaining or losing not at all. The real error does
+not average out over seconds: it is slow, either the matcher's place-tied misreadings on
+footage it has never seen or the reconstructed truth's own.
+
 The rule in *Cameras and field of view* holds on real footage: crop to the training
 field of view first. The kart clip's crop was chosen the same way and is unmeasured.
 

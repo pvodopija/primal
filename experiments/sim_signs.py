@@ -36,6 +36,21 @@ def line_time(live) -> float:
     return float(t[0] - past / speed)
 
 
+def lap_deltas(model, clip_len: int, reference, live, device, rng, clock) -> dict:
+    """One G2 lap at runtime settings: PRIMAL's delta (tracker), the single clips', the true one, confidence; s."""
+    stream = warped_stream(model, clip_len, reference, live, "time", device, rng, 0.05, 1.0, clock=clock)
+    bins = _run_estimator(stream, EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None, 0, reference_time=True)
+    g = stream["grid"]
+    times = torch.from_numpy(g.time_s.astype(np.float32))
+    ref_time = lambda b: _interp_circular(times, b.float(), g.lap_time_s).numpy().astype(np.float64)
+    # play time runs with recording time at the start, so the line sits at its recording time
+    elapsed = stream["t"] - line_time(live)
+    wrap = lambda x: (x + g.lap_time_s / 2) % g.lap_time_s - g.lap_time_s / 2
+    skip = int(ACQUISITION_S * STREAM_HZ)
+    return {"delta": wrap(elapsed - ref_time(bins))[skip:], "single": wrap(elapsed - ref_time(stream["single"]))[skip:],
+            "true": wrap(elapsed - ref_time(stream["target"]))[skip:], "conf": agreement(stream, bins)[skip:]}
+
+
 def main() -> None:
     run = sys.argv[1]
     device = torch.device(default_device())
@@ -48,18 +63,8 @@ def main() -> None:
             continue
         clock = clocks(float(live.t()[-1]))
         for pace in ("steady", "imperfect"):
-            stream = warped_stream(model, clip_len, reference, live, "time", device, rng, 0.05, 1.0, clock=clock[pace])
-            bins = _run_estimator(stream, EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None, 0, reference_time=True)
-            g = stream["grid"]
-            times = torch.from_numpy(g.time_s.astype(np.float32))
-            est = _interp_circular(times, bins.float(), g.lap_time_s).numpy().astype(np.float64)
-            true = _interp_circular(times, stream["target"].float(), g.lap_time_s).numpy().astype(np.float64)
-            # play time runs with recording time at the start, so the line sits at its recording time
-            elapsed = stream["t"] - line_time(live)
-            wrap = lambda x: (x + g.lap_time_s / 2) % g.lap_time_s - g.lap_time_s / 2
-            skip = int(ACQUISITION_S * STREAM_HZ)
-            d, tr = wrap(elapsed - est)[skip:], wrap(elapsed - true)[skip:]
-            conf = agreement(stream, bins)[skip:]
+            lap = lap_deltas(model, clip_len, reference, live, device, rng, clock[pace])
+            d, tr, conf = lap["delta"], lap["true"], lap["conf"]
             rows[(pace, "delta")].append((d, tr, conf))
             for w in (2, 5):
                 k = int(w * STREAM_HZ)
