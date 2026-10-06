@@ -478,6 +478,29 @@ and voice competes with the engine, so starting a reference lap needs another
 input: detecting the start line when the lap closes on itself, setting up on
 the phone, or a hand gesture seen by the camera in the pits.
 
+### A GoPro and a phone (or a small box), no glasses
+
+Researched 2026-10-06 (web; latency and the iOS details are unmeasured):
+
+- **The GoPro's Wi-Fi preview** (UDP port 8554, MPEG-TS, at most 480x640 or 480x848)
+  **does not run while the camera records**, by GoPro forum and Quik app reports.
+- **Its livestream does:** HERO13 (and recent models) streams RTMP(S) to any URL at
+  480p or 720p and can save a high-resolution copy to the SD card at the same time;
+  Open GoPro sets it up over BLE. So a phone (or a box) running a local RTMP server on
+  its own hotspot can receive a live 480p/720p stream for the delta while the GoPro
+  records the full-quality video for content. Unmeasured: the stream's delay
+  (RTMP usually buffers a second or more), heat and battery on the GoPro.
+- **Webcam mode** (USB or Wi-Fi) cannot record to the SD card at the same time.
+- **The phone has everything:** Wi-Fi, a hardware H.264 decoder, an NPU, a screen,
+  a battery. In a kart it can ride in a pocket and speak the delta through earbuds or
+  helmet speakers; a mounted screen is optional.
+- **A cheap display for the wheel** needs no compute: an ESP32-class BLE board and a
+  segment or small LCD display, fed the delta by the phone.
+- **A standalone box** needs Wi-Fi, an H.264 decoder and an NPU: the Radxa Zero 3W
+  (RK3566: 4K60 H.264 decode, 0.8 TOPS NPU, Wi-Fi 6) costs from $14.90; the Luckfox
+  Pico Ultra W (RV1106, 0.5 TOPS, from ~$26) lists H.264 encoding only.
+- **The GoPro's Linear lens** (~90° wide) is close to the training view (91.5°).
+
 ### Other glasses considered
 
 | Glasses | Why not first |
