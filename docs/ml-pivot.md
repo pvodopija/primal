@@ -1176,6 +1176,22 @@ right now" barely beats always saying "losing" over 2 s and is only fair over 5 
 delta's wobble (*Consistent or wobbly*) is the size of real changes over a few seconds,
 on real footage as on AC. Abstaining does not change either.
 
+**The same questions on the unseen AC tracks** (`experiments/sim_signs.py`, exact truth,
+each lap's clock from its line crossing), truth clear, balanced:
+
+| question | AC, bot pace | AC, imperfect pace | Brands Hatch GP, real |
+|---|---|---|---|
+| ahead or behind | 99.4% | 99.2% | 96.1% |
+| gaining or losing over 2 s | 92.0% | 86.0% | 64.8% |
+| gaining or losing over 5 s | 94.5% | 91.4% | 74.9% |
+
+Where the driver is carries over to real footage; reading the small changes does not
+yet. It is not that the real changes are small: the ORB truth moves 94 ms in median
+over 2 s (AC's imperfect pace: 73 ms). Either the delta wobbles more on real footage
+(traffic, vibration, a camera never seen), or the reconstructed truth errs over 2-5 s
+(it is smooth within a second: 90% within 8 ms of its 1 s running median). Real
+footage with an independent truth (a GPS logger) is what separates the two.
+
 The rule in *Cameras and field of view* holds on real footage: crop to the training
 field of view first. The kart clip's crop was chosen the same way and is unmeasured.
 

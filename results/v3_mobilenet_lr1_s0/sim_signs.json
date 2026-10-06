@@ -1,0 +1,194 @@
+{
+  "steady, delta": {
+    "every tick": {
+      "ticks": 79466,
+      "both green": 0.4760148994538545,
+      "both red": 0.5004907759293282,
+      "PRIMAL green, truly red": 0.007676238894621599,
+      "PRIMAL red, truly green": 0.015818085722195657,
+      "agree": 0.9765056753831827,
+      "always one colour": 0.5081670148239499,
+      "balanced": 0.9763663807537007
+    },
+    "truth clear": {
+      "ticks": 73888,
+      "both green": 0.4859787786920745,
+      "both red": 0.5076602425292335,
+      "PRIMAL green, truly red": 0.00039248592464270245,
+      "PRIMAL red, truly green": 0.005968492854049372,
+      "agree": 0.993639021221308,
+      "always one colour": 0.5080527284538761,
+      "balanced": 0.9935475434067467
+    },
+    "truth clear, shown": {
+      "ticks": 71687,
+      "both green": 0.48499727984153335,
+      "both red": 0.5124360065283803,
+      "PRIMAL green, truly red": 0.0004045363873505657,
+      "PRIMAL red, truly green": 0.002162177242735782,
+      "agree": 0.9974332863699136,
+      "always one colour": 0.5128405429157309,
+      "balanced": 0.9973864245437449
+    }
+  },
+  "steady, change 2 s": {
+    "every tick": {
+      "ticks": 77036,
+      "both green": 0.3631808505114492,
+      "both red": 0.3754478425671115,
+      "PRIMAL green, truly red": 0.13291188535230283,
+      "PRIMAL red, truly green": 0.1284594215691365,
+      "agree": 0.7386286930785607,
+      "always one colour": 0.5083597279194143,
+      "balanced": 0.7386300724474084
+    },
+    "truth clear": {
+      "ticks": 28979,
+      "both green": 0.442009731184651,
+      "both red": 0.4774146795955692,
+      "PRIMAL green, truly red": 0.04289312950757445,
+      "PRIMAL red, truly green": 0.03768245971220539,
+      "agree": 0.9194244107802202,
+      "always one colour": 0.5203078091031437,
+      "balanced": 0.9195032556362146
+    },
+    "truth clear, shown": {
+      "ticks": 28929,
+      "both green": 0.4421169069100211,
+      "both red": 0.47727194165024717,
+      "PRIMAL green, truly red": 0.04293269729337343,
+      "PRIMAL red, truly green": 0.03767845414635833,
+      "agree": 0.9193888485602683,
+      "always one colour": 0.5202046389436206,
+      "balanced": 0.9194696699714651
+    }
+  },
+  "steady, change 5 s": {
+    "every tick": {
+      "ticks": 73391,
+      "both green": 0.4085242059653091,
+      "both red": 0.42668719597770843,
+      "PRIMAL green, truly red": 0.0817402678802578,
+      "PRIMAL red, truly green": 0.08304833017672467,
+      "agree": 0.8352114019430175,
+      "always one colour": 0.5084274638579662,
+      "balanced": 0.8351425205189447
+    },
+    "truth clear": {
+      "ticks": 47094,
+      "both green": 0.44763664161039624,
+      "both red": 0.4969847538964624,
+      "PRIMAL green, truly red": 0.027922877648957404,
+      "PRIMAL red, truly green": 0.027455726844183972,
+      "agree": 0.9446213955068586,
+      "always one colour": 0.5249076315454198,
+      "balanced": 0.9445069574080873
+    },
+    "truth clear, shown": {
+      "ticks": 46430,
+      "both green": 0.44917079474477706,
+      "both red": 0.49950463062674993,
+      "PRIMAL green, truly red": 0.02646995477062244,
+      "PRIMAL red, truly green": 0.024854619857850528,
+      "agree": 0.948675425371527,
+      "always one colour": 0.5259745853973724,
+      "balanced": 0.9486206824767416
+    }
+  },
+  "imperfect, delta": {
+    "every tick": {
+      "ticks": 80137,
+      "both green": 0.3907433520096834,
+      "both red": 0.5700862273356876,
+      "PRIMAL green, truly red": 0.013726493380086602,
+      "PRIMAL red, truly green": 0.025443927274542345,
+      "agree": 0.9608295793453709,
+      "always one colour": 0.5838127207157742,
+      "balanced": 0.9576762133436119
+    },
+    "truth clear": {
+      "ticks": 70473,
+      "both green": 0.4003235281597207,
+      "both red": 0.5922126204361954,
+      "PRIMAL green, truly red": 0.0018446781036709095,
+      "PRIMAL red, truly green": 0.0056191733004129244,
+      "agree": 0.9925361485959161,
+      "always one colour": 0.5940572985398663,
+      "balanced": 0.9915262494819959
+    },
+    "truth clear, shown": {
+      "ticks": 68220,
+      "both green": 0.3988566402814424,
+      "both red": 0.5958076810319555,
+      "PRIMAL green, truly red": 0.0017736734095573146,
+      "PRIMAL red, truly green": 0.003562005277044855,
+      "agree": 0.9946643213133979,
+      "always one colour": 0.5975813544415127,
+      "balanced": 0.9940902107133418
+    }
+  },
+  "imperfect, change 2 s": {
+    "every tick": {
+      "ticks": 77707,
+      "both green": 0.3659129808125394,
+      "both red": 0.3952797045311233,
+      "PRIMAL green, truly red": 0.12243427233067807,
+      "PRIMAL red, truly green": 0.1163730423256592,
+      "agree": 0.7611926853436628,
+      "always one colour": 0.5177139768618013,
+      "balanced": 0.7611075789090654
+    },
+    "truth clear": {
+      "ticks": 49116,
+      "both green": 0.40416564866845833,
+      "both red": 0.4554116784754459,
+      "PRIMAL green, truly red": 0.07421206938675788,
+      "PRIMAL red, truly green": 0.0662106034693379,
+      "agree": 0.8595773271439042,
+      "always one colour": 0.5296237478622038,
+      "balanced": 0.8595584066466662
+    },
+    "truth clear, shown": {
+      "ticks": 47679,
+      "both green": 0.4083349063529017,
+      "both red": 0.4536588435160133,
+      "PRIMAL green, truly red": 0.07326076469724617,
+      "PRIMAL red, truly green": 0.0647454854338388,
+      "agree": 0.861993749868915,
+      "always one colour": 0.5269196082132594,
+      "balanced": 0.8620523423056135
+    }
+  },
+  "imperfect, change 5 s": {
+    "every tick": {
+      "ticks": 74062,
+      "both green": 0.4070373470875753,
+      "both red": 0.4518781561394507,
+      "PRIMAL green, truly red": 0.0746131619453971,
+      "PRIMAL red, truly green": 0.06647133482757689,
+      "agree": 0.8589155032270259,
+      "always one colour": 0.5264913180848478,
+      "balanced": 0.8589509314249336
+    },
+    "truth clear": {
+      "ticks": 60896,
+      "both green": 0.4280084077771939,
+      "both red": 0.48620599054125063,
+      "PRIMAL green, truly red": 0.045865081450341565,
+      "PRIMAL red, truly green": 0.039920520231213875,
+      "agree": 0.9142143983184445,
+      "always one colour": 0.5320710719915922,
+      "balanced": 0.9142428719889808
+    },
+    "truth clear, shown": {
+      "ticks": 58805,
+      "both green": 0.43348354731740496,
+      "both red": 0.48606411019471135,
+      "PRIMAL green, truly red": 0.044843125584559135,
+      "PRIMAL red, truly green": 0.035609216903324546,
+      "agree": 0.9195476575121163,
+      "always one colour": 0.5309072357792706,
+      "balanced": 0.9198120462092765
+    }
+  }
+}
