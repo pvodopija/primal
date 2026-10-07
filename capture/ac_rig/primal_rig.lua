@@ -148,10 +148,15 @@ end
 local function fullWidth(car, d)
   local trk = ac.worldCoordinateToTrack(place(car, 0))
   local sides = ac.getTrackAISplineSides(trk.z - math.floor(trk.z))
-  local half = (sides.x + sides.y) / 2
-  if not (half > cfg.wander_margin_m) then return 0 end
-  local target = math.tanh(FULL_STRETCH * wave(d)) / math.tanh(FULL_STRETCH) * (1 - cfg.wander_margin_m / half)
-  return (target - trk.x) * half
+  -- Track x is scaled per side of the AI line: -1 at the left edge, sides.x metres
+  -- left of it, +1 at the right edge, sides.y metres right. Work in metres right of the line.
+  local left, right = sides.x, sides.y
+  local usable = left + right - 2 * cfg.wander_margin_m
+  if not (usable > 0) then return 0 end
+  local u = math.tanh(FULL_STRETCH * wave(d)) / math.tanh(FULL_STRETCH)
+  local target = -left + cfg.wander_margin_m + (u + 1) / 2 * usable
+  local now = trk.x >= 0 and trk.x * right or trk.x * left
+  return target - now
 end
 
 local KNEE_M = 0.6    -- width of the soft zone before the edge limit
@@ -183,12 +188,14 @@ local function softLimit(car, requested)
   return direction * math.max(0, math.min(want, limited)), true
 end
 
---- Track x is -1 at the left edge and +1 at the right, so half the track width
---- converts it to metres from the middle. Checked against the 2.5 m rig test:
---- 0.46 of track x against a 5.4-5.6 m half-width.
+--- Metres right of the AI line. Track x is scaled per side of that line: -1 at the
+--- left edge, sides.x metres to its left, and +1 at the right edge, sides.y metres to
+--- its right (Brands Indy's pit straight: 7.9 m and 1.9 m). Logs before 2026-10-07
+--- took half the width for both sides, which is only right where the line runs
+--- down the middle.
 local function metresFromMiddle(trk)
   local sides = ac.getTrackAISplineSides(trk.z - math.floor(trk.z))
-  return trk.x * (sides.x + sides.y) / 2, sides
+  return (trk.x >= 0 and trk.x * sides.y or trk.x * sides.x), sides
 end
 
 local HEAD_TAU_S = 0.25  -- how quickly the head follows the corner, as a time constant

@@ -133,14 +133,19 @@ def load_poses(session: Path) -> pd.DataFrame | None:
 
 def lap_poses(poses: pd.DataFrame, counter: np.ndarray) -> dict[str, np.ndarray]:
     """
-    One lap's poses, a row per packed frame (NaN where the log has none). lateral_m is
-    the camera's distance right of the track's middle: track x (-1 left edge, +1 right)
-    times half the width, the AI spline's sides.
+    One lap's poses, a row per packed frame (NaN where the log has none). AC's track x
+    is scaled per side of the AI line (-1 at the left edge, side_l_m to its left; +1 at
+    the right edge, side_r_m to its right), so lateral_m, the camera's metres right of
+    the AI line, takes each side's width; lateral_mid_m is the same from the middle of
+    the track, half-way between the edges.
     """
     rows = poses.reindex(counter)
     out = {name: rows[list(cols)].to_numpy(np.float32) for name, cols in POSE_VECTORS.items()}
     out.update({name: rows[name].to_numpy(np.float32) for name in POSE_SCALARS if name in rows})
-    out["lateral_m"] = (rows["cam_trk_x"] * (rows["side_l_m"] + rows["side_r_m"]) / 2).to_numpy(np.float32)
+    x, left, right = rows["cam_trk_x"], rows["side_l_m"], rows["side_r_m"]
+    lateral = np.where(x >= 0, x * right, x * left)
+    out["lateral_m"] = lateral.astype(np.float32)
+    out["lateral_mid_m"] = (lateral - (right - left) / 2).to_numpy(np.float32)
     return out
 
 
