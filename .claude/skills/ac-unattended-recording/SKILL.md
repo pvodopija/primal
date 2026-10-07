@@ -97,10 +97,26 @@ Set the rig in `apps/lua/primal_rig/rig.txt` first (`fov_deg`, `look`,
 6. `session import <mp4> --rig --split ...` while AC is still open (it writes
    `camera_vfov_deg` from the telemetry), then close AC.
 7. After AC closes, focus usually falls to NVIDIA's overlay, Explorer or
-   another app; retry `cm_front.py` every few seconds (it can take a couple of
-   minutes) rather than clicking. CM minimizes itself while AC runs, so it
-   can't be clicked beforehand.
+   another app. `cm_front.py` attaches to the foreground window's input thread
+   for its `SetForegroundWindow` (no keys sent), which brings CM forward on the
+   first try (2026-10-07); don't click Explorer to get there (the user declined
+   computer-use access to it). CM minimizes itself while AC runs, so it can't
+   be clicked beforehand.
 8. Decode all renders in one batch after the last recording, not between them.
+
+Also learned 2026-10-07:
+
+- A replay played to its end stays paused at the end: after jumping back on the
+  timeline, press the play button in the bar's middle (hover first) and check
+  the speed in `last_row(newest_launch())` before recording.
+- CSP hot-reloads `primal_rig.lua` when the installed file changes (a new rig log
+  starts), so a rig fix doesn't need AC restarted.
+- AC's track x is scaled per side of the AI line (-1 at the left edge, `sides.x`
+  metres left of it; +1 at the right edge, `sides.y` right), not half the width
+  each way. The rig's `wander_full = 1` mode and `pose.npz`'s `lateral_m` use it.
+- The replay's own weather and time are in CM's replay details (Weather, Time):
+  time of day can't be changed in a replay (CSP's time functions are for
+  offline races only), weather can (`weather` in rig.txt, an `ac.WeatherType`).
 
 ## If something goes wrong
 

@@ -15,4 +15,16 @@ for h, t, r in found:
     if not t.startswith("Content Manager"):
         print(t, "dialog moved:", bool(u.MoveWindow(h, 300, 380, r[2] - r[0], r[3] - r[1], True)))
 main = [h for h, t, r in found if t.startswith("Content Manager")]
-if main: print("CM focus:", bool(u.SetForegroundWindow(main[0])))
+if main:
+    # Windows lets a background process take focus only if it shares input with the
+    # foreground window's thread; attach to it for the call (no keys sent anywhere).
+    k = ctypes.windll.kernel32
+    fg_thread = u.GetWindowThreadProcessId(u.GetForegroundWindow(), None)
+    me = k.GetCurrentThreadId()
+    attached = fg_thread and fg_thread != me and u.AttachThreadInput(me, fg_thread, True)
+    u.ShowWindow(main[0], 9)  # SW_RESTORE
+    u.BringWindowToTop(main[0])
+    ok = u.SetForegroundWindow(main[0])
+    if attached:
+        u.AttachThreadInput(me, fg_thread, False)
+    print("CM focus:", bool(ok) and u.GetForegroundWindow() == main[0])
