@@ -1305,6 +1305,8 @@ pinhole, 142° as a fisheye), so centre crops were tried toward the training vie
 | centre 1000 px | 41 ms / 169 ms / 18.7% |
 | **centre 822 px (`REAL_CROP=c80`)** | **40 ms / 144 ms / 16.5%** |
 | SeqSLAM, full width | 44 ms / 607 ms / 25.4% |
+| ResNet-18, c80 | 37 ms / 155 ms / 17.7% |
+| SeqSLAM, c80 (single shots: 66 ms / 11 s / 40.2%) | 42 ms / 268 ms / 23.5% |
 
 Green or red (c80, truth clear, balanced): ahead or behind 98.8%; gaining or losing over
 5 s 90.0% (95.9% where confidence lets it show), over 2 s 74.1%.
