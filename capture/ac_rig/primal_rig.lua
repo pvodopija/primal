@@ -25,6 +25,8 @@ local cfg = {
   wander_len_m = 200.0,  -- distance over which the wander swings; long enough to look like a line change
   wander_yaw = 1,        -- turn the camera along the wander's direction, as a car changing line would
   wander_seed = 0,       -- 0 picks a new seed per launch
+  wander_full = 0,       -- 1: wander across the whole track width instead of wander_m about the car
+  wander_margin_m = 0.5, -- with wander_full, how far inside each track edge the camera turns back
   forward_m = 2.2,       -- ahead of the car origin; past the front so the body stays out of frame
   height_m = 1.15,       -- above the car origin, which sits at road level
   fov_deg = 60.0,        -- vertical, matching AC's own cameras
@@ -47,7 +49,8 @@ local cfg = {
 -- part is yaw_deg - head_yaw_deg.
 local HEADER = 'clock_s,replay_frame,car_spline,cam_trk_s,car_trk_x,cam_trk_x,cam_trk_h,side_left,side_right,'
   .. 'car_lat_m,cam_lat_m,requested_lateral_m,applied_lateral_m,clamped,weather,rain,'
-  .. 'distance_m,wander_m,yaw_deg,head_yaw_deg,glance_deg,look_gain,look_ahead_m\n'
+  .. 'distance_m,wander_m,yaw_deg,head_yaw_deg,glance_deg,look_gain,look_ahead_m,'
+  .. 'time_h,weather_now,playback_rate,wander_full,fov_deg,height_m\n'
 local LOG_EVERY_S = 1 / 30
 
 local camera
@@ -108,6 +111,17 @@ local function makeWaves()
   wavesSeed = cfg.wander_seed
 end
 
+--- The waves' sum at a distance, in [-1, 1].
+local function wave(d)
+  if not waves or wavesSeed ~= cfg.wander_seed then makeWaves() end
+  local sum, total = 0, 0
+  for _, w in ipairs(waves) do
+    sum = sum + w.weight * math.sin(w.k * d + w.phase)
+    total = total + w.weight
+  end
+  return sum / total
+end
+
 --- Wander offset and its slope (metres sideways per metre driven) at a distance.
 local function wander(d)
   if cfg.wander_m == 0 then return 0, 0 end
@@ -121,9 +135,23 @@ local function wander(d)
   return cfg.wander_m * sum / total, cfg.wander_m * slope / total
 end
 
+local FULL_STRETCH = 1.5  -- tanh(1.5 w) / tanh(1.5) spreads the waves' sum about evenly over [-1, 1]
+
 local function place(car, lateral)
   -- AC's side vector points left, so subtract it to make positive offsets go right.
   return car.position + car.look * cfg.forward_m - car.side * lateral + car.up * cfg.height_m
+end
+
+--- Full-width wander: the camera's place across the track follows the waves from
+--- wander_margin_m inside one edge to as far inside the other, wherever the car is.
+--- Returns the offset from the car that puts it there, in metres (positive right).
+local function fullWidth(car, d)
+  local trk = ac.worldCoordinateToTrack(place(car, 0))
+  local sides = ac.getTrackAISplineSides(trk.z - math.floor(trk.z))
+  local half = (sides.x + sides.y) / 2
+  if not (half > cfg.wander_margin_m) then return 0 end
+  local target = math.tanh(FULL_STRETCH * wave(d)) / math.tanh(FULL_STRETCH) * (1 - cfg.wander_margin_m / half)
+  return (target - trk.x) * half
 end
 
 local KNEE_M = 0.6    -- width of the soft zone before the edge limit
@@ -217,7 +245,8 @@ local function headYaw(car, position, dt)
 end
 
 local function renderKey()
-  return string.format('lat%+.2f_wan%.1f_w%d_r%.2f%s', cfg.lateral_m, cfg.wander_m, cfg.weather, cfg.rain,
+  return string.format('lat%+.2f_wan%s_w%d_r%.2f%s', cfg.lateral_m,
+    cfg.wander_full == 1 and 'full' or string.format('%.1f', cfg.wander_m), cfg.weather, cfg.rain,
     cfg.look == 1 and '_look' or '')
 end
 
@@ -289,7 +318,7 @@ local function step(dt)
   -- different line through the same corner instead of repeating one.
   local ds = math.abs(car.speedKmh) / 3.6 * dt
   distance = distance + ds
-  local offset = wander(distance)
+  local offset = cfg.wander_full == 1 and fullWidth(car, distance) or wander(distance)
   local target, wasClamped = softLimit(car, cfg.lateral_m + offset)
 
   -- Smooth the applied offset over distance, and take the heading from the path
@@ -335,10 +364,13 @@ local function step(dt)
     local camLat, sides = metresFromMiddle(camTrk)
     local carLat = metresFromMiddle(carTrk)
     rows[#rows + 1] = string.format(
-      '%.3f,%s,%.6f,%.6f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%s,%d,%.2f,%.1f,%.3f,%.2f,%.2f,%.2f,%.3f,%.1f',
+      '%.3f,%s,%.6f,%.6f,%.4f,%.4f,%.4f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%s,%d,%.2f,%.1f,%.3f,%.2f,%.2f,%.2f,%.3f,%.1f,'
+        .. '%.3f,%d,%.3f,%d,%.1f,%.2f',
       clock, tostring(frame), car.splinePosition, camTrk.z, carTrk.x, camTrk.x, camTrk.y, sides.x, sides.y,
       carLat, camLat, cfg.lateral_m + offset, lateral, wasClamped and '1' or '0', cfg.weather, cfg.rain,
-      distance, offset, yaw, head, glanceNow, cfg.look == 1 and lookGain or 0, cfg.look == 1 and lookAhead or 0)
+      distance, offset, yaw, head, glanceNow, cfg.look == 1 and lookGain or 0, cfg.look == 1 and lookAhead or 0,
+      (tonumber(sim.timeHours) or 0) + (tonumber(sim.timeMinutes) or 0) / 60, tonumber(sim.weatherType) or -1,
+      tonumber(sim.replayPlaybackRate) or 1, cfg.wander_full, cfg.fov_deg, cfg.height_m)
   end
   if sinceSave >= 2.0 and #rows > 0 then
     sinceSave = 0
@@ -394,6 +426,7 @@ function script.update(dt)
 end
 
 local CFG_KEYS = { 'enabled', 'replay_only', 'lateral_m', 'wander_m', 'wander_len_m', 'wander_yaw', 'wander_seed',
+  'wander_full', 'wander_margin_m',
   'forward_m', 'height_m', 'fov_deg', 'edge_limit', 'weather', 'rain', 'look', 'look_ahead_min_m', 'look_ahead_max_m',
   'look_gain_min', 'look_gain_max', 'look_max_deg', 'glance_deg', 'glance_every_s', 'replay_now' }
 

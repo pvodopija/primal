@@ -25,7 +25,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from capture.timecode import ROWS, OverlayGeometry
+from capture.timecode import COUNTER_WRAP, ROWS, OverlayGeometry
 
 SESSIONS_DIR = Path(__file__).resolve().parents[1] / "data" / "sessions"
 DEFAULT_OUT = Path(__file__).resolve().parents[1] / "data" / "packed"
@@ -57,6 +57,7 @@ class LapPlan:
     frame_idx: np.ndarray
     s: np.ndarray
     t: np.ndarray
+    counter: np.ndarray
 
     @property
     def span(self) -> float:
@@ -98,9 +99,49 @@ def plan_laps(
                 frame_idx=frame_idx[segment],
                 s=spline[segment],
                 t=((frame_idx[segment] - frame_idx[lo]) / fps).astype(np.float32),
+                counter=counter[segment],
             )
         )
     return plans
+
+
+# The frame log's columns that make up a pose, written per lap as pose.npz.
+POSE_VECTORS = {
+    "cam_pos": ("cam_x", "cam_y", "cam_z"),
+    "cam_fwd": ("cam_fwd_x", "cam_fwd_y", "cam_fwd_z"),
+    "cam_up": ("cam_up_x", "cam_up_y", "cam_up_z"),
+    "car_pos": ("car_x", "car_y", "car_z"),
+    "car_fwd": ("car_fwd_x", "car_fwd_y", "car_fwd_z"),
+    "car_up": ("car_up_x", "car_up_y", "car_up_z"),
+}
+POSE_SCALARS = ("cam_trk_x", "cam_trk_h", "cam_yaw_deg", "cam_fov_deg", "side_l_m", "side_r_m", "car_s", "speed_kmh")
+
+
+def load_poses(session: Path) -> pd.DataFrame | None:
+    """
+    The timecode app's per-frame telemetry, indexed by the barcode's counter, or None
+    for sessions recorded before it logged. AC world coordinates, metres.
+    """
+    chunks = sorted((session / "frame_log").glob("*.csv"))
+    if not chunks:
+        return None
+    columns = ["counter", *(c for cols in POSE_VECTORS.values() for c in cols), *POSE_SCALARS]
+    log = pd.concat(pd.read_csv(c, usecols=lambda name: name in columns) for c in chunks)
+    log["counter"] = log["counter"] % COUNTER_WRAP
+    return log.drop_duplicates("counter", keep="last").set_index("counter")
+
+
+def lap_poses(poses: pd.DataFrame, counter: np.ndarray) -> dict[str, np.ndarray]:
+    """
+    One lap's poses, a row per packed frame (NaN where the log has none). lateral_m is
+    the camera's distance right of the track's middle: track x (-1 left edge, +1 right)
+    times half the width, the AI spline's sides.
+    """
+    rows = poses.reindex(counter)
+    out = {name: rows[list(cols)].to_numpy(np.float32) for name, cols in POSE_VECTORS.items()}
+    out.update({name: rows[name].to_numpy(np.float32) for name in POSE_SCALARS if name in rows})
+    out["lateral_m"] = (rows["cam_trk_x"] * (rows["side_l_m"] + rows["side_r_m"]) / 2).to_numpy(np.float32)
+    return out
 
 
 def crop_rows(height: int, geometry: OverlayGeometry | None) -> tuple[int, int]:
@@ -208,6 +249,8 @@ def pack_session(
         size = (int(round(size[1] * width / (keep_hi - keep_lo) / 2)) * 2, size[1])
     fov = field_of_view(width, height, keep_lo, keep_hi, float(meta.get("camera_vfov_deg", AC_VFOV_DEG)))
 
+    poses = load_poses(session)
+    rig = meta.get("rig", {})
     (out / "laps").mkdir(parents=True, exist_ok=True)
     wanted = {int(i): (plan, position) for plan in plans for position, i in enumerate(plan.frame_idx)}
     buffers = {plan.index: np.empty((plan.frame_idx.size, size[1], size[0], 3), np.uint8) for plan in plans}
@@ -236,6 +279,11 @@ def pack_session(
             s=plan.s,
             t=plan.t,
         )
+        pose_rows = 0
+        if poses is not None:
+            pose = lap_poses(poses, plan.counter)
+            np.savez(out / "laps" / lap_id / "pose.npz", **pose)
+            pose_rows = int(np.isfinite(pose["lateral_m"]).sum())
         entries.append(
             {
                 "lap_id": lap_id,
@@ -260,6 +308,10 @@ def pack_session(
                 "frame_size": [size[0], size[1]],
                 **fov,
                 "pixel_aspect": round((width / size[0]) / ((keep_hi - keep_lo) / size[1]), 4),
+                # How it was rendered (camera rig settings, conditions), where the session knows.
+                **{k: meta[k] for k in ("rig", "conditions", "playback_rate", "ai_strength") if k in meta},
+                "eye_height_m": rig.get("height_m"),
+                "pose": pose_rows == int(plan.frame_idx.size),
                 "path": f"laps/{lap_id}",
             }
         )

@@ -100,6 +100,38 @@ def attach_rig_log(session: Path) -> str:
     return logs[-1].name
 
 
+def rig_settings() -> dict:
+    """rig.txt as it stands: the camera settings a render used (the rig re-reads it twice a second)."""
+    text = (find_ac_root() / "apps" / "lua" / "primal_rig" / "rig.txt").read_text()
+    out = {}
+    for line in text.splitlines():
+        key, _, value = line.partition("=")
+        try:
+            out[key.strip()] = float(value)
+        except ValueError:
+            continue
+    out.pop("replay_now", None)
+    return out
+
+
+def rig_conditions(rig_log: Path) -> dict:
+    """Time of day, weather and playback rate the render actually ran at, from the rig's log."""
+    log = pd.read_csv(rig_log)
+    if "time_h" not in log:
+        return {}
+    moving = log[log["car_spline"].diff().abs() > 1e-6]
+    moving = moving if len(moving) else log
+    weather = moving["weather_now"].mode()
+    return {
+        "conditions": {
+            "time_h": round(float(moving["time_h"].median()), 2),
+            "weather_type": int(weather.iloc[0]) if len(weather) else -1,
+            "weather_forced": int(moving["weather"].iloc[0]),
+        },
+        "playback_rate": round(float(moving["playback_rate"].median()), 3),
+    }
+
+
 def attach_frame_log(session: Path, start: float, end: float) -> str | None:
     """
     Copy the timecode app's per-frame telemetry for a recording into the session.
@@ -184,6 +216,12 @@ def cmd_import(args: argparse.Namespace) -> None:
     }
     if args.rig:
         meta["rig_log"] = attach_rig_log(session)
+        meta["rig"] = rig_settings()
+        meta.update(rig_conditions(session / "rig_log.csv"))
+    if args.playback_rate is not None:
+        meta["playback_rate"] = args.playback_rate
+    if args.ai_strength is not None:
+        meta["ai_strength"] = args.ai_strength
     frame_log = attach_frame_log(session, recorded_start, recorded_end)
     if frame_log:
         meta["frame_log"] = frame_log
@@ -241,6 +279,8 @@ def main() -> None:
     imp.add_argument("--car", help="override AC shared memory")
     imp.add_argument("--copy", action="store_true", help="copy instead of moving the video")
     imp.add_argument("--rig", action="store_true", help="recording is a camera-rig render; attach its log")
+    imp.add_argument("--playback-rate", type=float, help="replay playback speed of a render, e.g. 0.5")
+    imp.add_argument("--ai-strength", type=float, help="AI strength of the drive, 0-100")
     imp.add_argument("--preflight", action="store_true",
                      help="a test drive on a new track: import into data/preflight, never packed")
     imp.set_defaults(func=cmd_import)
