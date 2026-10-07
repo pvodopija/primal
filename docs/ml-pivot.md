@@ -500,6 +500,21 @@ Researched 2026-10-06 (web; latency and the iOS details are unmeasured):
   (RK3566: 4K60 H.264 decode, 0.8 TOPS NPU, Wi-Fi 6) costs from $14.90; the Luckfox
   Pico Ultra W (RV1106, 0.5 TOPS, from ~$26) lists H.264 encoding only.
 - **The GoPro's Linear lens** (~90° wide) is close to the training view (91.5°).
+- **Open GoPro's livestream request** (`live_streaming.proto`, read 2026-10-07): RTMP(S)
+  URL; `encode` saves to the SD card while streaming; window sizes 480p, 720p and
+  1080p only (nothing lower); minimum, maximum and starting bitrate "may or may not be
+  honored"; lens Wide, Linear or SuperView. Its errors include "no internet access
+  detected on startup", so a phone hotspot without mobile data may refuse the stream
+  (to test).
+- **No lower resolution is needed:** PRIMAL reads 148x80, so 480p is already ~35x the
+  pixels. A low bitrate cuts the bandwidth; the delay comes from buffering (in the
+  camera's encoder, its stabilisation and the receiver), not from the frame size.
+  Reports of local RTMP put it at ~2 s (a HERO7 with stabilisation on) to 6 s (with a
+  server's default 3 s buffer); a receiver that does not buffer should do better.
+  Unmeasured.
+- **Models:** livestream works on HERO7 Black and later and MAX through the Quik app;
+  our own app starting it over BLE needs Open GoPro (HERO10 or later; HERO12/13
+  documented best).
 
 ### Other glasses considered
 
