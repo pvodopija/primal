@@ -97,6 +97,7 @@ as decisions.
 | O7 | Train on how people actually look: both laps following the road ahead, so the common case is the trained case (see *Decisions in progress*) |
 | O8 | Motorcycles: a delta in the helmet, where a dash is hard to read leaned over. Needs large roll tolerance (40-55° lean); GPS timers with predictive delta already exist there, so the edge is the display, not the sensor |
 | O9 | **Head coaching, which no GPS timer can do:** the camera sits where the driver looks, so it can measure how early and how far the head turns into each corner and tie that to the corner's time gain from the delta. Head only: telling tangent point from future path needs an eye tracker |
+| O10 | **FPV RC cars and drones** (kept in mind, 2026-10-07): the onboard camera and goggles exist already. Goggles are dedicated video receivers, not Android or Oculus: DJI and Walksnail closed (older DJI rootable with WTFOS), HDZero open-source Linux firmware. The universal route needs no goggle changes: a small board on the vehicle runs PRIMAL and sends the delta as on-screen-display text over MSP DisplayPort, which HDZero, Walksnail and DJI (WTFOS) draw natively. Classic line-of-sight RC needs voice only. Market size unknown |
 
 ### Threats
 
