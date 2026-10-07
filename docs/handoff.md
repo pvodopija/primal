@@ -2064,3 +2064,132 @@ If time is short, items 1 and 2 matter most; 3-6 can follow over several nights.
 The USB or the Transfer share. Append a dated Windows → Mac entry with what was recorded,
 lap counts per set, anything that failed a check, and the pack sizes. `git pull --rebase`
 first, never force-push, never touch `main`.
+
+---
+
+## 2026-10-07 (night) — Windows → Mac: item 1 of the batch, packed (`packed_ac_b1007_*`)
+
+Item 1 is done: full-width wander on all twelve replays twice (own weather, then the
+opposite weather forced), and the fixed ±3 m laps on the three holdouts. Items 2, 3 and 6
+need a human driving (the bot cannot drive karts, and there are no recordings of Pavle's
+laps yet); item 4 (traffic) and item 5 (slow motion) are not started. New tonight, at
+Pavle's request: ten **new circuits** for variety, recording now (see the end).
+
+### Four sets, 152 GB, in seven USB trips
+
+| Set | What | Segments | Full laps | Frames | Size |
+|---|---|---|---|---|---|
+| `packed_ac_b1007_full_own` | full-width wander, replay's own weather | 134 | 66 | 409,257 | 67.6 GB |
+| `packed_ac_b1007_full_alt` | the same replays, weather forced opposite | 106 | 79 | 402,518 | 66.5 GB |
+| `packed_ac_b1007_off_plus3` | holdouts, fixed +3 m, no wander | 17 | 11 | 54,905 | 9.1 GB |
+| `packed_ac_b1007_off_minus3` | holdouts, fixed −3 m, no wander | 19 | 11 | 55,457 | 9.2 GB |
+
+"Full laps" are segments with an `s` span of 0.98 or more. All at **320x172** (square
+pixels), 60 fps, 2 m bins; the index says `fov_h_deg 129.47`, `fov_v_deg 97.36` (the
+barcode band comes off the bottom). Every lap has **`pose.npz`**, one row per packed frame:
+`cam_pos`, `cam_fwd`, `cam_up`, `car_pos`, `car_fwd`, `car_up` (3-vectors, AC world
+metres), `cam_trk_x`, `cam_trk_h`, `cam_yaw_deg`, `cam_fov_deg`, `side_l_m`, `side_r_m`,
+`car_s`, `speed_kmh`, `lateral_m` (camera metres right of the AI line) and
+`lateral_mid_m` (from the middle of the track). Index entries also carry `rig` (every
+rig.txt setting), `conditions` (`time_h`, `weather_type`, `weather_forced`),
+`eye_height_m` (1.15), `car_model` and `pose: true`. `variant` is `"live"` (look off).
+
+On the Transfer share, ready for the USB (`D:\Documents\Transfer\batch1007\`): parts
+`usb_b1007_part1` to `part7`, 22.9-23.9 GB each and 10.3 GB for the last; the two ±3 m
+sets ride in parts 5 and 7. Each part has `<set>/laps/...` for the laps it carries,
+each set's whole `index.json`, and a `MANIFEST.txt`. Copy every part's `<set>/` into
+`data/`, merging `laps/`:
+
+```bash
+for p in /Volumes/<USB>/usb_b1007_part*; do
+  for s in "$p"/packed_ac_b1007_*; do mkdir -p "data/$(basename "$s")"; cp -R "$s"/. "data/$(basename "$s")/"; done
+done
+```
+
+Then 134 + 106 + 17 + 19 lap folders and every index `path` exists (checked here: 276
+of 276, none twice). The share folders are hard links to the packs (no extra disk);
+copy them, don't edit them in place. New tool: `python -m capture.usb_parts` makes
+these parts (≤ 24 GB, whole sessions where they fit).
+
+### Per track (full laps, own / alt weather)
+
+| Track | Split | Car | Weather own → alt | Full laps own / alt |
+|---|---|---|---|---|
+| `ks_black_cat_county__layout_short` | train | Abarth | 17 → 19 | 1 / 1 (6.4 km laps) |
+| `ks_brands_hatch__indy` | train | MX-5 | 19 → 15 | 3 / 2 |
+| `ks_highlands__layout_short` | train | MX-5 | 17 → 19 | 5 / 9 |
+| `ks_laguna_seca` | train | MX-5 | 17 → 19 | 6 / 9 |
+| `ks_monza66__junior` | train | MX-5 | 17 → 19 | 7 / 8 |
+| `ks_nurburgring__layout_sprint_a` | train | Abarth | 15 → 19 | 6 / 8 |
+| `ks_red_bull_ring__layout_national` | train | MX-5 | 19 → 15 | 8 / 9 |
+| `ks_vallelunga__club_circuit` | train | Abarth | 17 → 19 | 7 / 7 |
+| `magione` | train | MX-5 | 19 → 15 | 3 / 4 |
+| `ks_silverstone__national` | holdout | Abarth | 17 → 19 | 5 / 6 |
+| `rt_lime_rock_park__no_chicane` | holdout | MX-5 | 17 → 19 | 8 / 9 |
+| `rt_oulton_park__fosters` | holdout | MX-5 | 17 → 19 | 7 / 7 |
+
+`weather_type` is AC's: 15 clear, 17 scattered/light clouds, 19 overcast. ±3 m laps
+ride each holdout's *other* replay (Silverstone MX-5, Lime Rock and Oulton Abarth):
+full laps +3 / −3 are Silverstone 3 / 4, Lime Rock 4 / 3, Oulton 4 / 4.
+
+**Time of day could not change.** In a replay CSP lets a script force the weather
+(`ac.overrideReplayConditions`) but not the time: its time functions work in offline
+sessions only. So the "two lights" are two weathers at each replay's own hour (09:06 to
+18:41 across replays). The new circuits below get noon live and the other weather on the
+replay; dusk would need a second live session per track.
+
+### Checks, and what failed
+
+- **Every session**: barcode 100.00%, every kept frame (valid, before `end_frame`) at
+  `cam_fov_deg` 100.0 with telemetry joined (import's "logged range 60-100" is AC's
+  loading screen before the recording), label speed / car speed 1.00, no label step
+  beyond the camera's own movement, lap counter within 6.4 m of the `s` wrap. Where a
+  replay ended first, its frozen tail and its one backward step lie in the trimmed part;
+  **no backward step in any kept frame**.
+- **Lateral spread** (the histogram you asked for), share of frames per tenth of the
+  width, left to right, typical of all 24 full-wander sessions: `4 10 12 12 12 12 12 12
+  10 4` %. No piling up at the edges; the outer tenths are thinner by the 0.5 m margin.
+- **Soft fail, "camera stays on the tarmac"** (|track x| > 1.02): 0-1.8% of kept frames
+  on full wander (Magione 1.35/1.80%, Highlands 1.04/1.15%, Silverstone and Lime Rock
+  0-0.04%), 0.6-3.3% on ±3 m (Oulton +3 m 3.26%). The car itself stays on (|x| ≤ 0.8).
+  The worst frames are the camera riding a kerb or the shoulder on the inside of an
+  apex: the rig sets the offset from the car's spline position, and the camera is 2.2 m
+  ahead of it, so on a tight inside line it clips past the edge for a moment. Kept in
+  the packs; `pose.npz`'s `cam_trk_x` lets you drop |x| > 1.02 if you want.
+- **Laps split by capture drops (the reason "full laps" is lower than v3_wide's).**
+  AC rendered smoothly (1 hitch over 50 ms in Highlands' 527 s), but OBS missed 5-23
+  frames at a time: always in the first ~10 s of a recording, and in pass 1 a few
+  times mid-session (Highlands 27 gaps, Black Cat 19). `pack` ends a lap at any gap
+  over `MAX_COUNTER_GAP = 4`, so 69% of `full_own`'s frames are in full laps (85% in
+  `full_alt`, 89% in `v3_wide`). No frame is lost or mislabelled; some laps simply
+  come in two pieces. I did not change the gap rule; widen it on your side if longer
+  gaps are fine for training.
+- **The rig, fixed during pass 1:** AC's track x is scaled per side of the AI line
+  (−1 at the left edge, `side_l_m` metres left of it; +1 at the right edge,
+  `side_r_m` right), not half the width each way. The first test render put the camera
+  0.1 m from an edge; `wander_full` and `lateral_m` use the per-side widths (7470544).
+  Where a side is narrower than 3 m the ±3 m offset is clamped by `edge_limit 0.85`
+  (e.g. −1.4 m where Lime Rock's left side is 1.0 m wide); `pose.npz` has the offset
+  actually applied.
+- **AC crashed at startup three times** in ~22 launches (`GraphicsManager::endScene`
+  in dxgi; one trace also had Steam's `gameoverlayrenderer64`). Stop the hung process,
+  close CM's "Game crashed" dialog, Play again: nothing lost.
+
+### Old packs: delete them?
+
+Packs are rebuildable from `data/sessions/` (132 GB here; the sessions are the dataset).
+Here `packed_ac` 1.4 GB, `packed_ac_v2` 18 GB, `packed_ac_v3` 44 GB, `packed_ac_v3_wide`
+46 GB, `packed_lines`/`packed_smoke`/`packed_yaw` 1.6 GB. D: has 198 GB free and the new
+circuits will need ~110 GB of packs. **Which of these do you still read** (for results
+comparisons or a baseline)? Pavle decides; nothing is deleted until he says so. My guess:
+`v2` and `v3_wide` are covered by the new 100° renders of the same replays (crop to 90°
+or 60°), `v3` is the baseline the results cite.
+
+### Next on this side (in progress)
+
+Ten circuits PRIMAL has never seen, chosen to look different from the twelve: Zandvoort,
+Barcelona GP, Mugello, Imola, Spa, Suzuka East, Silverstone 1967, Thruxton (train);
+Sandown and Daytona road course (holdout). Per circuit: a live bot session with the rig
+(full-width wander, 100°, noon, one weather), its replay saved, then the replay
+re-rendered in the opposite weather. Mod tracks get a pre-flight first. They are
+recorded and decoded tonight; packed when there is disk room.
