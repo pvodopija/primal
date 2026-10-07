@@ -2005,3 +2005,62 @@ this same lean at the line.
 4. **Watch the confidence:** does it drop when the delta is visibly wrong?
 
 Logs to the share as before.
+
+## 2026-10-07 — Mac → Windows: the next recording batch (replaces the wider-wander requests)
+
+Since the last batch, PRIMAL has been tested on real footage it never trained on: a historic
+F1 helmet camera at Brands Hatch GP, RaceChrono's own video (matching its GPS delta at the
+line), and an indoor rental-kart GoPro (40 ms median). Where it is still weak, in order:
+a camera field of view different from training's; strong head roll and turns; laps far
+from the reference's pace; traffic; and a gap between rendered and real footage. This batch
+targets the first four. Everything from **existing or new replays**, unattended where
+possible (the ac-unattended-recording skill); the Mac adds head motion, field-of-view
+crops and camera degradations afterwards, so record clean and wide.
+
+### Common settings for every session
+
+- **Camera: 100° vertical field of view** (~129° horizontal at 16:9), look-into-corner
+  **off**. The Mac crops any narrower view and any head turn from it exactly.
+- **Per-frame poses packed with every lap** (`pose.npz`): camera position, forward and up
+  vectors; car position, forward and up; lateral position (`lateral_m`); the side widths.
+  They are in `frame_log/` already; they just never reached the packs.
+- **Pack at the same pixels per degree as `packed_ac_v3_wide`** (about 320x172 for 100°
+  vertical), a new set per item below, and record in `run.json` and the index: field of
+  view (h and v), wander settings, eye height, weather and time of day, playback speed, AI
+  strength, which car the camera rides.
+- Labels and checks as usual.
+
+### What to record, best value first
+
+1. **Full-width wander** (the main item): every training track and the three holdouts,
+   wander spanning the whole track width (about 0.5 m inside the edges, swinging over
+   ~200 m; check a histogram of lateral position per track so it does not pile up at the
+   edges), turn-with-wander on. **Each replay twice, under different light and weather**
+   (for example clear noon, and overcast or dusk). On the holdouts also ~5 laps at a fixed
+   +3 m and ~5 at -3 m, no wander, as the off-line test.
+2. **Karts:** kart tracks (outdoor mods; and any indoor kart-centre mod, the most valuable
+   if one exists), a kart (the Sodi SR4 used at Noja is fine), the camera at a kart
+   driver's eye height (about 1.0 m above the ground), the same wander scaled to the narrower
+   track. At least two kart tracks kept as holdouts, one indoor if possible.
+3. **Driver's-eye sessions with the cockpit in view:** the camera at the driver's head
+   inside the kart (steering wheel, nose and hands visible, as on a real helmet or GoPro),
+   wide field of view, **no wander**; a few sessions on kart tracks. Real POV footage
+   always shows the kart; training never has.
+4. **Traffic and pace variety:** AI races with 6-10 cars at mixed AI strength (about
+   80-100%), saved as replays, then the camera on several different cars in turn. Gives
+   other cars in view, different braking points and lines, and real pace differences, not
+   time-warped ones.
+5. **Slow motion:** one replay per training track at 0.5x playback, wide camera, wander on.
+   The Mac can speed footage up by dropping frames but cannot invent frames between them;
+   these let it simulate slower paces and higher frame rates exactly.
+6. **Pavle's own laps:** when he can, 10-15 laps on two or three tracks he drives himself,
+   normal driving with its mistakes, replays saved; then rendered like item 1. Used first
+   as the realistic test set.
+
+If time is short, items 1 and 2 matter most; 3-6 can follow over several nights.
+
+### Hand-over
+
+The USB or the Transfer share. Append a dated Windows → Mac entry with what was recorded,
+lap counts per set, anything that failed a check, and the pack sizes. `git pull --rebase`
+first, never force-push, never touch `main`.
