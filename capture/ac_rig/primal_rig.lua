@@ -145,9 +145,21 @@ end
 --- Full-width wander: the camera's place across the track follows the waves from
 --- wander_margin_m inside one edge to as far inside the other, wherever the car is.
 --- Returns the offset from the car that puts it there, in metres (positive right).
-local function fullWidth(car, d)
+local MIN_SIDES_M = 1.0  -- below this the AI line has no side widths here (a gap in the track's data)
+local lastFull = 0
+
+--- True where the track's AI data has no side widths: track x is then ±inf (Suzuka GP's
+--- last 50 m before the line), so neither the wander target nor the edge limit can be had.
+local function noSides(car)
   local trk = ac.worldCoordinateToTrack(place(car, 0))
   local sides = ac.getTrackAISplineSides(trk.z - math.floor(trk.z))
+  return not (sides.x + sides.y >= MIN_SIDES_M), trk, sides
+end
+
+local function fullWidth(car, d)
+  local missing, trk, sides = noSides(car)
+  -- Through a gap in the side widths hold the last offset, rather than snapping to the car.
+  if missing then return lastFull end
   -- Track x is scaled per side of the AI line: -1 at the left edge, sides.x metres
   -- left of it, +1 at the right edge, sides.y metres right. Work in metres right of the line.
   local left, right = sides.x, sides.y
@@ -156,7 +168,8 @@ local function fullWidth(car, d)
   local u = math.tanh(FULL_STRETCH * wave(d)) / math.tanh(FULL_STRETCH)
   local target = -left + cfg.wander_margin_m + (u + 1) / 2 * usable
   local now = trk.x >= 0 and trk.x * right or trk.x * left
-  return target - now
+  lastFull = target - now
+  return lastFull
 end
 
 local KNEE_M = 0.6    -- width of the soft zone before the edge limit
@@ -179,6 +192,8 @@ end
 --- edge bends the path instead of kinking it.
 local function softLimit(car, requested)
   if requested == 0 then return 0, false end
+  -- No side widths here, so no edge to limit against; the held offset passes through.
+  if noSides(car) then return requested, false end
   local direction = requested > 0 and 1 or -1
   local want = math.abs(requested)
   local room = edgeRoom(car, direction, want + KNEE_M)
