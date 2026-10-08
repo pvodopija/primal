@@ -2193,3 +2193,53 @@ Sandown and Daytona road course (holdout). Per circuit: a live bot session with 
 (full-width wander, 100°, noon, one weather), its replay saved, then the replay
 re-rendered in the opposite weather. Mod tracks get a pre-flight first. They are
 recorded and decoded tonight; packed when there is disk room.
+
+---
+
+## 2026-10-08 (morning) — Windows → Mac: ten new circuits, recorded and decoded (not packed yet)
+
+Pavle asked for circuits PRIMAL has never seen, so the encoder sees new scenery rather than
+the same twelve tracks again. Ten circuits, each driven live by the bot with the rig on
+(full-width wander, 100° vertical, look off, noon), the replay saved, then the replay
+re-rendered with the weather forced the other way. Twenty sessions, listed in
+`data/batch1007_new_live.txt` and `data/batch1007_new_alt.txt`; every session holds its
+`replay.acreplay`.
+
+| Track | Split | Car | Weather live → replay | Laps per pass |
+|---|---|---|---|---|
+| `ks_zandvoort` | train | MX-5 | 15 → 19 | 10 |
+| `ks_barcelona__layout_gp` | train | Abarth | 19 → 15 | 10 |
+| `mugello` (Kunos) | train | MX-5 | 15 → 19 | 10 |
+| `imola` (Kunos) | train | Abarth | 19 → 15 | 10 |
+| `spa` (Kunos) | train | MX-5 | 15 → 19 | 10 |
+| `rt_suzuka__suzukagp` | train | Abarth | 19 → 15 | 10 |
+| `ks_silverstone1967` | train | MX-5 | 15 → 19 | 10 |
+| `js_thruxton` (mod) | train | Abarth | 19 → 15 | 10 |
+| `deutschlandring` (mod, fictional 10 km) | **holdout** | MX-5 | 15 → 19 | 6 |
+| `rt_daytona__sportscar` (road course) | **holdout** | Abarth | 19 → 15 | 8 |
+
+Changes from the plan: Suzuka **East**'s bot never left the pit lane, so Suzuka **GP**;
+the installed "Sandown" is the UK kart track (0.9 km, 7 m wide), so Deutschlandring is
+the second holdout.
+
+**Checks.** Every session: barcode 100.00%, every kept frame at 100° with telemetry, s
+wraps where AC counts laps, lateral spread even across the width (outer tenths 3-5%,
+inner 10-13%), no backward step in kept frames except at Suzuka's crossover (below).
+Camera past the AI edge on 0-1.2% of kept frames (Barcelona highest), the same
+kerb-at-the-apex frames as item 1. Two track-data problems found and handled:
+
+- **Suzuka's figure-of-eight crossover**: where the track passes over itself, the
+  camera's s snapped to the other level for 4-20 frames twice per session (s off by
+  ~2,370 m). `pack` now ends a lap wherever s moves more than 2% of a lap in one step
+  (`MAX_S_STEP`, c302277), so those frames fall into a segment under `min_frames` and
+  are dropped; checked identical lap plans on Daytona, Highlands, Laguna and Oulton.
+- **Suzuka's AI side widths are 0 over the last ~50 m before the line**, which made
+  full-width wander pull the camera back to the car there. The rig now holds its last
+  offset through such gaps (4ff1f2e); the live Suzuka session (rendered before the fix)
+  keeps the artifact, the replay pass doesn't.
+- Daytona and Suzuka (both Reboot Team) also show a ~3 m s step once a lap at s ≈ 40 m,
+  a small kink in their AI splines; label off by ~1 m for a frame.
+
+**Not packed yet.** D: has 94 GB free and the twenty sessions will pack to ~110 GB at
+320x172. Pavle decides which old packs go (see the question in the entry above); then
+`capture.pack` into `packed_ac_b1007_new_live` / `_new_alt` and `capture.usb_parts`.
