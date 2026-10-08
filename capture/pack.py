@@ -33,6 +33,9 @@ CROP_MARGIN_PX = 4
 # Largest counter gap kept inside one lap; matches the widest stride in
 # train.dataset, so a missed render frame stays inside the training distribution.
 MAX_COUNTER_GAP = 4
+# Largest step of s, as a fraction of the lap, kept inside one lap between two kept
+# frames (at most MAX_COUNTER_GAP renders apart): 2% is 100 m on a 5 km track.
+MAX_S_STEP = 0.02
 
 
 def write_lap(directory: Path, frames: np.ndarray, s: np.ndarray, t: np.ndarray) -> None:
@@ -83,7 +86,13 @@ def plan_laps(
 
     counter_step = np.diff(counter)
     spline_step = np.diff(spline)
-    breaks = np.nonzero((counter_step < 1) | (counter_step > max_gap) | (spline_step < -0.5))[0] + 1
+    # Where a track crosses itself (Suzuka's bridge) the camera's s can snap to the other
+    # level for a few frames, thousands of metres away. No real frame moves s by more than
+    # MAX_S_STEP of a lap, so such a stretch becomes its own short segment and is dropped.
+    wrapped = (spline_step + 0.5) % 1.0 - 0.5
+    breaks = np.nonzero(
+        (counter_step < 1) | (counter_step > max_gap) | (spline_step < -0.5) | (np.abs(wrapped) > MAX_S_STEP)
+    )[0] + 1
     bounds = np.concatenate([[0], breaks, [frame_idx.size]])
 
     plans: list[LapPlan] = []
