@@ -118,6 +118,26 @@ Also learned 2026-10-07:
   time of day can't be changed in a replay (CSP's time functions are for
   offline races only), weather can (`weather` in rig.txt, an `ac.WeatherType`).
 
+## New track, live with the rig (2026-10-08)
+
+Rig `replay_only = 0`, `wander_full = 1`, `weather = -1`; CM Hotlap at noon, weather from
+CM. Drive icon, then `autostop --engage-bot` **on its own, checking its exit code** (a
+`| tail` once hid a failed engage and recorded a parked car), then `--start --laps 10`.
+Then `replay_now = 1`, SAVE REPLAY + Ok (the bar shows with the mouse inside the window's
+bottom edge, y≈650 in screenshot coordinates), import, copy the newest `.acreplay` into the
+session, set rig `weather` to the opposite type, rewind/play, wait for speed > 20 km/h
+before `--start` (the parked guard stops a recording of the parked start), import, close.
+Put `replay_only = 1` and `weather = -1` back afterwards.
+
+- Light live pre-flight from the telemetry log (label vs car speed, wraps vs lap ticks,
+  side widths) after two laps catches a bad AI line without a separate session.
+- Suzuka East: the bot never leaves the pit lane; use the GP layout. The installed
+  "Daytona Sandown Park" is a UK kart track. Suzuka's crossover snaps s to the other
+  level (pack drops it) and its AI side widths are 0 just before the line (the rig holds
+  its offset).
+- AC sometimes quits or hangs on launch (dxgi `endScene`, or "Race cancelled"): stop the
+  hung process, close CM's dialog, Go/Play again; answer CSP's "Did AC crash?" with No.
+
 ## If something goes wrong
 
 - A recording of a parked car / wrong settings: move it to `D:\Videos\rejected\`
