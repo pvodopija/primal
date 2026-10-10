@@ -69,6 +69,8 @@ def main() -> None:
     ap.add_argument("run")
     ap.add_argument("--run-model", default="v3_mobilenet_lr1_s0")
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--speeds", help="e.g. 1,2,4: rerun as if played that much faster (every k-th frame, times / k); "
+                                     "errors back in real seconds, into diagnose_speeds.json")
     a = ap.parse_args()
     run = Path(a.run)
     s = json.loads((run / "summary.json").read_text())
@@ -162,6 +164,30 @@ def main() -> None:
         cv2.imwrite(str(run / "diagnose_stops.jpg"), np.vstack(sheet))
     (run / "diagnose.json").write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))
+    if a.speeds:
+        speeds = {}
+        for k in (int(v) for v in a.speeds.split(",")):
+            Tk = T / k
+            nbk = int(round(Tk / BIN_S))
+            bins_k = np.arange(nbk) * Tk / nbk
+            frames_k = np.array([int(np.argmin(np.abs(t - (r0 + b * k)))) for b in bins_k])
+            engine = LiveDelta(model, None, bins_k, Tk, int(payload["args"]["clip_len"]), device,
+                               reference_descriptors=raw_desc[torch.from_numpy(frames_k).to(raw_desc.device)])
+            engine.start_at((r0 + T) / k, 0.0)
+            ticks = [(t[i], x.ref_time_s * k, x.single_ref_time_s * k, x.confidence) for i in live[::k]
+                     if (x := engine.push_descriptor(raw_desc[i], float(t[i]) / k)) is not None]
+            tt = np.array([q[0] for q in ticks])
+            j = np.clip(np.searchsorted(tt, sure.t.to_numpy(), side="right") - 1, 0, len(tt) - 1)
+            row = {}
+            for name, col in (("tracker", 1), ("head", 2)):
+                e = np.abs(wrap(np.array([ticks[q][col] for q in j]) - sure.truth.to_numpy()))
+                row[name] = {"median_s": float(np.median(e)), "within_0.5_s": float(np.mean(e < 0.5))}
+            row["shown"] = float(np.mean(np.array([ticks[q][3] for q in j]) >= 0.5))
+            speeds[f"{k}x"] = row
+            print(f"{k}x: tracker median {row['tracker']['median_s']:.2f} s, within 0.5 s {row['tracker']['within_0.5_s']:.0%}; "
+                  f"head median {row['head']['median_s']:.2f} s, within 0.5 s {row['head']['within_0.5_s']:.0%}; shown {row['shown']:.0%} "
+                  f"(real seconds)", flush=True)
+        (run / "diagnose_speeds.json").write_text(json.dumps(speeds, indent=2))
     if a.sweep:
         sweep = {}
         for name, change in SWEEP.items():
