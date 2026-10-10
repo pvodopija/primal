@@ -85,6 +85,7 @@ class LiveDelta:
         self.skip = abs(ratio - round(ratio)) < 1e-3 and round(ratio) >= 1
         self.next_tick: float | None = None
         self.last_tick: float | None = None
+        self.hint: tuple[float, float, float] | None = None
 
     @classmethod
     def from_lap(cls, model: SequenceAligner, payload: dict, reference: Lap, device: torch.device) -> "LiveDelta":
@@ -98,6 +99,16 @@ class LiveDelta:
         self.history.clear()
         self.next_tick = self.last_tick = None
         self.agree.clear()
+        self.hint = None
+
+    def start_at(self, t: float, ref_time_s: float = 0.0, sd_s: float = 1.0) -> None:
+        """
+        Where the kart is known to be: at live time `t` it was at `ref_time_s` of the reference
+        (at the line, 0, when a reference lap has just closed). The tracker's first step then
+        starts there, moved on at the reference's pace, within `sd_s`, instead of searching
+        the whole lap.
+        """
+        self.hint = (float(t), float(ref_time_s), float(sd_s))
 
     def _encode(self, frames: np.ndarray) -> torch.Tensor:
         return encode_frames(self.model, frames, self.device)
@@ -143,6 +154,12 @@ class LiveDelta:
         clip = torch.stack([self.history[i][1] for i in pick])
         logits = self.model.head(torch.einsum("kd,nd->kn", clip, self.ref)[None] * self.scale)
         belief = logits.softmax(-1)[0].cpu().double().numpy()  # MPS has no float64
+        if self.hint is not None:
+            t0, r0, sd = self.hint
+            gap = (self.times - (r0 + t - t0) + self.lap_time / 2) % self.lap_time - self.lap_time / 2
+            belief = belief * np.exp(-0.5 * (gap / sd) ** 2)
+            belief /= belief.sum()
+            self.hint = None
         single = float(soft_argmax_circular(logits, window=self.window)[0])
         dt = self.period if self.last_tick is None else t - self.last_tick
         self.last_tick = t

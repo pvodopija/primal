@@ -62,3 +62,22 @@ def test_descriptors_and_reset_reproduce_a_fresh_engine():
     assert drive(from_desc) == first
     from_frames.reset()
     assert drive(from_frames) == first
+
+
+def test_start_at_places_the_first_reading():
+    """Told where the kart is, an engine whose model knows nothing reads there from its first tick."""
+    index = _dataset()
+    track = sorted(index.by_track)[0]
+    reference, live = [lap for lap in index.by_track[track] if lap.usable_as_reference(0.9, "time")][:2]
+    torch.manual_seed(0)
+    model = SequenceAligner(clip_len=4, dim=16, width=8, hidden=16, frame_size=(40, 64)).eval()
+    grid = reference.reference_grid("time")
+    every = max(int(round(live.fps / 15.0)), 1)
+    engine = LiveDelta(model, np.asarray(reference.frames()[grid.frame_idx]), grid.time_s, grid.lap_time_s, 4,
+                       torch.device("cpu"), spacing_s=2 / live.fps, hz=live.fps / every)
+    frames, t = live.frames(), live.t().astype(np.float64)
+    where = grid.lap_time_s / 2
+    engine.start_at(float(t[0]), where, sd_s=0.5)
+    first = next(r for i in range(live.n_frames) if (r := engine.push(np.asarray(frames[i]), float(t[i]))) is not None)
+    expected = (where + first.t - t[0]) % grid.lap_time_s
+    assert abs((first.ref_time_s - expected + grid.lap_time_s / 2) % grid.lap_time_s - grid.lap_time_s / 2) < 1.5
