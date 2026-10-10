@@ -100,20 +100,29 @@ def network_check(out: Path) -> str | None:
 class StreamClock:
     """
     The stream's frame times, kept steady: the HERO7 restarts its timestamps at 0 now and
-    then (twice in the first 2-minute run), so a jump back by over half a second, or forward
-    by over a second, is bridged with the time between arrivals. (Smaller steps back are
-    frames reordered around B-frames, which the GoPro's preview does not use but videos
-    replayed by fake_gopro do.)
+    then (twice in the first 2-minute run). Its frames are always whole frame intervals
+    apart, so a jump back by over half a second, or forward by over a second, is bridged
+    with the number of frame intervals that best fits the time between arrivals (whose
+    jitter, 12 ms p90, is under half an interval): exact unless frames were lost in it.
+    (Smaller steps back are frames reordered around B-frames, which the GoPro's preview
+    does not use but videos replayed by fake_gopro do.)
     """
     def __init__(self) -> None:
         self.offset, self.last, self.last_arrival, self.restarts = 0.0, None, None, 0
+        self.step = 1001 / 30000  # the frame interval, learnt from the stream
 
     def __call__(self, pts: float, arrival: float) -> float:
         t = pts + self.offset
-        if self.last is not None and not (-0.5 < t - self.last < 1.0):
-            self.offset = self.last + max(arrival - self.last_arrival, 1 / 60) - pts
-            t, self.restarts = pts + self.offset, self.restarts + 1
-        self.last, self.last_arrival = max(t, self.last or t), arrival
+        if self.last is not None:
+            dt = t - self.last
+            if 0 < dt < 0.1:
+                frames = max(round(dt / self.step), 1)
+                self.step += 0.05 * (dt / frames - self.step)
+            elif not -0.5 < dt < 1.0:
+                frames = max(round((arrival - self.last_arrival) / self.step), 1)
+                self.offset = self.last + frames * self.step - pts
+                t, self.restarts = pts + self.offset, self.restarts + 1
+        self.last, self.last_arrival = t if self.last is None else max(t, self.last), arrival
         return t
 
 
