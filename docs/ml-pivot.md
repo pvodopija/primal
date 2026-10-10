@@ -518,9 +518,11 @@ Researched 2026-10-06 (web; latency and the iOS details are unmeasured):
 
 ### The HERO7's Wi-Fi preview, live into PRIMAL (2026-10-10)
 
-`experiments/gopro_preview.py` with the Swift receiver the iPhone app will use
-(`ios/PrimalCore`: UDP keep-alive, MPEG-TS, VideoToolbox), `gopro_review.py` (reference and
-matched-reference videos), `gopro_diagnose.py` (each stage against ORB truth):
+`experiments/gopro_preview.py` (a stand-in for the app, to retire once its live view works)
+with the app repo's receiver (hotlapp `Packages/GoProKit`: UDP keep-alive, MPEG-TS,
+VideoToolbox); the runs are kept as sessions (video.mp4, video_times.csv, readings.csv,
+summary.json in `data/gopro/<time>/`) for `session_review.py` (reference and
+matched-reference videos) and `session_diagnose.py` (each stage against ORB truth):
 
 - **The stream:** 848x480 H.264, 30 fps (60 while recording at 60), ~2-3.5 Mbit/s;
   hardware decode 0.8 ms a frame. Each datagram carries a 12-byte header (bytes 10-11 the

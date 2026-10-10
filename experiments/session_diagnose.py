@@ -1,6 +1,6 @@
 """
-Where PRIMAL goes wrong on a run of experiments/gopro_preview.py: each stage against an
-independent truth.
+Where PRIMAL goes wrong in a recorded live session (the folder experiments/session_review.py
+reads): each stage against an independent truth.
 
 Truth: ORB feature matching (ratio test) of sampled live frames against every other
 reference frame, at half the preview's size; kept where the best reference frame has
@@ -14,14 +14,13 @@ reference frames each stage and the truth pick.
 --sweep also reruns the live engine offline on the run's frames with other tracker settings
 (SWEEP), scored against the same truth, into diagnose_sweep.json.
 
-Usage: PYTHONPATH=. python experiments/gopro_diagnose.py data/gopro/<time> [--run-model v3_mobilenet_lr1_s0] [--sweep]
+Usage: PYTHONPATH=. python experiments/session_diagnose.py data/gopro/<time> [--run-model v3_mobilenet_lr1_s0] [--sweep]
 Writes diagnose.json and diagnose_stops.jpg in the run's folder.
 """
 from __future__ import annotations
 
 import argparse
 import json
-import subprocess
 from pathlib import Path
 
 import cv2
@@ -29,11 +28,12 @@ import numpy as np
 import pandas as pd
 import torch
 
-from experiments.gopro_preview import BIN_S, HEADER, build, read_exact
-from experiments.gopro_review import stretches
+from experiments.session_review import session_frames
 from train.estimator import EstimatorConfig, ProgressEstimator
 from train.eval import load_model
 from train.live import TRACKER, LiveDelta, encode_frames
+
+BIN_S = 0.052  # reference bin spacing, as experiments/real_footage.py
 
 # tracker settings tried by --sweep: the runtime's, then trusting the matcher more and the momentum less
 SWEEP = {"runtime": {}, "likelihood 0.3": dict(likelihood_power=0.3), "likelihood 0.6": dict(likelihood_power=0.6),
@@ -43,25 +43,13 @@ SWEEP = {"runtime": {}, "likelihood 0.3": dict(likelihood_power=0.3), "likelihoo
 
 
 def decode(run: Path, crop: list[int]) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """The run's times, 148x80 model inputs and 424x240 grey frames, from its saved preview."""
-    f = pd.read_csv(run / "frames.csv")
-    f["stretch"] = stretches(f.stream_pts.to_numpy())
-    offset = (f.pts - f.stream_pts).groupby(f.stretch).median()
-    probe = subprocess.Popen([str(build("gopro_probe")), "--file", str(run / "stream.ts")],
-                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    pts, small, grey = [], [], []
+    """The session's times, 148x80 model inputs and half-size grey frames, from its video."""
+    t, imgs = session_frames(run)
     x0, x1, y0, y1 = crop
-    while True:
-        head = read_exact(probe.stdout, HEADER.size)
-        if len(head) < HEADER.size:
-            break
-        _, p, _, _, w, h = HEADER.unpack(head)
-        img = np.frombuffer(read_exact(probe.stdout, w * h * 4), np.uint8).reshape(h, w, 4)[:, :, :3]
-        small.append(cv2.resize(img[y0:y1, x0:x1], (148, 80), interpolation=cv2.INTER_AREA))
-        grey.append(cv2.cvtColor(cv2.resize(img, (w // 2, h // 2), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2GRAY))
-        pts.append(p)
-    raw = np.array(pts)
-    return raw + offset.reindex(stretches(raw)).to_numpy(), np.stack(small), np.stack(grey)
+    small = np.stack([cv2.resize(img[y0:y1, x0:x1], (148, 80), interpolation=cv2.INTER_AREA) for img in imgs])
+    grey = np.stack([cv2.cvtColor(cv2.resize(img, (img.shape[1] // 2, img.shape[0] // 2), interpolation=cv2.INTER_AREA),
+                                  cv2.COLOR_BGR2GRAY) for img in imgs])
+    return t, small, grey
 
 
 def main() -> None:

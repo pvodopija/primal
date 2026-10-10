@@ -1,20 +1,18 @@
 """
-Videos of a run of experiments/gopro_preview.py, decoded from its saved preview
-(stream.ts, through ios/tools/gopro_probe --file):
+Videos of a recorded live session: a folder with video.mp4 (every frame the session saw),
+video_times.csv (each frame's time on the session's clock), readings.csv (PRIMAL's
+readings: pts, ref_time_s, confidence, single_ref_time_s, delta_s) and summary.json
+(reference_start_pts, reference_lap_s):
 
   reference.mp4  the reference lap as PRIMAL got it, with its clock;
   review.mp4     from the reference's end: the reference frame PRIMAL matched (left) beside the
                  live frame (right), with the delta, the confidence and the reference time.
 
-The stream's own timestamps restart now and then; each stretch between restarts gets the
-offset the live run gave it (frames.csv), so the times are the run's.
-
-Usage: PYTHONPATH=. python experiments/gopro_review.py data/gopro/<time>
+Usage: PYTHONPATH=. python experiments/session_review.py data/gopro/<time>
 """
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -22,13 +20,18 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from experiments.gopro_preview import HEADER, build, read_exact
 
 
-def stretches(stream_pts: np.ndarray) -> np.ndarray:
-    """Index of the stretch between timestamp restarts for each frame (as StreamClock finds them)."""
-    d = np.diff(stream_pts, prepend=stream_pts[0])
-    return np.cumsum(~((-0.5 < d) & (d < 1.0)))
+def session_frames(run: Path, scale: int = 1) -> tuple[np.ndarray, list[np.ndarray]]:
+    """The session's frame times and frames (downscaled by `scale`)."""
+    t = pd.read_csv(run / "video_times.csv").t.to_numpy()
+    cap, imgs = cv2.VideoCapture(str(run / "video.mp4")), []
+    while True:
+        ok, img = cap.read()
+        if not ok:
+            break
+        imgs.append(img if scale == 1 else cv2.resize(img, (img.shape[1] // scale, img.shape[0] // scale), interpolation=cv2.INTER_AREA))
+    return t[:len(imgs)], imgs
 
 
 def writer(path: Path, size: tuple[int, int]) -> cv2.VideoWriter:
@@ -42,21 +45,9 @@ def writer(path: Path, size: tuple[int, int]) -> cv2.VideoWriter:
 def main() -> None:
     run = Path(sys.argv[1])
     s = json.loads((run / "summary.json").read_text())
-    f, r = pd.read_csv(run / "frames.csv"), pd.read_csv(run / "readings.csv")
-    f["stretch"] = stretches(f.stream_pts.to_numpy())
-    offset = (f.pts - f.stream_pts).groupby(f.stretch).median()
-    probe = subprocess.Popen([str(build("gopro_probe")), "--file", str(run / "stream.ts")], stdout=subprocess.PIPE)
-    pts, imgs = [], []
-    while True:
-        head = read_exact(probe.stdout, HEADER.size)
-        if len(head) < HEADER.size:
-            break
-        _, p, _, _, w, h = HEADER.unpack(head)
-        imgs.append(np.frombuffer(read_exact(probe.stdout, w * h * 4), np.uint8).reshape(h, w, 4)[:, :, :3])
-        pts.append(p)
-    raw = np.array(pts)
-    t = raw + offset.reindex(stretches(raw)).to_numpy()
-    print(f"{len(t)} frames decoded, {len(offset)} stretches between timestamp restarts", flush=True)
+    r = pd.read_csv(run / "readings.csv")
+    t, imgs = session_frames(run)
+    h, w = imgs[0].shape[:2]
     r0, T = s["reference_start_pts"], s["reference_lap_s"]
     font = cv2.FONT_HERSHEY_SIMPLEX
 

@@ -1,7 +1,8 @@
 """
-Step 0 of the GoPro path: the HERO7's Wi-Fi preview into PRIMAL on the Mac, received and
-decoded in hardware by the Swift code the iPhone app uses (ios/PrimalCore through
-ios/tools/gopro_probe: UDP keep-alive, MPEG-TS, VideoToolbox).
+A stand-in for the iPhone app, to retire once the app's live view works: the HERO7's Wi-Fi
+preview into PRIMAL on the Mac, received and decoded in hardware by the app repo's GoProKit
+(its gopro-probe tool: UDP keep-alive, MPEG-TS, VideoToolbox; GOPROKIT points at the package,
+by default ~/code/hotlapp_V1.0/Packages/GoProKit).
 
 The Mac joins the GoPro's Wi-Fi (with internet over a cable, or this runs alone). This
 starts the preview over HTTP, crops each frame to the training aspect (148:80), shrinks it
@@ -18,7 +19,7 @@ Usage: PYTHONPATH=. python experiments/gopro_preview.py [--seconds 600] [--recor
            [--run v3_mobilenet_lr1_s0] [--crop x0,x1,y0,y1] [--fake VIDEO.mp4]
   --record   also start the camera recording 5 s in (does the preview survive it?)
   --auto-reference START[,END]  press r at these stream times (tests; without END it closes by itself)
-  --fake     no camera: ios/tools/.build/fake_gopro replays VIDEO as the preview would, or a
+  --fake     no camera: GoProKit's fake-gopro replays VIDEO as the preview would, or a
              preview this saved (data/gopro/<time>/stream.ts) as it came
   e.g. RaceChrono's lap 3 against its lap 2 (both from experiments/real_footage.py's crossings):
        --fake data/real-footage/race-chrono/race-chrono.mp4 --fake-start 96.39 --auto-reference 2.0,89.28 --seconds 180
@@ -29,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import struct
 import subprocess
 import sys
@@ -45,9 +47,7 @@ import torch
 from train.eval import load_model
 from train.live import LiveDelta, encode_frames
 
-IOS = Path("ios")
-CORE = IOS / "PrimalCore/Sources/PrimalCore"  # the Swift package the iPhone app uses
-TOOLS = {"gopro_probe": [CORE, IOS / "tools/gopro_probe"], "fake_gopro": [CORE, IOS / "tools/fake_gopro"]}
+GOPROKIT = Path(os.environ.get("GOPROKIT", Path.home() / "code/hotlapp_V1.0/Packages/GoProKit"))
 CAMERA = "http://10.5.5.9"
 BIN_S = 0.052  # reference bin spacing, as experiments/real_footage.py
 VERIFY_S = 8.0  # how long after a proposed closure PRIMAL may take to confirm it
@@ -55,13 +55,9 @@ HEADER = struct.Struct("<4sdddII")
 
 
 def build(name: str) -> Path:
-    """The Swift tool, rebuilt when a source is newer than it."""
-    out = IOS / "tools/.build" / name
-    sources = sorted(p for d in TOOLS[name] for p in d.glob("*.swift"))
-    if not out.exists() or max(p.stat().st_mtime for p in sources) > out.stat().st_mtime:
-        out.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["swiftc", "-O", "-swift-version", "5", *map(str, sources), "-o", str(out)], check=True)
-    return out
+    """GoProKit's tool `name` (gopro-probe, fake-gopro), built if it changed."""
+    subprocess.run(["swift", "build", "-c", "release", "--package-path", str(GOPROKIT), "--product", name], check=True, capture_output=True)
+    return GOPROKIT / ".build/release" / name
 
 
 def camera(path: str) -> str | None:
@@ -245,7 +241,7 @@ def main() -> None:
     clip_len = int(payload["args"]["clip_len"])
     summary = {"run": a.run, "fake": a.fake, "record": a.record}
 
-    probe = subprocess.Popen([str(build("gopro_probe")), "--ts", str(out / "stream.ts"), "--seconds", str(a.seconds + 5)]
+    probe = subprocess.Popen([str(build("gopro-probe")), "--ts", str(out / "stream.ts"), "--seconds", str(a.seconds + 5)]
                              + (["--camera", "127.0.0.1"] if a.fake else []), stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0)
     log = (out / "probe.log").open("w")
     probe_lines: list[str] = []
@@ -257,7 +253,7 @@ def main() -> None:
     threading.Thread(target=tee, daemon=True).start()
 
     if a.fake:
-        fake = subprocess.Popen([str(build("fake_gopro")), a.fake, "--seconds", str(a.seconds), "--start", a.fake_start])
+        fake = subprocess.Popen([str(build("fake-gopro")), a.fake, "--seconds", str(a.seconds), "--start", a.fake_start])
     else:
         summary["camera_info"] = summary_info
         camera("/gp/gpControl/execute?p1=gpStream&a1=proto_v2&c1=restart")
