@@ -54,6 +54,17 @@ final class TSDemuxer {
     private var pes: [UInt8] = [], pesPTS: Double?, pesExpected = 0
     private var lastCC = -1
 
+    /// One datagram as the HERO7 sends it: a 12-byte header (bytes 10-11 the length of the
+    /// TS data that follows, a whole number of packets; bytes 8-9 count up but restart in
+    /// groups, so they do not number the datagrams), then 7 TS packet slots, the unused ones
+    /// zero-filled. Scanning for the sync byte instead misreads the header when one of its
+    /// bytes is 0x47. Datagrams of bare TS packets are taken too.
+    func feedDatagram(_ data: UnsafeBufferPointer<UInt8>) {
+        guard data.count >= 12 + 188, data[0] != 0x47, data[12] == 0x47 else { return feed(data) }
+        let length = Int(data[10]) << 8 | Int(data[11])
+        feed(UnsafeBufferPointer(rebasing: data[12..<min(12 + length, data.count)]))
+    }
+
     func feed(_ data: UnsafeBufferPointer<UInt8>) {
         var i = 0
         while i + 188 <= data.count {

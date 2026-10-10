@@ -16,7 +16,8 @@ wraps past the line. q quits.
 Usage: PYTHONPATH=. python experiments/gopro_preview.py [--seconds 600] [--record]
            [--run v3_mobilenet_lr1_s0] [--crop x0,x1,y0,y1] [--fake VIDEO.mp4]
   --record   also start the camera recording 5 s in (does the preview survive it?)
-  --fake     no camera: ios/tools/.build/fake_gopro replays VIDEO as the preview would
+  --fake     no camera: ios/tools/.build/fake_gopro replays VIDEO as the preview would, or a
+             preview this saved (data/gopro/<time>/stream.ts) as it came
   e.g. RaceChrono's lap 3 against its lap 2 (both from experiments/real_footage.py's crossings):
        --fake data/real-footage/race-chrono/race-chrono.mp4 --fake-start 96.39 --auto-reference 2.0,89.28 --seconds 180
        (the replay's stream times run from 1 s at --fake-start; lap 3 should end about +0.32 s)
@@ -43,7 +44,7 @@ from train.eval import load_model
 from train.live import LiveDelta, encode_frames
 
 IOS = Path("ios")
-TOOLS = {"gopro_probe": [IOS / "PrimalCore", IOS / "tools/gopro_probe"], "fake_gopro": [IOS / "tools/fake_gopro"]}
+TOOLS = {"gopro_probe": [IOS / "PrimalCore", IOS / "tools/gopro_probe"], "fake_gopro": [IOS / "PrimalCore", IOS / "tools/fake_gopro"]}
 CAMERA = "http://10.5.5.9"
 BIN_S = 0.052  # reference bin spacing, as experiments/real_footage.py
 HEADER = struct.Struct("<4sdddII")
@@ -137,6 +138,42 @@ def read_exact(f, n: int) -> bytes:
     return b"".join(parts)
 
 
+class LatestFrame:
+    """
+    The probe's frames read as they come, only the newest kept: when the loop is slower
+    than the stream it skips frames instead of falling behind (in the second run a queue
+    grew 3 s every 10 s and overflowed).
+    """
+    def __init__(self, pipe) -> None:
+        self.pipe, self.item, self.done, self.skipped = pipe, None, False, 0
+        self.cond = threading.Condition()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self) -> None:
+        while True:
+            head = read_exact(self.pipe, HEADER.size)
+            if len(head) < HEADER.size:
+                break
+            _, pts, arrival, decode_ms, w, h = HEADER.unpack(head)
+            raw = read_exact(self.pipe, w * h * 4)
+            if len(raw) < w * h * 4:
+                break
+            with self.cond:
+                self.skipped += self.item is not None
+                self.item = (pts, arrival, decode_ms, w, h, raw)
+                self.cond.notify()
+        with self.cond:
+            self.done = True
+            self.cond.notify()
+
+    def next(self):
+        with self.cond:
+            while self.item is None and not self.done:
+                self.cond.wait()
+            item, self.item = self.item, None
+            return item
+
+
 def crop_box(w: int, h: int, crop: str | None) -> tuple[int, int, int, int]:
     if crop:
         return tuple(int(v) for v in crop.split(","))
@@ -183,7 +220,7 @@ def main() -> None:
         summary["camera_info"] = summary_info
         camera("/gp/gpControl/execute?p1=gpStream&a1=proto_v2&c1=restart")
 
-    clock = StreamClock()
+    clock, feed = StreamClock(), LatestFrame(probe.stdout)
     frames, readings, history = [], [], []  # history: (pts, descriptor) while recording the reference
     live: LiveDelta | None = None
     ref_start = lap_start = None
@@ -192,14 +229,11 @@ def main() -> None:
     box = None
     try:
         while time.time() - started < a.seconds:
-            head = read_exact(probe.stdout, HEADER.size)
-            if len(head) < HEADER.size:
+            item = feed.next()
+            if item is None:
                 break
-            magic, stream_pts, arrival, decode_ms, w, h = HEADER.unpack(head)
+            stream_pts, arrival, decode_ms, w, h, raw = item
             pts = clock(stream_pts, arrival)
-            raw = read_exact(probe.stdout, w * h * 4)
-            if len(raw) < w * h * 4:
-                break
             read_at = time.time()
             img = np.frombuffer(raw, np.uint8).reshape(h, w, 4)[:, :, :3]
             if box is None:
@@ -282,7 +316,7 @@ def main() -> None:
         pd.DataFrame(readings, columns=["pts", "ref_time_s", "confidence", "single_ref_time_s", "delta_s"]).to_csv(out / "readings.csv", index=False)
         if len(f) > 1:
             gaps = np.diff(f.pts)
-            summary.update(frames=len(f), timestamp_restarts=clock.restarts, fps=float(1 / np.median(gaps)), gaps_over_100ms=int(np.sum(gaps > 0.1)),
+            summary.update(frames=len(f), skipped_by_the_loop=feed.skipped, timestamp_restarts=clock.restarts, fps=float(1 / np.median(gaps)), gaps_over_100ms=int(np.sum(gaps > 0.1)),
                            decode_ms_median=float(f.decode_ms.median()), encode_ms_median=float(f.encode_ms[f.encode_ms > 0].median()),
                            queue_ms_median=float(1000 * (f.read_at - f.arrival).median()),
                            arrival_jitter_ms_p90=float(1000 * np.percentile(np.abs((f.arrival - f.pts) - (f.arrival - f.pts).median()), 90)),

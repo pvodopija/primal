@@ -4,7 +4,11 @@
 //   "PRMF", pts s (f64), arrival unix s (f64), decode ms (f64), width (u32), height (u32), BGRA rows.
 // Statistics go to stderr every 5 s.
 //
-// Usage: gopro_probe [--ts stream.ts] [--seconds N] [--camera 10.5.5.9]
+// While the camera records, the HERO7's preview runs at the recording's frame rate (60 fps
+// in the second run) where PRIMAL needs 30: every frame is decoded (each depends on the last)
+// but at most --max-fps are written out, by their timestamps.
+//
+// Usage: gopro_probe [--ts stream.ts] [--seconds N] [--camera 10.5.5.9] [--max-fps 30]
 import CoreVideo
 import Foundation
 
@@ -33,9 +37,17 @@ func writeAll(_ p: UnsafeRawPointer, _ n: Int) {
 let preview: GoProPreviewSocket
 do { preview = try GoProPreviewSocket(cameraIP: options["--camera"] ?? "10.5.5.9") } catch { log("gopro_probe: no socket on port 8554: \(error)"); exit(1) }
 let demuxer = TSDemuxer(), decoder = H264Decoder()
-var decodeStarted = 0.0
+var decodeStarted = 0.0, lastOut = -Double.infinity, lastPTS = -Double.infinity, skipped = 0, reordered = false
+let minSpacing = 1 / (Double(options["--max-fps"] ?? "30") ?? 30) - 0.004
 
 decoder.onFrame = { image, pts in
+    // too soon after the last one written: skip it (a jump back is a timestamp restart: keep it).
+    // A stream whose frames come out of order (B-frames: videos fake_gopro replays, not the
+    // GoPro's preview) is passed on whole.
+    if pts.isFinite && pts < lastPTS && pts > lastPTS - 0.5 { reordered = true }
+    if pts.isFinite { lastPTS = pts }
+    if !reordered && pts.isFinite && pts > lastOut - 0.5 && pts - lastOut < minSpacing { skipped += 1; return }
+    if pts.isFinite { lastOut = pts }
     let decodeMs = (Date().timeIntervalSince1970 - decodeStarted) * 1000
     CVPixelBufferLockBaseAddress(image, .readOnly)
     defer { CVPixelBufferUnlockBaseAddress(image, .readOnly) }
@@ -64,13 +76,13 @@ while Date().timeIntervalSince1970 - start < seconds {
     if n > 0 {
         datagrams += 1; bytes += n
         tsOut?.write(Data(buffer[0..<n]))
-        buffer.withUnsafeBufferPointer { demuxer.feed(UnsafeBufferPointer(rebasing: $0[0..<n])) }
+        buffer.withUnsafeBufferPointer { demuxer.feedDatagram(UnsafeBufferPointer(rebasing: $0[0..<n])) }
     }
     if now - lastStats >= 5 {
-        log(String(format: "gopro_probe: %.0f s  %d datagrams  %.0f kbit/s  %d TS packets (%d continuity errors)  %d frames in, %d decoded %dx%d (%@), %d failed, %d before the first keyframe",
+        log(String(format: "gopro_probe: %.0f s  %d datagrams  %.0f kbit/s  %d TS packets (%d continuity errors)  %d frames in, %d decoded %dx%d (%@), %d failed, %d before the first keyframe, %d not passed on (over the frame rate)",
                    now - start, datagrams, Double(bytes - bytesAtStats) * 8 / 1000 / (now - lastStats), demuxer.packets, demuxer.continuityErrors,
                    demuxer.accessUnits, decoder.decoded, decoder.width, decoder.height, decoder.hardware ? "hardware" : "NOT hardware",
-                   decoder.failed, decoder.beforeKeyframe))
+                   decoder.failed, decoder.beforeKeyframe, skipped))
         lastStats = now; bytesAtStats = bytes
     }
 }

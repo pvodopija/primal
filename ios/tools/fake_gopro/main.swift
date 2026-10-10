@@ -3,7 +3,10 @@
 // PMT every half second, the parameter sets before every keyframe, 7 TS packets a datagram
 // (the section CRCs are left zero; our demuxer does not read them).
 //
-// Usage: fake_gopro VIDEO.mp4 [--seconds N] [--start S] [--port 8554]
+// A recorded preview (a .ts that gopro_probe saved) is sent as it came, paced by its video
+// timestamps (restarts included).
+//
+// Usage: fake_gopro VIDEO.mp4|STREAM.ts [--seconds N] [--start S] [--port 8554]
 import AVFoundation
 import Darwin
 
@@ -13,6 +16,46 @@ while let key = argv.next(), let value = argv.next() { options[key] = value }
 let path = CommandLine.arguments[1]
 let seconds = Double(options["--seconds"] ?? "") ?? .infinity, startAt = Double(options["--start"] ?? "0") ?? 0
 
+let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+var to = sockaddr_in()
+to.sin_family = sa_family_t(AF_INET)
+to.sin_port = UInt16(options["--port"] ?? "8554")!.bigEndian
+inet_pton(AF_INET, "127.0.0.1", &to.sin_addr)
+
+if path.hasSuffix(".ts") {
+    let data = try! Data(contentsOf: URL(fileURLWithPath: path))
+    let demuxer = TSDemuxer()
+    var clock = 0.0, lastPTS: Double?, chunkTime = 0.0
+    demuxer.onAccessUnit = { _, pts in
+        guard let pts else { return }
+        if let last = lastPTS { clock += (pts > last && pts - last < 1) ? pts - last : 1 / 60 }
+        lastPTS = pts; chunkTime = clock
+    }
+    let start = Date().timeIntervalSince1970
+    // the saved stream is the camera's datagrams back to back: a header, then TS slots up to the next header
+    let bytes = [UInt8](data)
+    func isHeader(_ o: Int) -> Bool {
+        guard o + 12 < bytes.count, bytes[o] & 0x80 != 0, bytes[o + 12] == 0x47 else { return false }
+        let length = Int(bytes[o + 10]) << 8 | Int(bytes[o + 11])
+        return length > 0 && length <= 7 * 188 && length % 188 == 0
+    }
+    var o = 0
+    while o < bytes.count && chunkTime < seconds {
+        var end = o + 12 + 188
+        while end < bytes.count && !isHeader(end) { end += 188 }
+        let datagram = Array(bytes[o..<min(end, bytes.count)])
+        datagram.withUnsafeBufferPointer { demuxer.feedDatagram($0) }
+        let wait = start + chunkTime - Date().timeIntervalSince1970
+        if wait > 0 { usleep(useconds_t(wait * 1e6)) }
+        _ = withUnsafePointer(to: &to) {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { sendto(fd, datagram, datagram.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
+        }
+        o = end
+    }
+    FileHandle.standardError.write("fake_gopro: replayed \(String(format: "%.0f", chunkTime)) s of \(path)\n".data(using: .utf8)!)
+    exit(0)
+}
+
 let asset = AVURLAsset(url: URL(fileURLWithPath: path))
 let reader = try! AVAssetReader(asset: asset)
 let track = asset.tracks(withMediaType: .video)[0]
@@ -20,12 +63,6 @@ reader.timeRange = CMTimeRange(start: CMTime(seconds: startAt, preferredTimescal
 let output = AVAssetReaderTrackOutput(track: track, outputSettings: nil)  // compressed samples as stored
 reader.add(output)
 reader.startReading()
-
-let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-var to = sockaddr_in()
-to.sin_family = sa_family_t(AF_INET)
-to.sin_port = UInt16(options["--port"] ?? "8554")!.bigEndian
-inet_pton(AF_INET, "127.0.0.1", &to.sin_addr)
 
 var counters: [Int: Int] = [:], pending: [UInt8] = []
 func send(_ packet: [UInt8]) {
