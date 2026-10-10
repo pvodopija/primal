@@ -68,20 +68,33 @@ def camera(path: str) -> str | None:
         return None
 
 
-def network_check(out: Path) -> bool:
-    """Whether the Mac is on the GoPro's Wi-Fi (10.5.5.x) and the camera answers; saved to netcheck.txt."""
+def network_check(out: Path) -> str | None:
+    """
+    Whether the Mac is on the GoPro's Wi-Fi (10.5.5.x) and the camera's HTTP control answers;
+    the camera's info if so. Saved to netcheck.txt. (The camera answers ping with "port
+    unreachable", so ping says nothing.)
+    """
     ip = subprocess.run(["ipconfig", "getifaddr", "en0"], capture_output=True, text=True).stdout.strip()
-    ping = subprocess.run(["ping", "-c", "2", "-t", "3", "10.5.5.9"], capture_output=True, text=True)
-    text = f"Wi-Fi address: {ip or 'none'}\n{ping.stdout}{ping.stderr}"
+    text = f"Wi-Fi address: {ip or 'none'}\n"
+    info = None
     if not ip.startswith("10.5.5."):
-        text += ("\nNOT ON THE GOPRO'S WI-FI (its addresses start 10.5.5.): join its network and run again."
+        text += ("NOT ON THE GOPRO'S WI-FI (its addresses start 10.5.5.): join its network and run again."
                  + (" 169.254 means the camera has not given the Mac an address: rejoin." if ip.startswith("169.254") else ""))
-    elif ping.returncode != 0:
-        text += ("\nOn the GoPro's network but the camera does not answer. 'No route to host' here means macOS blocks this "
-                 "terminal app: System Settings > Privacy & Security > Local Network, switch it on (or run from Terminal).")
+    else:
+        try:
+            with urllib.request.urlopen(CAMERA + "/gp/gpControl/info", timeout=3) as r:
+                info = r.read().decode(errors="replace")
+            text += f"camera: {info}"
+        except OSError as e:
+            text += f"camera HTTP: {e}\n" + (
+                "'No route to host' on the GoPro's own network: macOS blocks this terminal app. System Settings > "
+                "Privacy & Security > Local Network, switch it on (or run from Terminal and allow the prompt)."
+                if "No route" in str(e) else
+                "'Connection refused': the camera's control is off; on the camera, Connections > Connect Device > GoPro App, "
+                "then rejoin." if "refused" in str(e) else "The camera did not answer in 3 s.")
     (out / "netcheck.txt").write_text(text)
     print(text, flush=True)
-    return ip.startswith("10.5.5.")
+    return info
 
 
 def read_exact(f, n: int) -> bytes:
@@ -115,8 +128,10 @@ def main() -> None:
     a = ap.parse_args()
     out = Path("data/gopro") / time.strftime("%Y%m%dT%H%M%S")
     (out / "snapshots").mkdir(parents=True)
-    if not a.fake and not network_check(out):
-        return
+    if not a.fake:
+        summary_info = network_check(out)
+        if summary_info is None:
+            return
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model, payload = load_model(Path("runs") / a.run / "best.pt", device)
     clip_len = int(payload["args"]["clip_len"])
@@ -136,8 +151,7 @@ def main() -> None:
     if a.fake:
         fake = subprocess.Popen([str(build("fake_gopro")), a.fake, "--seconds", str(a.seconds), "--start", a.fake_start])
     else:
-        summary["camera_info"] = camera("/gp/gpControl/info")
-        print("camera:", summary["camera_info"], flush=True)
+        summary["camera_info"] = summary_info
         camera("/gp/gpControl/execute?p1=gpStream&a1=proto_v2&c1=restart")
 
     frames, readings, history = [], [], []  # history: (pts, descriptor) while recording the reference
