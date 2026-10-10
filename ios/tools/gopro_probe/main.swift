@@ -8,7 +8,11 @@
 // in the second run) where PRIMAL needs 30: every frame is decoded (each depends on the last)
 // but at most --max-fps are written out, by their timestamps.
 //
+// --file decodes a saved preview (the camera's datagrams back to back) as fast as it can
+// instead of listening.
+//
 // Usage: gopro_probe [--ts stream.ts] [--seconds N] [--camera 10.5.5.9] [--max-fps 30]
+//        gopro_probe --file stream.ts [--max-fps 30]
 import CoreVideo
 import Foundation
 
@@ -62,6 +66,24 @@ decoder.onFrame = { image, pts in
 demuxer.onAccessUnit = { unit, pts in
     decodeStarted = Date().timeIntervalSince1970
     decoder.decode(unit, pts: pts)
+}
+
+if let path = options["--file"] {
+    let bytes = [UInt8](try! Data(contentsOf: URL(fileURLWithPath: path)))
+    func isHeader(_ o: Int) -> Bool {
+        guard o + 12 < bytes.count, bytes[o] & 0x80 != 0, bytes[o + 12] == 0x47 else { return false }
+        let length = Int(bytes[o + 10]) << 8 | Int(bytes[o + 11])
+        return length > 0 && length <= 7 * 188 && length % 188 == 0
+    }
+    var o = 0
+    while o < bytes.count {
+        var end = o + 12 + 188
+        while end < bytes.count && !isHeader(end) { end += 188 }
+        bytes[o..<min(end, bytes.count)].withUnsafeBufferPointer { demuxer.feedDatagram($0) }
+        o = end
+    }
+    log("gopro_probe: \(path): \(demuxer.accessUnits) frames, \(decoder.decoded) decoded, \(decoder.failed) failed, \(skipped) not passed on")
+    exit(0)
 }
 
 var buffer = [UInt8](repeating: 0, count: 65_536)
