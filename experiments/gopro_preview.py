@@ -97,6 +97,24 @@ def network_check(out: Path) -> str | None:
     return info
 
 
+class StreamClock:
+    """
+    The stream's frame times, kept steady: the HERO7 restarts its timestamps at 0 now and
+    then (twice in the first 2-minute run), so a jump back, or forward by over a second,
+    is bridged with the time between arrivals.
+    """
+    def __init__(self) -> None:
+        self.offset, self.last, self.last_arrival, self.restarts = 0.0, None, None, 0
+
+    def __call__(self, pts: float, arrival: float) -> float:
+        t = pts + self.offset
+        if self.last is not None and not (0 < t - self.last < 1.0):
+            self.offset = self.last + max(arrival - self.last_arrival, 1 / 60) - pts
+            t, self.restarts = pts + self.offset, self.restarts + 1
+        self.last, self.last_arrival = t, arrival
+        return t
+
+
 def read_exact(f, n: int) -> bytes:
     """n bytes from the probe's pipe, which hands them over in pieces; fewer only at its end."""
     parts, got = [], 0
@@ -154,6 +172,7 @@ def main() -> None:
         summary["camera_info"] = summary_info
         camera("/gp/gpControl/execute?p1=gpStream&a1=proto_v2&c1=restart")
 
+    clock = StreamClock()
     frames, readings, history = [], [], []  # history: (pts, descriptor) while recording the reference
     live: LiveDelta | None = None
     ref_start = lap_start = None
@@ -165,7 +184,8 @@ def main() -> None:
             head = read_exact(probe.stdout, HEADER.size)
             if len(head) < HEADER.size:
                 break
-            magic, pts, arrival, decode_ms, w, h = HEADER.unpack(head)
+            magic, stream_pts, arrival, decode_ms, w, h = HEADER.unpack(head)
+            pts = clock(stream_pts, arrival)
             raw = read_exact(probe.stdout, w * h * 4)
             if len(raw) < w * h * 4:
                 break
@@ -185,7 +205,7 @@ def main() -> None:
             if desc is not None:
                 desc.cpu()  # wait for the GPU, so the time is the encoder's
             encode_ms = (time.time() - t0) * 1000
-            frames.append((pts, arrival, read_at, decode_ms, encode_ms))
+            frames.append((pts, stream_pts, arrival, read_at, decode_ms, encode_ms))
             if ref_start is not None and desc is not None:
                 history.append((pts, desc))
             text = ""
@@ -246,12 +266,12 @@ def main() -> None:
             fake.terminate()
         if not a.no_window:
             cv2.destroyAllWindows()
-        f = pd.DataFrame(frames, columns=["pts", "arrival", "read_at", "decode_ms", "encode_ms"])
+        f = pd.DataFrame(frames, columns=["pts", "stream_pts", "arrival", "read_at", "decode_ms", "encode_ms"])
         f.to_csv(out / "frames.csv", index=False)
         pd.DataFrame(readings, columns=["pts", "ref_time_s", "confidence", "single_ref_time_s", "delta_s"]).to_csv(out / "readings.csv", index=False)
         if len(f) > 1:
             gaps = np.diff(f.pts)
-            summary.update(frames=len(f), fps=float(1 / np.median(gaps)), gaps_over_100ms=int(np.sum(gaps > 0.1)),
+            summary.update(frames=len(f), timestamp_restarts=clock.restarts, fps=float(1 / np.median(gaps)), gaps_over_100ms=int(np.sum(gaps > 0.1)),
                            decode_ms_median=float(f.decode_ms.median()), encode_ms_median=float(f.encode_ms[f.encode_ms > 0].median()),
                            queue_ms_median=float(1000 * (f.read_at - f.arrival).median()),
                            arrival_jitter_ms_p90=float(1000 * np.percentile(np.abs((f.arrival - f.pts) - (f.arrival - f.pts).median()), 90)),
