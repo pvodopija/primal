@@ -516,6 +516,33 @@ Researched 2026-10-06 (web; latency and the iOS details are unmeasured):
   our own app starting it over BLE needs Open GoPro (HERO10 or later; HERO12/13
   documented best).
 
+### The HERO7's Wi-Fi preview, live into PRIMAL (2026-10-10)
+
+`experiments/gopro_preview.py` with the Swift receiver the iPhone app will use
+(`ios/PrimalCore`: UDP keep-alive, MPEG-TS, VideoToolbox), `gopro_review.py` (reference and
+matched-reference videos), `gopro_diagnose.py` (each stage against ORB truth):
+
+- **The stream:** 848x480 H.264, 30 fps (60 while recording at 60), ~2-3.5 Mbit/s;
+  hardware decode 0.8 ms a frame. Each datagram carries a 12-byte header (bytes 10-11 the
+  TS length); scanning for the sync byte instead lost the first packet whenever a header
+  byte was 0x47 (run 1's 175 lost packets were ours: 0 on replay). The camera restarts its
+  timestamps now and then; bridged by whole frame intervals, exact.
+- **Delay, glass to screen:** 0.24 s; **1.3 s while the camera records**, HyperSmooth on
+  or off. Live sessions should not record on the camera; the phone keeps the stream.
+- **Replaying RaceChrono through the whole path:** median 27 ms against the ORB truth
+  (offline 28 ms). The reference closes by itself: a start-view similarity proposes,
+  PRIMAL confirms and places the line from its readings (time less reference time):
+  89.23 s for the true 89.28 s.
+- **A walk around a flat (19 s loop) against ORB truth:** the encoder alone places a frame
+  within 0.5 s 79% of the time (96% within 1 s), the head 75%, the tracker 65%; no tracker
+  setting tried did better. In space that is ~0.3 m at walking pace, finer than on any
+  track (BHGP's 54 ms is ~2 m at 40 m/s): time error is distance error over speed, so a
+  slow walk magnifies it, and the confidence's fixed 0.25 s agreement allows only ~0.3 m.
+  On track footage the tracker helps (RaceChrono 34 ms against the head's 46; BHGP 54
+  against 73, over 300 ms 5% against 12%): walking (stops, a hand-held camera) breaks the
+  racing-pace assumptions, not a bug. A gentler-tuned encoder (backbone at 0.3x) did
+  slightly worse on the walk (shown 43% against 49%).
+
 ### Other glasses considered
 
 | Glasses | Why not first |
