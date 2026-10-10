@@ -5,18 +5,20 @@ import VideoToolbox
 /// H.264 access units (Annex B) to BGRA pixel buffers, in the hardware decoder (VideoToolbox;
 /// on macOS hardware is required, so a stream it cannot take fails here rather than falling
 /// back to software). Frames before the first keyframe are dropped.
-final class H264Decoder {
-    var onFrame: ((CVPixelBuffer, Double) -> Void)?
-    private(set) var decoded = 0, failed = 0, beforeKeyframe = 0, hardware = false
-    private(set) var width = 0, height = 0
+public final class H264Decoder {
+    public var onFrame: ((CVPixelBuffer, Double) -> Void)?
+    public private(set) var decoded = 0, failed = 0, beforeKeyframe = 0, hardware = false
+    public private(set) var width = 0, height = 0
     private var sps: [UInt8]?, pps: [UInt8]?
     private var format: CMVideoFormatDescription?
     private var session: VTDecompressionSession?
     private var keyframeSeen = false
 
+    public init() {}
+
     deinit { if let session { VTDecompressionSessionInvalidate(session) } }
 
-    func decode(_ annexB: [UInt8], pts: Double?) {
+    public func decode(_ annexB: [UInt8], pts: Double?) {
         var slices: [[UInt8]] = [], keyframe = false
         for nal in H264Decoder.units(annexB) where !nal.isEmpty {
             switch nal[0] & 0x1F {
@@ -99,7 +101,7 @@ final class H264Decoder {
     }
 
     /// NAL units of an Annex B byte stream (split at 00 00 01, with or without a leading 00).
-    static func units(_ b: [UInt8]) -> [[UInt8]] {
+    public static func units(_ b: [UInt8]) -> [[UInt8]] {
         var out: [[UInt8]] = [], start = -1, i = 0
         while i + 2 < b.count {
             if b[i] == 0 && b[i + 1] == 0 && b[i + 2] == 1 {

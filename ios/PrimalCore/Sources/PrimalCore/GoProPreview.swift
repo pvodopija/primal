@@ -4,12 +4,12 @@ import Foundation
 /// The GoPro's Wi-Fi preview (HERO4-HERO8, gpControl): H.264 in MPEG-TS over UDP, sent to
 /// our port 8554 while we send the camera a keep-alive datagram every ~2.5 s. The stream
 /// itself is started over HTTP (`/gp/gpControl/execute?p1=gpStream&a1=proto_v2&c1=restart`).
-final class GoProPreviewSocket {
-    static let keepAliveInterval = 2.5
-    let fd: Int32
+public final class GoProPreviewSocket {
+    public static let keepAliveInterval = 2.5
+    public let fd: Int32
     private var camera = sockaddr_in()
 
-    init(cameraIP: String = "10.5.5.9", port: UInt16 = 8554) throws {
+    public init(cameraIP: String = "10.5.5.9", port: UInt16 = 8554) throws {
         fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         guard fd >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
         var yes: Int32 = 1, buffer: Int32 = 4 << 20
@@ -31,7 +31,7 @@ final class GoProPreviewSocket {
 
     deinit { close(fd) }
 
-    func keepAlive() {
+    public func keepAlive() {
         let message = Array("_GPHD_:0:0:2:0.000000\n".utf8)
         _ = withUnsafePointer(to: &camera) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
@@ -41,31 +41,33 @@ final class GoProPreviewSocket {
     }
 
     /// One datagram into `buffer`; its length, or 0 on the receive timeout.
-    func receive(into buffer: inout [UInt8]) -> Int {
+    public func receive(into buffer: inout [UInt8]) -> Int {
         max(recv(fd, &buffer, buffer.count, 0), 0)
     }
 }
 
 /// MPEG-TS packets to H.264 access units (Annex B bytes) with their presentation time, s.
-final class TSDemuxer {
-    var onAccessUnit: (([UInt8], Double?) -> Void)?
-    private(set) var packets = 0, continuityErrors = 0, accessUnits = 0
+public final class TSDemuxer {
+    public var onAccessUnit: (([UInt8], Double?) -> Void)?
+    public private(set) var packets = 0, continuityErrors = 0, accessUnits = 0
     private var pmtPID: Int?, videoPID: Int?
     private var pes: [UInt8] = [], pesPTS: Double?, pesExpected = 0
     private var lastCC = -1
+
+    public init() {}
 
     /// One datagram as the HERO7 sends it: a 12-byte header (bytes 10-11 the length of the
     /// TS data that follows, a whole number of packets; bytes 8-9 count up but restart in
     /// groups, so they do not number the datagrams), then 7 TS packet slots, the unused ones
     /// zero-filled. Scanning for the sync byte instead misreads the header when one of its
     /// bytes is 0x47. Datagrams of bare TS packets are taken too.
-    func feedDatagram(_ data: UnsafeBufferPointer<UInt8>) {
+    public func feedDatagram(_ data: UnsafeBufferPointer<UInt8>) {
         guard data.count >= 12 + 188, data[0] != 0x47, data[12] == 0x47 else { return feed(data) }
         let length = Int(data[10]) << 8 | Int(data[11])
         feed(UnsafeBufferPointer(rebasing: data[12..<min(12 + length, data.count)]))
     }
 
-    func feed(_ data: UnsafeBufferPointer<UInt8>) {
+    public func feed(_ data: UnsafeBufferPointer<UInt8>) {
         var i = 0
         while i + 188 <= data.count {
             if data[i] == 0x47 { packet(data, i); i += 188 } else { i += 1 }

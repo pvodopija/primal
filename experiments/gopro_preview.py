@@ -1,6 +1,6 @@
 """
 Step 0 of the GoPro path: the HERO7's Wi-Fi preview into PRIMAL on the Mac, received and
-decoded in hardware by the Swift code the iPhone app will use (ios/PrimalCore through
+decoded in hardware by the Swift code the iPhone app uses (ios/PrimalCore through
 ios/tools/gopro_probe: UDP keep-alive, MPEG-TS, VideoToolbox).
 
 The Mac joins the GoPro's Wi-Fi (with internet over a cable, or this runs alone). This
@@ -46,7 +46,8 @@ from train.eval import load_model
 from train.live import LiveDelta, encode_frames
 
 IOS = Path("ios")
-TOOLS = {"gopro_probe": [IOS / "PrimalCore", IOS / "tools/gopro_probe"], "fake_gopro": [IOS / "PrimalCore", IOS / "tools/fake_gopro"]}
+CORE = IOS / "PrimalCore/Sources/PrimalCore"  # the Swift package the iPhone app uses
+TOOLS = {"gopro_probe": [CORE, IOS / "tools/gopro_probe"], "fake_gopro": [CORE, IOS / "tools/fake_gopro"]}
 CAMERA = "http://10.5.5.9"
 BIN_S = 0.052  # reference bin spacing, as experiments/real_footage.py
 VERIFY_S = 8.0  # how long after a proposed closure PRIMAL may take to confirm it
