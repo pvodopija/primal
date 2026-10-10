@@ -68,6 +68,22 @@ def camera(path: str) -> str | None:
         return None
 
 
+def network_check(out: Path) -> bool:
+    """Whether the Mac is on the GoPro's Wi-Fi (10.5.5.x) and the camera answers; saved to netcheck.txt."""
+    ip = subprocess.run(["ipconfig", "getifaddr", "en0"], capture_output=True, text=True).stdout.strip()
+    ping = subprocess.run(["ping", "-c", "2", "-t", "3", "10.5.5.9"], capture_output=True, text=True)
+    text = f"Wi-Fi address: {ip or 'none'}\n{ping.stdout}{ping.stderr}"
+    if not ip.startswith("10.5.5."):
+        text += ("\nNOT ON THE GOPRO'S WI-FI (its addresses start 10.5.5.): join its network and run again."
+                 + (" 169.254 means the camera has not given the Mac an address: rejoin." if ip.startswith("169.254") else ""))
+    elif ping.returncode != 0:
+        text += ("\nOn the GoPro's network but the camera does not answer. 'No route to host' here means macOS blocks this "
+                 "terminal app: System Settings > Privacy & Security > Local Network, switch it on (or run from Terminal).")
+    (out / "netcheck.txt").write_text(text)
+    print(text, flush=True)
+    return ip.startswith("10.5.5.")
+
+
 def read_exact(f, n: int) -> bytes:
     """n bytes from the probe's pipe, which hands them over in pieces; fewer only at its end."""
     parts, got = [], 0
@@ -99,6 +115,8 @@ def main() -> None:
     a = ap.parse_args()
     out = Path("data/gopro") / time.strftime("%Y%m%dT%H%M%S")
     (out / "snapshots").mkdir(parents=True)
+    if not a.fake and not network_check(out):
+        return
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
     model, payload = load_model(Path("runs") / a.run / "best.pt", device)
     clip_len = int(payload["args"]["clip_len"])
