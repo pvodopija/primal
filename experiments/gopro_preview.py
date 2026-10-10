@@ -100,18 +100,20 @@ def network_check(out: Path) -> str | None:
 class StreamClock:
     """
     The stream's frame times, kept steady: the HERO7 restarts its timestamps at 0 now and
-    then (twice in the first 2-minute run), so a jump back, or forward by over a second,
-    is bridged with the time between arrivals.
+    then (twice in the first 2-minute run), so a jump back by over half a second, or forward
+    by over a second, is bridged with the time between arrivals. (Smaller steps back are
+    frames reordered around B-frames, which the GoPro's preview does not use but videos
+    replayed by fake_gopro do.)
     """
     def __init__(self) -> None:
         self.offset, self.last, self.last_arrival, self.restarts = 0.0, None, None, 0
 
     def __call__(self, pts: float, arrival: float) -> float:
         t = pts + self.offset
-        if self.last is not None and not (0 < t - self.last < 1.0):
+        if self.last is not None and not (-0.5 < t - self.last < 1.0):
             self.offset = self.last + max(arrival - self.last_arrival, 1 / 60) - pts
             t, self.restarts = pts + self.offset, self.restarts + 1
-        self.last, self.last_arrival = t, arrival
+        self.last, self.last_arrival = max(t, self.last or t), arrival
         return t
 
 
