@@ -53,7 +53,9 @@ _SETS = {
                        crop=(0, 1280, 14, 706), truth_crop=(0, 1280, 0, 400), reference="fastest", refine_s=1.5, window_s=3.0,
                        refine="orb", skip_laps=(9, 10),
                        # centre crops toward the training view: ~1000 px and ~820 px of a ~515 px focal length
-                       crop_c100=(140, 1140, 0, 540), crop_c80=(229, 1051, 0, 444)),
+                       crop_c100=(140, 1140, 0, 540), crop_c80=(229, 1051, 0, 444),
+                       # the whole width with the kart and driver (the lower 40%) greyed out
+                       crop_nokart=(0, 1280, 14, 706), masks_nokart=[(0, 430, 1280, 720)]),
     # A RaceChrono Pro video (car, dash camera, 60 fps) with its GPS delta drawn on: the
     # overlays are greyed out before anything sees a frame. Crossings from RaceChrono's own
     # lap clock (experiments/racechrono_read.py); lap 2 starts from a standstill.
@@ -78,12 +80,15 @@ if CROSSINGS_S is None:  # read off the video's own lap clock
 
 def mask(frame: np.ndarray) -> np.ndarray:
     """Overlays drawn on the video (another product's numbers) greyed out."""
-    for x0, y0, x1, y1 in _S.get("masks", []):
+    for x0, y0, x1, y1 in _S.get("masks", []) + _S.get(f"masks_{os.environ.get('REAL_CROP', '')}", []):
         frame[y0:y1, x0:x1] = 128
     return frame
 CROP_NAME = os.environ.get("REAL_CROP", "")
 CROP, TRUTH_CROP = _S[f"crop_{CROP_NAME}" if CROP_NAME else "crop"], _S["truth_crop"]
-SUFFIX = f"_{CROP_NAME}" if CROP_NAME else ""
+# REAL_STREAM=<name>: frames from a re-encoded copy as a livestream would deliver it
+# (experiments/stream_quality.py writes ROOT/stream_<name>.mp4, overlays already masked)
+STREAM = os.environ.get("REAL_STREAM", "")
+SUFFIX = (f"_{CROP_NAME}" if CROP_NAME else "") + (f"_{STREAM}" if STREAM else "")
 HZ, SPACING_S, BIN_S = 15.0, 1 / 30, 0.052
 
 
@@ -92,9 +97,12 @@ def frames() -> tuple[np.ndarray, np.ndarray]:
     if cache.exists():
         z = np.load(cache)
         return z["frames"], z["t"]
-    cap = cv2.VideoCapture(str(VIDEO))
+    cap = cv2.VideoCapture(str(ROOT / f"stream_{STREAM}.mp4" if STREAM else VIDEO))
     fps = cap.get(cv2.CAP_PROP_FPS)
-    x0, x1, y0, y1 = CROP
+    # the crop is in 1280x720 pixels; a stream copy may be smaller
+    sx, sy = cap.get(cv2.CAP_PROP_FRAME_WIDTH) / 1280, cap.get(cv2.CAP_PROP_FRAME_HEIGHT) / 720
+    x0, x1, y0, y1 = (int(round(v * k)) for v, k in zip(CROP, (sx, sx, sy, sy)))
+    rep = max(int(round(30 / fps)), 1)  # below 30 fps each frame repeats on a 30 Hz clock, as a receiver would show it
     out, times, i = [], [], 0
     while True:
         ok, f = cap.read()
@@ -102,11 +110,13 @@ def frames() -> tuple[np.ndarray, np.ndarray]:
             break
         t = i / fps
         if CROSSINGS_S[0] - 3 <= t <= CROSSINGS_S[-1] + 3:
-            out.append(cv2.resize(mask(f)[y0:y1, x0:x1], (148, 80), interpolation=cv2.INTER_AREA))
-            times.append(t)
+            small = cv2.resize((f if STREAM else mask(f))[y0:y1, x0:x1], (148, 80), interpolation=cv2.INTER_AREA)
+            out += [small] * rep
+            times += [t + j / 30 for j in range(rep)]
         i += 1
     frames_, t_ = np.stack(out), np.array(times)
-    np.savez(cache, frames=frames_, t=t_)
+    if not STREAM:  # stream copies decode in seconds; not worth ~0.5 GB each
+        np.savez(cache, frames=frames_, t=t_)
     return frames_, t_
 
 

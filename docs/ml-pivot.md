@@ -512,6 +512,14 @@ Researched 2026-10-06 (web; latency and the iOS details are unmeasured):
   Reports of local RTMP put it at ~2 s (a HERO7 with stabilisation on) to 6 s (with a
   server's default 3 s buffer); a receiver that does not buffer should do better.
   Unmeasured.
+- **Measured: the stream's quality hardly matters** (2026-10-11,
+  `experiments/stream_quality.py`: the indoor GoPro re-encoded as a livestream would
+  arrive, H.264 x264 zerolatency, a keyframe a second, then scored at `c80` against
+  the same ORB truth; tracker, share over 100 ms): original 16.5%; 720p 4 Mbps 15.5%;
+  480p 2 Mbps 14.6%, 1 Mbps 14.8%, 500 kbps 15.0%, 250 kbps 16.3%, 125 kbps 27.1%,
+  60 kbps 54.6%; 240p 250 kbps 14.4%; 480p 1 Mbps at 15 fps 15.9%, at 10 fps 14.9%
+  (each frame repeated on the 30 Hz clock). Anything from ~250 kbps up, at 240p or more
+  and 10 fps or more, is as good as the original; set the GoPro's bitrate low.
 - **Models:** livestream works on HERO7 Black and later and MAX through the Quik app;
   our own app starting it over BLE needs Open GoPro (HERO10 or later; HERO12/13
   documented best).
@@ -2469,6 +2477,35 @@ The encoder loads at any resolution, but a different **field of view** moves
 the scene across the frame and is not handled. Measured on synthetic data:
 resizing a 100° view into the model's input gives 102 m of error, and portrait
 3:4 gives 164 m. Cropping to a matched FOV first recovers both to ~4.2 m.
+
+**Measured on the current model (2026-10-11, `experiments/pose_sensitivity.py`,
+`v3_mobilenet_lr1_s0`, held-out wide laps, two-mode tracker, share of ticks over 100 ms;
+level 0.8%):**
+
+| Live lap differs from the reference by | Over 100 ms | Mean shift |
+|---|---|---|
+| lens 82° / 101° (reference at 91.5°) | 41.6% / 43.1% | +99 / −92 ms |
+| lens 75° / 110° | 84.6% / 88.5% | +189 / −210 ms |
+| yaw ±3° / ±7° | 1.3-2.7% / 22.7-22.9% | ±8 / ±18 ms |
+| pitch −7° / +7° (down / up) | 3.2% / 6.3% | +22 / −40 ms |
+| roll ±5° / ±10° / ±15° | ~1% / ~1.5% / ~5% | ≤ 18 ms |
+
+A lens mismatch between the two laps is by far the worst: a narrower lens magnifies
+the scene the way driving forward does, so it reads as ahead (and a wider one as behind),
+about 10 ms per degree. Roll is nearly free. With `--same-lens` (reference and live
+through the same lens, as with one camera) the width stops mattering: 60° 2.2%, 75° 1.1%,
+82° 1.1%, 101° 0.7%, 110° 0.5%, 120° 0.4%, and an equidistant fisheye at 100° or 120°
+0.4-0.5%. So the FOV join below matters for sharing references across cameras, not for
+one camera at any width; on real footage the gain from cropping (indoor: full width
+21.2%, the kart and driver greyed out 20.0%, `c100` 18.7%, `c80` 16.5%) comes from the
+picture's sides, not the width or the kart: likely motion blur on near walls, which the
+renders lack (untested).
+
+**What the encoder looks at** (`experiments/what_it_sees.py`, occlusion maps): a band
+around the horizon, strongest left and right of the vanishing point (roadside objects
+where they meet the sky), little at the top and least in the bottom third (road, hood,
+kart, hands), the same on AC and on the indoor GoPro. A grey patch moves a real frame's
+descriptor less than a rendered one's (mean 0.028 against 0.063).
 
 So: treat every camera as a pinhole with known intrinsics, crop to a canonical
 FOV at pack time, then resize. The canonical FOV can be no wider than the

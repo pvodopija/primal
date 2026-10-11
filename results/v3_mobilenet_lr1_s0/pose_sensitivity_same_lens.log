@@ -1,0 +1,20 @@
+  ks_silverstone__national     live lap02 against lap04
+  ks_silverstone__national     live lap04 against lap05
+  ks_silverstone__national     live lap05 against lap06
+  rt_lime_rock_park__no_chican live lap02 against lap03
+  rt_lime_rock_park__no_chican live lap03 against lap04
+  rt_lime_rock_park__no_chican live lap04 against lap05
+  rt_oulton_park__fosters      live lap02 against lap03
+  rt_oulton_park__fosters      live lap03 against lap04
+  rt_oulton_park__fosters      live lap04 against lap05
+
+v3_mobilenet_lr1_s0: tracker and single clip, |error| (ms) and share over 100 ms; shift against the level lap (ms)
+  level        tracker    15 ms,   0.8% | single    30 ms,   7.0% | shift mean     +0 ms, median |shift|     0 ms
+  both 60°     tracker    22 ms,   2.2% | single    38 ms,  13.2% | shift mean     -4 ms, median |shift|    12 ms
+  both 75°     tracker    17 ms,   1.1% | single    34 ms,   9.2% | shift mean     -2 ms, median |shift|     8 ms
+  both 82°     tracker    17 ms,   1.1% | single    33 ms,   8.5% | shift mean     -2 ms, median |shift|     7 ms
+  both 101°    tracker    13 ms,   0.7% | single    29 ms,   6.2% | shift mean     +1 ms, median |shift|     6 ms
+  both 110°    tracker    12 ms,   0.5% | single    27 ms,   5.7% | shift mean     +2 ms, median |shift|     7 ms
+  both 120°    tracker    12 ms,   0.4% | single    27 ms,   5.6% | shift mean     +3 ms, median |shift|     9 ms
+  both fisheye 100° tracker    15 ms,   0.5% | single    30 ms,   6.9% | shift mean     -3 ms, median |shift|     6 ms
+  both fisheye 120° tracker    14 ms,   0.4% | single    28 ms,   5.8% | shift mean     -2 ms, median |shift|     8 ms

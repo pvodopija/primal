@@ -1,0 +1,74 @@
+{
+  "level": {
+    "tracker_median_ms": 14.85443115234375,
+    "tracker_over_100ms": 0.007741027445460943,
+    "single_median_ms": 30.3497314453125,
+    "single_over_100ms": 0.07013840018766127,
+    "shift_mean_ms": 0.0,
+    "shift_median_abs_ms": 0.0
+  },
+  "both 60\u00b0": {
+    "tracker_median_ms": 21.701812744140625,
+    "tracker_over_100ms": 0.02193291109547267,
+    "single_median_ms": 37.72163391113281,
+    "single_over_100ms": 0.13171475486746423,
+    "shift_mean_ms": -4.284108905698766,
+    "shift_median_abs_ms": 12.106895446777344
+  },
+  "both 75\u00b0": {
+    "tracker_median_ms": 17.419815063476562,
+    "tracker_over_100ms": 0.010673234811165846,
+    "single_median_ms": 33.68186950683594,
+    "single_over_100ms": 0.09207131128313395,
+    "shift_mean_ms": -1.595175324989657,
+    "shift_median_abs_ms": 7.53021240234375
+  },
+  "both 82\u00b0": {
+    "tracker_median_ms": 17.167091369628906,
+    "tracker_over_100ms": 0.011494252873563218,
+    "single_median_ms": 32.66334533691406,
+    "single_over_100ms": 0.08526859019469857,
+    "shift_mean_ms": -1.6161432127535358,
+    "shift_median_abs_ms": 6.649971008300781
+  },
+  "both 101\u00b0": {
+    "tracker_median_ms": 13.282299041748047,
+    "tracker_over_100ms": 0.006802721088435374,
+    "single_median_ms": 29.020309448242188,
+    "single_over_100ms": 0.061693642974431154,
+    "shift_mean_ms": 1.045223499390264,
+    "shift_median_abs_ms": 5.89752197265625
+  },
+  "both 110\u00b0": {
+    "tracker_median_ms": 12.370109558105469,
+    "tracker_over_100ms": 0.0049261083743842365,
+    "single_median_ms": 27.257919311523438,
+    "single_over_100ms": 0.057353976073187894,
+    "shift_mean_ms": 2.378742794964813,
+    "shift_median_abs_ms": 7.395744323730469
+  },
+  "both 120\u00b0": {
+    "tracker_median_ms": 11.980056762695312,
+    "tracker_over_100ms": 0.004456955195871452,
+    "single_median_ms": 27.070283889770508,
+    "single_over_100ms": 0.05582922824302135,
+    "shift_mean_ms": 2.9928464999144104,
+    "shift_median_abs_ms": 8.539199829101562
+  },
+  "both fisheye 100\u00b0": {
+    "tracker_median_ms": 15.154838562011719,
+    "tracker_over_100ms": 0.005160684963640629,
+    "single_median_ms": 30.21240234375,
+    "single_over_100ms": 0.0692000938306357,
+    "shift_mean_ms": -2.754010115043395,
+    "shift_median_abs_ms": 6.180763244628906
+  },
+  "both fisheye 120\u00b0": {
+    "tracker_median_ms": 14.238953590393066,
+    "tracker_over_100ms": 0.004339666901243256,
+    "single_median_ms": 28.353214263916016,
+    "single_over_100ms": 0.05794041754632888,
+    "shift_mean_ms": -2.2390177908174147,
+    "shift_median_abs_ms": 7.732391357421875
+  }
+}
