@@ -49,7 +49,10 @@ class SessionConfig:
     check_window: int = 30
     check_agree: int = 15
     check_mad_s: float = 0.15
-    check_verify_s: float = 8.0
+    # 12 s, not 8: a reference lap that began slowly (RaceChrono's lap 1) is only read confidently
+    # ~7 s after the line, which left the second chance below a second of readings at 8 s: Python
+    # passed by a hair and the Swift port (other random draws) failed. At 12 s both pass, every seed.
+    check_verify_s: float = 12.0
     # At give-up, a second chance: when the reference lap's start ran at another pace (it began
     # slowly, out of the pits), the readings' lines are skewed by that difference, up to
     # check_pace_s before the proposal. If check_agree of the last check_window such readings
