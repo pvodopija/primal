@@ -186,8 +186,8 @@ class ClosureCheck:
 
 
 class Session:
-    def __init__(self, model, clip_len: int, device: torch.device, config: SessionConfig = SessionConfig()) -> None:
-        self.model, self.clip_len, self.device, self.c = model, clip_len, device, config
+    def __init__(self, model, clip_len: int, device: torch.device, config: SessionConfig = SessionConfig(), seed: int = 0) -> None:
+        self.model, self.clip_len, self.device, self.c, self.seed = model, clip_len, device, config, seed
         self.state = "ready"
         self.reference_lap_s: float | None = None
         self.laps: list[LapCompleted] = []
@@ -214,7 +214,7 @@ class Session:
 
     def _engine(self, frames, start: float, line: float) -> LiveDelta:
         times, descriptors, lap = build_reference(frames, start, line, self.c.bin_s)
-        return LiveDelta(self.model, None, times, lap, self.clip_len, self.device, reference_descriptors=descriptors)
+        return LiveDelta(self.model, None, times, lap, self.clip_len, self.device, seed=self.seed, reference_descriptors=descriptors)
 
     def _record(self, d: torch.Tensor, t: float) -> list:
         self.frames.append((t, d))
