@@ -11,8 +11,9 @@ shows the frame under a large clock: point the camera at the screen and the cloc
 films lags the clock drawn by the whole delay, glass to screen (snapshots every 5 s).
 
 Keys: r at the line starts the reference lap; it closes by itself when the camera sees the
-start again (LoopCloser proposes, PRIMAL confirms within VERIFY_S and places the line), or at
-a second r. From then on the window shows PRIMAL's live
+start again (train/session.py: a look-alike proposes, PRIMAL confirms and places the line), or
+at a second r. Laps, and a faster lap becoming the reference, as the app does them. From
+then on the window shows PRIMAL's live
 delta, the tracker starting at the line, a new lap where it wraps past the line. q quits.
 
 Usage: PYTHONPATH=. python experiments/gopro_preview.py [--seconds 600] [--record]
@@ -45,12 +46,11 @@ import pandas as pd
 import torch
 
 from train.eval import load_model
-from train.live import LiveDelta, encode_frames
+from train.live import encode_frames
+from train.session import LapCompleted, ProposalRejected, Reading, ReferenceClosed, Session
 
 GOPROKIT = Path(os.environ.get("GOPROKIT", Path.home() / "code/hotlapp_V1.0/Packages/GoProKit"))
 CAMERA = "http://10.5.5.9"
-BIN_S = 0.052  # reference bin spacing, as experiments/real_footage.py
-VERIFY_S = 8.0  # how long after a proposed closure PRIMAL may take to confirm it
 HEADER = struct.Struct("<4sdddII")
 
 
@@ -125,44 +125,6 @@ class StreamClock:
                 t, self.restarts = pts + self.offset, self.restarts + 1
         self.last, self.last_arrival = t if self.last is None else max(t, self.last), arrival
         return t
-
-
-class LoopCloser:
-    """
-    Proposes where the reference lap closes: the last K frames against the first K after the
-    start, the mean cosine of the model's descriptors. (A proposal is then checked with
-    PRIMAL itself, `verify_close` in main, and the line placed by its readings.) Back at the start it reached 0.87 on
-    the flat walk of 2026-10-10 (run 191859; under 0.67 mid-lap) and 0.95 on RaceChrono's
-    lap (at 87.23 s, the lap 87.28 s; 0.81 at most elsewhere, on its straights). The view
-    must first move away (under AWAY) and then come back (over BACK) after MIN_S; the
-    proposal is that return's peak, the line being the first frame of the peak's clip. On
-    RaceChrono's live video (its overlays shown) it proposed 86.10 s, 1.2 s early: the check
-    and its line fix that.
-    """
-    K, AWAY, BACK, MIN_S = 12, 0.70, 0.85, 5.0
-
-    def __init__(self) -> None:
-        self.start, self.away, self.peak = None, False, None  # peak: (score, line time, time seen)
-
-    def reject(self) -> None:
-        """A proposal PRIMAL did not confirm: the view must move away again before the next."""
-        self.away, self.peak = False, None
-
-    def push(self, history: list) -> float | None:
-        """The line time once the lap has closed, else None; `history` is the reference's (t, descriptor)."""
-        if len(history) < 2 * self.K:
-            return None
-        if self.start is None:
-            self.start = torch.nn.functional.normalize(torch.stack([d for _, d in history[:self.K]]), dim=1)
-        last = torch.nn.functional.normalize(torch.stack([d for _, d in history[-self.K:]]), dim=1)
-        score = float((last * self.start).sum(1).mean())
-        t, since = history[-1][0], history[-1][0] - history[0][0]
-        self.away = self.away or (since > self.MIN_S / 2 and score < self.AWAY)
-        if self.away and since >= self.MIN_S and score >= self.BACK and (self.peak is None or score > self.peak[0]):
-            self.peak = (score, history[-self.K][0], t)
-        if self.peak is not None and (score < self.peak[0] - 0.05 or t - self.peak[2] > 0.5):
-            return self.peak[1]
-        return None
 
 
 def read_exact(f, n: int) -> bytes:
@@ -259,62 +221,21 @@ def main() -> None:
         camera("/gp/gpControl/execute?p1=gpStream&a1=proto_v2&c1=restart")
 
     clock, feed = StreamClock(), LatestFrame(probe.stdout)
-    frames, readings, history = [], [], []  # history: (pts, descriptor) while recording the reference
-    live: LiveDelta | None = None
-    ref_start = lap_start = check = None
-    closer = LoopCloser()
+    frames, readings = [], []
+    session = Session(model, clip_len, device)
 
-    def engine_until(line: float) -> LiveDelta:
-        """A live engine whose reference runs from its start to `line`."""
-        t = np.array([s for s, _ in history]); T = line - ref_start
-        nb = int(round(T / BIN_S))
-        pick = [int(np.argmin(np.abs(t - (ref_start + i * T / nb)))) for i in range(nb)]
-        return LiveDelta(model, None, np.arange(nb) * T / nb, T, clip_len, device,
-                         reference_descriptors=torch.stack([history[i][1] for i in pick]))
-
-    class Check:
-        """
-        PRIMAL's check of a proposed closure: the reference cut there, the frames since a
-        second before it read with no hint, as they come. Each confident reading near the
-        lap's start puts the line at its time less its reference time; once 15 agree (within
-        0.15 s, median deviation), their median is the line. Given up VERIFY_S after the proposal.
-        """
-        def __init__(self, proposal: float) -> None:
-            self.proposal, self.engine, self.lines = proposal, engine_until(proposal), []
-            for s_, d in history:
-                if s_ >= proposal - 1.0:
-                    self.push(d, s_)
-
-        def push(self, d, s_: float) -> None:
-            r = self.engine.push_descriptor(d, s_)
-            if r is not None and r.confidence >= 0.8 and 0.2 < r.ref_time_s < s_ - self.proposal + 2.0:
-                self.lines.append(s_ - r.ref_time_s)
-
-        def line(self) -> float | None:
-            x = np.array(self.lines[-30:])
-            if len(x) >= 15 and float(np.median(np.abs(x - np.median(x)))) < 0.15:
-                return float(np.median(x))
-            return None
-
-    def close_reference(line: float) -> LiveDelta:
-        """The reference from its start to `line`; a live engine starting at the line, caught up to now."""
-        nonlocal history, ref_start, lap_start, last_ref
-        T = line - ref_start
-        engine = engine_until(line)
-        nb = engine.times.size
-        engine.start_at(line, 0.0)
-        summary.update(reference_start_pts=ref_start, reference_lap_s=T)
-        lap_start, last_ref = line, None
-        for s_, d in history:
-            if s_ >= line:
-                r = engine.push_descriptor(d, s_)
-                if r is not None:
-                    readings.append((s_, r.ref_time_s, r.confidence, r.single_ref_time_s, (s_ - lap_start) - r.ref_time_s))
-                    last_ref = r.ref_time_s
-        print(f"reference: {T:.2f} s, {nb} bins; live delta from here", flush=True)
-        ref_start, history = None, []
-        return engine
-    last_ref = None
+    def handle(events: list) -> None:
+        for e in events:
+            if isinstance(e, Reading):
+                readings.append((e.t, e.ref_time_s, e.confidence, e.single_ref_time_s, e.delta_s))
+            elif isinstance(e, ReferenceClosed):
+                summary.update(reference_start_pts=session.ref_start, reference_lap_s=e.lap_s, reference_placed_by=e.placed_by)
+                print(f"reference: {e.lap_s:.2f} s, line at {e.line_s:.2f} s (placed by {e.placed_by}); live delta from here", flush=True)
+            elif isinstance(e, ProposalRejected):
+                print(f"reference: {e.proposal_s:.2f} s proposed, not confirmed", flush=True)
+            elif isinstance(e, LapCompleted):
+                print(f"lap {e.lap}: {e.lap_s:.2f} s, delta shown {e.shown_share:.0%}"
+                      f"{', the new reference' if e.became_reference else ''}{', void (stream gap)' if e.voided else ''}", flush=True)
     started, recording, last_snapshot = time.time(), False, 0.0
     box = None
     try:
@@ -334,40 +255,16 @@ def main() -> None:
                 camera("/gp/gpControl/command/shutter?p=1"); recording = True; summary["record_started_s"] = read_at - started
             x0, x1, y0, y1 = box
             small = cv2.resize(img[y0:y1, x0:x1], (148, 80), interpolation=cv2.INTER_AREA)
-            want = live is None or live.wants(pts)
             t0 = time.time()
-            desc = encode_frames(model, small[None], device)[0] if want else None
-            if desc is not None:
-                desc.cpu()  # wait for the GPU, so the time is the encoder's
+            desc = encode_frames(model, small[None], device)[0]
+            desc.cpu()  # wait for the GPU, so the time is the encoder's
             encode_ms = (time.time() - t0) * 1000
             frames.append((pts, stream_pts, arrival, read_at, decode_ms, encode_ms))
-            if ref_start is not None and desc is not None:
-                history.append((pts, desc))
-                if check is None:
-                    proposal = closer.push(history)
-                    if proposal is not None:
-                        check = Check(proposal)
-                else:
-                    check.push(desc, pts)
-                    line = check.line()
-                    if line is not None:
-                        print(f"reference: {check.proposal:.2f} s proposed, PRIMAL confirms the line at {line:.2f} s", flush=True)
-                        live, check = close_reference(line), None
-                    elif pts > check.proposal + VERIFY_S:
-                        print(f"reference: {check.proposal:.2f} s proposed, not confirmed ({len(check.lines)} confident readings)", flush=True)
-                        closer.reject(); check = None
+            handle(session.push(desc, pts))
             text = ""
-            if live is not None and desc is not None:
-                r = live.push_descriptor(desc, pts)
-                if r is not None:
-                    if last_ref is not None and last_ref > 0.75 * live.lap_time and r.ref_time_s < 0.25 * live.lap_time:
-                        lap_start = pts - r.ref_time_s  # past the line
-                    last_ref = r.ref_time_s
-                    delta = (pts - lap_start) - r.ref_time_s
-                    readings.append((pts, r.ref_time_s, r.confidence, r.single_ref_time_s, delta))
-            if readings and live is not None:
+            if readings and session.state == "live":
                 _, ref_t, conf, _, delta = readings[-1]
-                text = f"{delta:+.2f} s" if conf >= 0.5 else "unavailable"
+                text = f"{delta:+.2f} s" if conf >= session.c.shown_min else "unavailable"
             # the window: the frame under a large clock, then the delta and the timings
             canvas = np.zeros((h + 170, max(w, 900), 3), np.uint8)
             canvas[170:, :w] = img
@@ -378,8 +275,8 @@ def main() -> None:
             fps = 30 / (frames[-1][0] - frames[-31][0]) if n > 31 else 0
             cv2.putText(canvas, f"{w}x{h} {fps:4.1f} fps  decode {decode_ms:4.1f} ms  encode {encode_ms:4.1f} ms  queue {1000 * (read_at - arrival):4.0f} ms",
                         (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
-            state = ("REFERENCE: recording, closes back at the line" if ref_start is not None else
-                     "r at the line to start the reference" if live is None else "")
+            state = {"reference": "REFERENCE: recording, closes back at the line",
+                     "ready": "r at the line to start the reference"}.get(session.state, "")
             cv2.putText(canvas, text or state, (10, 155), cv2.FONT_HERSHEY_SIMPLEX, 1.1,
                         (80, 200, 80) if text.startswith("-") else (80, 80, 230) if text.startswith("+") else (200, 200, 200), 2)
             if not a.no_window:
@@ -389,16 +286,16 @@ def main() -> None:
             key = -1 if a.no_window else cv2.waitKey(1) & 0xFF
             if a.auto_reference:
                 marks = [float(v) for v in a.auto_reference.split(",")]
-                if (ref_start is None and live is None and pts >= marks[0]) or (ref_start is not None and len(marks) > 1 and pts >= marks[1]):
+                if (session.state == "ready" and pts >= marks[0]) or (session.state == "reference" and len(marks) > 1 and pts >= marks[1]):
                     key = ord("r")
             if key == ord("q"):
                 break
             if key == ord("r"):
-                if ref_start is None:
-                    ref_start, history, closer, check = pts, [], LoopCloser(), None
+                if session.state == "ready":
+                    session.start(pts)
                     print(f"reference: start at {pts:.2f} s", flush=True)
-                else:
-                    live = close_reference(pts)
+                elif session.state == "reference":
+                    handle(session.close_at(pts))
     finally:
         if recording:
             camera("/gp/gpControl/command/shutter?p=0")
