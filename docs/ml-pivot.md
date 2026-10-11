@@ -2501,6 +2501,14 @@ one camera at any width; on real footage the gain from cropping (indoor: full wi
 picture's sides, not the width or the kart: likely motion blur on near walls, which the
 renders lack (untested).
 
+**Colour hardly matters** (`pose_sensitivity.py --colour`, same tests, 2026-10-11): both
+laps greyscale 1.2%, both with red and blue swapped 1.1%; the live lap alone warmer
+(white balance), half desaturated, 40% darker or hue-shifted 30° 0.7-1.1%. Only a
+mismatch in kind costs: live greyscale against a colour reference 8.0% (reads 30 ms
+behind), live channels swapped 4.3%. On real footage too: indoor GoPro greyscale 16.1%
+against 16.5% in colour (`REAL_GREY=1`). The encoder matches structure, not colour; a
+monochrome camera works if the reference is monochrome too.
+
 **What the encoder looks at** (`experiments/what_it_sees.py`, occlusion maps): a band
 around the horizon, strongest left and right of the vanishing point (roadside objects
 where they meet the sky), little at the top and least in the bottom third (road, hood,

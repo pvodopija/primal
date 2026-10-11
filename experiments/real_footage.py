@@ -88,15 +88,25 @@ CROP, TRUTH_CROP = _S[f"crop_{CROP_NAME}" if CROP_NAME else "crop"], _S["truth_c
 # REAL_STREAM=<name>: frames from a re-encoded copy as a livestream would deliver it
 # (experiments/stream_quality.py writes ROOT/stream_<name>.mp4, overlays already masked)
 STREAM = os.environ.get("REAL_STREAM", "")
-SUFFIX = (f"_{CROP_NAME}" if CROP_NAME else "") + (f"_{STREAM}" if STREAM else "")
+FRAMES_SUFFIX = (f"_{CROP_NAME}" if CROP_NAME else "") + (f"_{STREAM}" if STREAM else "")
+# REAL_GREY=1: every frame greyscale (three equal channels), reference and live alike
+GREY = os.environ.get("REAL_GREY") == "1"
+SUFFIX = FRAMES_SUFFIX + ("_grey" if GREY else "")
+
+
+def _colour(f: np.ndarray) -> np.ndarray:
+    if not GREY:
+        return f
+    g = np.clip(f.astype(np.float32) @ np.array([0.114, 0.587, 0.299], np.float32) + 0.5, 0, 255).astype(np.uint8)
+    return np.repeat(g[..., None], 3, -1)
 HZ, SPACING_S, BIN_S = 15.0, 1 / 30, 0.052
 
 
 def frames() -> tuple[np.ndarray, np.ndarray]:
-    cache = ROOT / f"frames_148x80{SUFFIX}.npz"
+    cache = ROOT / f"frames_148x80{FRAMES_SUFFIX}.npz"
     if cache.exists():
         z = np.load(cache)
-        return z["frames"], z["t"]
+        return _colour(z["frames"]), z["t"]
     cap = cv2.VideoCapture(str(ROOT / f"stream_{STREAM}.mp4" if STREAM else VIDEO))
     fps = cap.get(cv2.CAP_PROP_FPS)
     # the crop is in 1280x720 pixels; a stream copy may be smaller
@@ -117,7 +127,7 @@ def frames() -> tuple[np.ndarray, np.ndarray]:
     frames_, t_ = np.stack(out), np.array(times)
     if not STREAM:  # stream copies decode in seconds; not worth ~0.5 GB each
         np.savez(cache, frames=frames_, t=t_)
-    return frames_, t_
+    return _colour(frames_), t_
 
 
 def pixels(f: np.ndarray) -> np.ndarray:

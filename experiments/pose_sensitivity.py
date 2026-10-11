@@ -9,8 +9,8 @@ positive = placed further along the lap).
 Held-out tracks, wide laps (rotations are exact re-projections of the 121° renders),
 each against another lap of the same session as the reference.
 
-Usage: PYTHONPATH=. python experiments/pose_sensitivity.py RUN [--same-lens]
-       (writes runs/RUN/pose_sensitivity[_same_lens].json)
+Usage: PYTHONPATH=. python experiments/pose_sensitivity.py RUN [--same-lens | --colour]
+       (writes runs/RUN/pose_sensitivity[_same_lens|_colour].json)
 """
 from __future__ import annotations
 
@@ -51,6 +51,30 @@ SAME_LENS = {"level": dict()} | {f"both {h:g}°": dict(view=zoomed(h)) for h in 
 SAME_LENS |= {f"both fisheye {h:g}°": dict(fisheye=h) for h in (100, 120)}
 
 
+def _grey(f: np.ndarray) -> np.ndarray:
+    g = (f.astype(np.float32) @ np.array([0.114, 0.587, 0.299], np.float32))[..., None]
+    return np.repeat(np.clip(g + 0.5, 0, 255), 3, -1).astype(np.uint8)
+
+
+def _hue(f: np.ndarray, deg: float) -> np.ndarray:
+    hsv = np.stack([cv2.cvtColor(x, cv2.COLOR_BGR2HSV) for x in f])
+    hsv[..., 0] = (hsv[..., 0].astype(int) + int(deg / 2)) % 180
+    return np.stack([cv2.cvtColor(x, cv2.COLOR_HSV2BGR) for x in hsv])
+
+
+# --colour: colour changes, on the live lap only (another day, camera or white balance than
+# the reference's) or on both laps (one camera that delivers it); "swap" is RGB fed as BGR
+COLOURS = {"grey": _grey, "swap": lambda f: f[..., ::-1].copy(),
+           "warm": lambda f: np.clip(f * np.array([0.8, 1.0, 1.2], np.float32) + 0.5, 0, 255).astype(np.uint8),
+           "pale": lambda f: (0.5 * f + 0.5 * _grey(f) + 0.5).astype(np.uint8),
+           "dark": lambda f: (0.6 * f + 0.5).astype(np.uint8),
+           "hue 30°": lambda f: _hue(f, 30)}
+COLOUR = {"level": dict()} | {f"{c} {where}": dict(colour=c, both=where == "both")
+                              for c, where in [("grey", "both"), ("grey", "live"), ("swap", "both"), ("swap", "live"),
+                                               ("warm", "live"), ("pale", "live"), ("dark", "live"), ("hue 30°", "live"),
+                                               ("hue 30°", "both")]}
+
+
 def fisheye(raw: np.ndarray, hfov: float) -> np.ndarray:
     """Frames through an equidistant fisheye (r = f θ) as wide as hfov, from the wide pinhole renders."""
     f = (T.width / 2) / np.radians(hfov / 2)
@@ -64,12 +88,15 @@ def fisheye(raw: np.ndarray, hfov: float) -> np.ndarray:
 
 
 def render(raw: np.ndarray, t: np.ndarray, rng: np.random.Generator, **kw) -> np.ndarray:
-    return fisheye(raw, kw["fisheye"]) if "fisheye" in kw else camera.render_clip(raw, t, rng, **kw)
+    colour = kw.pop("colour", None)
+    kw.pop("both", None)
+    out = fisheye(raw, kw["fisheye"]) if "fisheye" in kw else camera.render_clip(raw, t, rng, **kw)
+    return COLOURS[colour](out) if colour else out
 
 
 def main() -> None:
-    run, same_lens = sys.argv[1], "--same-lens" in sys.argv
-    conditions = SAME_LENS if same_lens else CONDITIONS
+    run, same_lens, colour = sys.argv[1], "--same-lens" in sys.argv, "--colour" in sys.argv
+    conditions = SAME_LENS if same_lens else COLOUR if colour else CONDITIONS
     device = torch.device(default_device())
     model, payload = load_model(Path("runs") / run / "best.pt", device)
     clip_len = int(payload["args"]["clip_len"])
@@ -94,8 +121,8 @@ def main() -> None:
             skip = int(ACQUISITION_S * STREAM_HZ)
             level = None
             for name, kw in conditions.items():
-                frames = render(raw, t[used], np.random.default_rng(k), **kw)
-                ref_c = [encode(model, render(ref_raw, np.zeros(grid.n_bins), np.random.default_rng(0), **kw), device)] if same_lens and kw else ref
+                frames = render(raw, t[used], np.random.default_rng(k), **dict(kw))
+                ref_c = [encode(model, render(ref_raw, np.zeros(grid.n_bins), np.random.default_rng(0), **dict(kw)), device)] if (same_lens and kw) or kw.get("both") else ref
                 beliefs, _ = per_offset(model, encode(model, frames, device), row[clip_idx], ref_c)
                 belief = torch.from_numpy(beliefs[0].astype(np.float64))
                 bins = _run_estimator({**stream, "belief": belief.numpy()}, EstimatorConfig(**REFERENCE_TIME_TWO_MODES),
@@ -116,7 +143,7 @@ def main() -> None:
                             "shift_mean_ms": float(np.mean(sh) * 1000), "shift_median_abs_ms": float(np.median(np.abs(sh)) * 1000)}
         print(f"  {name:<12} tracker {r['tracker_median_ms']:5.0f} ms, {100 * r['tracker_over_100ms']:5.1f}% | single {r['single_median_ms']:5.0f} ms, "
               f"{100 * r['single_over_100ms']:5.1f}% | shift mean {r['shift_mean_ms']:+6.0f} ms, median |shift| {r['shift_median_abs_ms']:5.0f} ms")
-    (Path("runs") / run / f"pose_sensitivity{'_same_lens' if same_lens else ''}.json").write_text(json.dumps(report, indent=2))
+    (Path("runs") / run / f"pose_sensitivity{'_same_lens' if same_lens else '_colour' if colour else ''}.json").write_text(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
