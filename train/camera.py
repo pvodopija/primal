@@ -64,10 +64,15 @@ def rotation(yaw_deg: float, pitch_deg: float, roll_deg: float) -> np.ndarray:
 
 
 def render(frame: np.ndarray, source: View, view: View, yaw: float = 0.0, pitch: float = 0.0, roll: float = 0.0) -> np.ndarray:
-    """One frame as seen by `view` turned by (yaw, pitch, roll) relative to the camera that took it."""
+    """
+    One frame as seen by `view` turned by (yaw, pitch, roll) relative to the camera that took it.
+    Bicubic: the wide packs are only ~4% finer than the training view, and a bilinear resample
+    that close to 1:1 is a low-pass filter (it took ~40% of the fine detail off every wide
+    frame; bicubic keeps what an ideal render from the 720p capture has, experiments/sharpness.py).
+    """
     to_source = source.K @ rotation(yaw, pitch, roll) @ np.linalg.inv(view.K)
     return cv2.warpPerspective(frame, to_source, (view.width, view.height),
-                               flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REFLECT_101)
+                               flags=cv2.INTER_CUBIC | cv2.WARP_INVERSE_MAP, borderMode=cv2.BORDER_REFLECT_101)
 
 
 @dataclass

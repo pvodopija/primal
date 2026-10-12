@@ -32,3 +32,14 @@ def test_render_clip_shapes():
     frames = np.random.default_rng(1).integers(0, 255, (4, WIDE.height, WIDE.width, 3), dtype=np.uint8)
     out = render_clip(frames, np.arange(4) / 30, np.random.default_rng(2), view=HALO, shake_level=1.0)
     assert out.shape == (4, HALO.height, HALO.width, 3) and out.dtype == np.uint8
+
+
+def test_a_near_one_to_one_render_keeps_fine_detail():
+    # fine texture seen through a view 4% wider (a wide pack -> the training view): a
+    # bilinear resample keeps ~43% of its Laplacian variance, bicubic ~74%
+    import cv2
+    from experiments.sharpness import detail
+    img = cv2.GaussianBlur(np.random.default_rng(0).integers(0, 256, (TRAINING.height, TRAINING.width, 3),
+                                                             dtype=np.uint8), (0, 0), 0.7)
+    wider = type(TRAINING)(TRAINING.width, TRAINING.height, TRAINING.focal * 1.04, TRAINING.cx, TRAINING.cy)
+    assert detail(render(img, TRAINING, wider)) > 0.6 * detail(img)
