@@ -1,0 +1,18 @@
+indoor-pov c80: v3_mobilenet_lr1_s0    single: median   43 ms, p90   279, >100 ms  20.4% | tracker: median   40 ms, p90   144, >100 ms  16.5%
+indoor-pov c80: b1007_mobilenet_s0     single: median   41 ms, p90   378, >100 ms  21.7% | tracker: median   39 ms, p90   154, >100 ms  16.5%
+indoor-pov c80: b1007_mobilenet_s1     single: median   55 ms, p90   413, >100 ms  28.4% | tracker: median   50 ms, p90   188, >100 ms  25.0%
+indoor-pov c80:   agreement v3_mobilenet_lr1_s0 vs b1007_mobilenet_s0: median   10 ms, p90    42 ms
+indoor-pov c80:   agreement v3_mobilenet_lr1_s0 vs b1007_mobilenet_s1: median   52 ms, p90    90 ms
+indoor-pov c80:   agreement b1007_mobilenet_s0 vs b1007_mobilenet_s1: median   50 ms, p90    94 ms
+BHGP full: v3_mobilenet_lr1_s0    single: median   76 ms, p90   361, >100 ms  40.0% | tracker: median   58 ms, p90   214, >100 ms  29.4%
+BHGP full: b1007_mobilenet_s0     single: median   78 ms, p90   371, >100 ms  41.1% | tracker: median   61 ms, p90   206, >100 ms  31.1%
+BHGP full: b1007_mobilenet_s1     single: median   81 ms, p90   388, >100 ms  41.9% | tracker: median   62 ms, p90   213, >100 ms  31.0%
+BHGP full:   agreement v3_mobilenet_lr1_s0 vs b1007_mobilenet_s0: median   17 ms, p90    55 ms
+BHGP full:   agreement v3_mobilenet_lr1_s0 vs b1007_mobilenet_s1: median   17 ms, p90    50 ms
+BHGP full:   agreement b1007_mobilenet_s0 vs b1007_mobilenet_s1: median   18 ms, p90    58 ms
+race-chrono : v3_mobilenet_lr1_s0    single: median   46 ms, p90   178, >100 ms  21.6% | tracker: median   34 ms, p90   154, >100 ms  15.8%
+race-chrono : b1007_mobilenet_s0     single: median   43 ms, p90   174, >100 ms  21.0% | tracker: median   34 ms, p90   156, >100 ms  14.7%
+race-chrono : b1007_mobilenet_s1     single: median   55 ms, p90   193, >100 ms  26.5% | tracker: median   37 ms, p90   165, >100 ms  17.9%
+race-chrono :   agreement v3_mobilenet_lr1_s0 vs b1007_mobilenet_s0: median   11 ms, p90    33 ms
+race-chrono :   agreement v3_mobilenet_lr1_s0 vs b1007_mobilenet_s1: median   16 ms, p90    49 ms
+race-chrono :   agreement b1007_mobilenet_s0 vs b1007_mobilenet_s1: median   18 ms, p90    57 ms

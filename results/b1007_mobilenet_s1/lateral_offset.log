@@ -1,0 +1,31 @@
+  b1007_mobilenet_s1 ks_silverstone__national     done
+  b1007_mobilenet_s1 rt_lime_rock_park__no_chican done
+  b1007_mobilenet_s1 rt_oulton_park__fosters      done
+
+b1007_mobilenet_s1: two-mode tracker, share of ticks over 100 ms (median ms)
+    v3 (0 m), as rendered                95039 ticks    5.4%  (29 ms)
+    wander, own weather, as rendered     36596 ticks   34.5%  (65 ms)
+    wander, own weather, turned back     36596 ticks   20.2%  (48 ms)
+    wander, other weather, as rendered   35827 ticks   34.5%  (66 ms)
+    wander, other weather, turned back   35827 ticks   17.9%  (45 ms)
+    +3 m, as rendered                    22476 ticks    8.6%  (39 ms)
+    -3 m, as rendered                    21332 ticks   11.0%  (41 ms)
+  by offset from the AI line (wander as rendered, with v3 at 0 m):
+    0-0.5 m                             102647 ticks    6.8%  (31 ms)
+    0.5-1.5 m                            14646 ticks   24.5%  (51 ms)
+    1.5-2.5 m                            12624 ticks   28.6%  (58 ms)
+    2.5-3.5 m                            10154 ticks   30.8%  (61 ms)
+    3.5-5 m                              11688 ticks   35.6%  (68 ms)
+    5-99 m                               15703 ticks   54.9%  (117 ms)
+  by offset from the AI line (wander turned back, with v3 at 0 m):
+    0-0.5 m                             102647 ticks    6.3%  (31 ms)
+    0.5-1.5 m                            14646 ticks   15.2%  (43 ms)
+    1.5-2.5 m                            12624 ticks   16.7%  (44 ms)
+    2.5-3.5 m                            10154 ticks   16.4%  (44 ms)
+    3.5-5 m                              11688 ticks   17.1%  (44 ms)
+    5-99 m                               15703 ticks   28.5%  (58 ms)
+  by the camera's turn off the car's heading (wander as rendered):
+    0-2 deg                              14940 ticks   28.3%  (57 ms)
+    2-5 deg                              20884 ticks   30.0%  (58 ms)
+    5-10 deg                             23434 ticks   33.9%  (64 ms)
+    10-99 deg                            13165 ticks   49.9%  (100 ms)

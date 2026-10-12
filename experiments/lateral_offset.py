@@ -4,7 +4,8 @@ recorded lap on the AI line (packed_ac_v3, holdout split); the live laps are the
 b1007 renders of the holdouts, seen through the virtual camera at the training view with
 no head pose: full-width wander in two weathers (the camera's offset from the AI line
 logged per frame in pose.npz) and fixed +3 m / -3 m laps, with the v3 holdout laps
-themselves (0 m) as the baseline. Live laps that re-render the reference's own drive are
+themselves (0 m) as the baseline, and packed_ac_v3_wide (the same drives re-rendered at
+121 deg, 0 m) as the control for what re-rendering alone costs. Live laps that re-render the reference's own drive are
 left out. The wandering camera also turns with its path (up to ~17 deg off the car's
 heading), so the wander sets are scored twice: as rendered (offset and turn) and turned
 back to the car's heading (pose.npz's cam_yaw_deg undone: the offset alone). Two-mode
@@ -33,7 +34,7 @@ from train.train import default_device
 STRIDE, AXIS = 2, "time"
 REFS_PER_TRACK = 2
 MIN_LIVE_S = 30.0  # shorter pieces leave too little after the tracker's acquisition
-SETS = {"v3 (0 m)": "data/packed_ac_v3", "wander, own weather": "data/packed_ac_b1007_full_own",
+SETS = {"v3 (0 m)": "data/packed_ac_v3", "v3_wide (0 m, re-rendered)": "data/packed_ac_v3_wide", "wander, own weather": "data/packed_ac_b1007_full_own",
         "wander, other weather": "data/packed_ac_b1007_full_alt", "+3 m": "data/packed_ac_b1007_off_plus3",
         "-3 m": "data/packed_ac_b1007_off_minus3"}
 BANDS = ((0.0, 0.5), (0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 5.0), (5.0, 99.0))

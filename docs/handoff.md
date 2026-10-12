@@ -2264,3 +2264,15 @@ extra. Tonight: the release recipe plus the wander turned back, two seeds
 side every old pack on D: may go (the Mac has its own copies of v2, v3 and v3_wide;
 `data/sessions/` stays). For future wander renders, `wander_yaw` (turn with the wander)
 is fine to keep: the Mac can undo it exactly from `pose.npz`.
+
+## 2026-10-13 (morning) — Mac: b1007 trained, not adopted
+
+Two seeds of the release recipe plus the full-width wander (turn undone) did not beat the
+release on any test that matters (unseen tracks, the lateral test, real footage); details
+in ml-pivot ("Driving off the reference's line"). The finding: a 3 m offset costs the
+release only ~1 point beyond re-rendering itself, and re-rendered frames score worse than
+native ones (8.3% against 4.6% for the same drives at 0 m). For Windows, two cheap
+questions that would explain the second: is the rig's camera (forward 2.2 m, height
+1.15 m) where the v3 recordings' camera was, and do re-renders keep the recording's
+graphics settings (TAA, sharpening, LOD, clouds)? The ten new circuits remain the most
+promising data (the track-count curve has not flattened); pack them when D: has room.

@@ -1,0 +1,4 @@
+BHGP:   lap 7: ORB truth - constant pace: median  161 ms, max 2.98 s; median inliers 106
+BHGP: v3_mobilenet_lr1_s0    single: median   76 ms, p90   361, >100 ms  40.0% | tracker: median   58 ms, p90   214, >100 ms  29.4%
+race-chrono:   lap 3: ORB truth - constant pace: median  159 ms, max 2.68 s; median inliers 80
+race-chrono: v3_mobilenet_lr1_s0    single: median   46 ms, p90   178, >100 ms  21.6% | tracker: median   34 ms, p90   154, >100 ms  15.8%

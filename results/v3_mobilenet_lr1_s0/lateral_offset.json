@@ -1,0 +1,128 @@
+{
+  "by_set": {
+    "v3 (0 m), as rendered": {
+      "ticks": 95039,
+      "over_100ms": 0.045570765685665884,
+      "median_ms": 26.5655517578125
+    },
+    "v3_wide (0 m, re-rendered), as rendered": {
+      "ticks": 36491,
+      "over_100ms": 0.08330821298402345,
+      "median_ms": 32.436370849609375
+    },
+    "wander, own weather, as rendered": {
+      "ticks": 36596,
+      "over_100ms": 0.3682096403978577,
+      "median_ms": 66.6961669921875
+    },
+    "wander, own weather, turned back": {
+      "ticks": 36596,
+      "over_100ms": 0.171548803147885,
+      "median_ms": 39.257049560546875
+    },
+    "wander, other weather, as rendered": {
+      "ticks": 35827,
+      "over_100ms": 0.3439305551678901,
+      "median_ms": 63.302040100097656
+    },
+    "wander, other weather, turned back": {
+      "ticks": 35827,
+      "over_100ms": 0.1605213944790242,
+      "median_ms": 38.64574432373047
+    },
+    "+3 m, as rendered": {
+      "ticks": 22476,
+      "over_100ms": 0.0917867948033458,
+      "median_ms": 32.52840042114258
+    },
+    "-3 m, as rendered": {
+      "ticks": 21332,
+      "over_100ms": 0.09155259703731483,
+      "median_ms": 38.38372230529785
+    }
+  },
+  "by_offset": {
+    "as rendered, 0-0.5 m": {
+      "ticks": 102647,
+      "over_100ms": 0.05989459019747289,
+      "median_ms": 27.513504028320312
+    },
+    "as rendered, 0.5-1.5 m": {
+      "ticks": 14646,
+      "over_100ms": 0.23740270380991396,
+      "median_ms": 47.63293266296387
+    },
+    "as rendered, 1.5-2.5 m": {
+      "ticks": 12624,
+      "over_100ms": 0.2826362484157161,
+      "median_ms": 53.38573455810547
+    },
+    "as rendered, 2.5-3.5 m": {
+      "ticks": 10154,
+      "over_100ms": 0.29840456962773293,
+      "median_ms": 58.664798736572266
+    },
+    "as rendered, 3.5-5 m": {
+      "ticks": 11688,
+      "over_100ms": 0.37842231348391514,
+      "median_ms": 71.9919204711914
+    },
+    "as rendered, 5-99 m": {
+      "ticks": 15703,
+      "over_100ms": 0.6038336623575113,
+      "median_ms": 141.59011840820312
+    },
+    "turned back, 0-0.5 m": {
+      "ticks": 102647,
+      "over_100ms": 0.05109745048564498,
+      "median_ms": 27.07672119140625
+    },
+    "turned back, 0.5-1.5 m": {
+      "ticks": 14646,
+      "over_100ms": 0.11102007374027038,
+      "median_ms": 33.47969055175781
+    },
+    "turned back, 1.5-2.5 m": {
+      "ticks": 12624,
+      "over_100ms": 0.1295152091254753,
+      "median_ms": 34.259796142578125
+    },
+    "turned back, 2.5-3.5 m": {
+      "ticks": 10154,
+      "over_100ms": 0.12714201299980304,
+      "median_ms": 36.40556335449219
+    },
+    "turned back, 3.5-5 m": {
+      "ticks": 11688,
+      "over_100ms": 0.15357631759069132,
+      "median_ms": 39.03961181640625
+    },
+    "turned back, 5-99 m": {
+      "ticks": 15703,
+      "over_100ms": 0.3036362478507292,
+      "median_ms": 56.56623840332031
+    }
+  },
+  "by_turn": {
+    "0-2 deg": {
+      "ticks": 14940,
+      "over_100ms": 0.2661311914323963,
+      "median_ms": 51.69200897216797
+    },
+    "2-5 deg": {
+      "ticks": 20884,
+      "over_100ms": 0.2871097490902126,
+      "median_ms": 53.7562370300293
+    },
+    "5-10 deg": {
+      "ticks": 23434,
+      "over_100ms": 0.3544849364171716,
+      "median_ms": 64.75353240966797
+    },
+    "10-99 deg": {
+      "ticks": 13165,
+      "over_100ms": 0.5710596278009875,
+      "median_ms": 127.47573852539062
+    }
+  }
+}

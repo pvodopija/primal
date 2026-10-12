@@ -1,0 +1,69 @@
+--- lateral v3_mobilenet_lr1_s0
+grep: runs/v3_mobilenet_lr1_s0/lateral_offset.log: No such file or directory
+=== train b1007_mobilenet_s0_base  02:32
+=== train b1007_mobilenet_s0  04:59
+--- b1007_mobilenet_s0    PASS: error must collapse to chance when the reference is wrong
+G1 filter                                                       1.55 m   49 ms   150 ms    22.1%    1.5%     40.4 m
+G1 filter + speed                                               0.76 m   24 ms    60 ms     1.2%    0.0%      5.0 m
+G2 filter                                                       1.87 m   51 ms   157 ms    23.5%    2.9%    742.6 m
+G2 filter + speed                                               0.77 m   21 ms    61 ms     1.2%    0.0%     12.0 m
+G2 ks_silverstone__national filter                              2.19 m   60 ms   179 ms    29.3%    4.1%    742.6 m
+G2 ks_silverstone__national filter + speed                      0.97 m   26 ms    71 ms     2.0%    0.0%      7.7 m
+G2 same car filter                                              2.52 m   69 ms   217 ms    34.7%    6.9%    742.6 m
+G2 same car filter + speed                                      1.09 m   30 ms    77 ms     3.2%    0.0%      7.7 m
+G2 rt_lime_rock_park__no_chicane filter                         1.70 m   45 ms   133 ms    18.0%    2.1%     49.3 m
+G2 rt_lime_rock_park__no_chicane filter + speed                 0.65 m   17 ms    47 ms     0.1%    0.0%      4.4 m
+G2 rt_oulton_park__fosters filter                               1.42 m   39 ms   115 ms    13.9%    0.5%     31.6 m
+G2 rt_oulton_park__fosters filter + speed                       0.54 m   15 ms    41 ms     0.2%    0.0%     12.0 m
+  head turns: G2 filter                                                       1.97 m   53 ms   172 ms    26.5%    3.8%     76.3 m
+  head turns: G2 filter + speed                                               0.93 m   26 ms    61 ms     2.5%    0.0%      6.2 m
+--- camera b1007_mobilenet_s0
+                                          single >100 ms  tracker median      p90  >100 ms
+level                                              29.0%           42 ms   121 ms    15.1%
+yaw 7                                              44.8%           67 ms   195 ms    33.6%
+yaw 14                                             66.6%          131 ms   433 ms    59.5%
+pitch 5                                            41.1%           61 ms   173 ms    27.6%
+roll 10                                            39.4%           48 ms   133 ms    18.7%
+shake 1                                            28.8%           42 ms   119 ms    14.9%
+shake 2                                            29.9%           42 ms   118 ms    14.6%
+yaw 10, shake 1                                    54.4%           91 ms   249 ms    46.1%
+same session: level                                 6.8%           14 ms    38 ms     0.7%
+same session: Halo level                           11.5%           18 ms    46 ms     1.2%
+same session: Halo yaw 10, shake 1                 50.4%           82 ms   236 ms    42.2%
+
+--- lateral b1007_mobilenet_s0
+=== train b1007_mobilenet_s1_base  05:44
+=== train b1007_mobilenet_s1  08:10
+--- b1007_mobilenet_s1    PASS: error must collapse to chance when the reference is wrong
+G1 filter                                                       1.53 m   49 ms   155 ms    22.2%    1.5%     77.7 m
+G1 filter + speed                                               0.72 m   23 ms    62 ms     1.4%    0.0%      5.9 m
+G2 filter                                                       1.97 m   54 ms   168 ms    25.6%    3.5%    751.0 m
+G2 filter + speed                                               0.81 m   22 ms    64 ms     1.7%    0.0%      8.5 m
+G2 ks_silverstone__national filter                              2.31 m   64 ms   193 ms    31.7%    5.1%    751.0 m
+G2 ks_silverstone__national filter + speed                      1.03 m   28 ms    74 ms     2.8%    0.0%      7.5 m
+G2 same car filter                                              2.57 m   71 ms   226 ms    36.5%    7.8%    751.0 m
+G2 same car filter + speed                                      1.16 m   31 ms    79 ms     3.6%    0.0%      7.5 m
+G2 rt_lime_rock_park__no_chicane filter                         1.69 m   45 ms   133 ms    18.4%    1.7%    165.2 m
+G2 rt_lime_rock_park__no_chicane filter + speed                 0.69 m   18 ms    47 ms     0.1%    0.0%      5.3 m
+G2 rt_oulton_park__fosters filter                               1.55 m   43 ms   127 ms    16.5%    1.3%     33.6 m
+G2 rt_oulton_park__fosters filter + speed                       0.56 m   15 ms    42 ms     0.3%    0.0%      8.5 m
+  head turns: G2 filter                                                       2.13 m   58 ms   186 ms    29.4%    4.6%    114.6 m
+  head turns: G2 filter + speed                                               1.01 m   28 ms    63 ms     1.6%    0.0%      8.6 m
+--- camera b1007_mobilenet_s1
+                                          single >100 ms  tracker median      p90  >100 ms
+level                                              31.1%           47 ms   127 ms    18.0%
+yaw 7                                              47.1%           73 ms   202 ms    35.9%
+yaw 14                                             68.5%          134 ms   435 ms    61.2%
+pitch 5                                            42.6%           62 ms   157 ms    28.1%
+roll 10                                            42.0%           53 ms   134 ms    20.5%
+shake 1                                            30.7%           47 ms   126 ms    17.6%
+shake 2                                            31.7%           47 ms   126 ms    17.4%
+yaw 10, shake 1                                    56.7%           92 ms   263 ms    46.3%
+same session: level                                 6.9%           15 ms    41 ms     0.7%
+same session: Halo level                           11.6%           19 ms    50 ms     1.2%
+same session: Halo yaw 10, shake 1                 51.7%           82 ms   239 ms    42.6%
+
+--- lateral b1007_mobilenet_s1
+=== real footage  08:55
+117 runs indexed in /Users/pvodopija/code/primal/results/INDEX.md
+b1007 done 08:55

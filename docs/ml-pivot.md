@@ -2508,8 +2508,34 @@ the line 4.6%; fixed +3 m 9.2%, -3 m 9.2%; full-width wander 34-37% as rendered,
 with the wander's turn undone (its camera turns with its path, up to ~17 deg off the car's
 heading; `pose.npz`'s `cam_yaw_deg`, undone by rendering at minus it). Offset alone, turn
 undone: 0.5-1.5 m 11%, 1.5-3.5 m 13%, 3.5-5 m 15%, over 5 m 30%. The forced opposite
-weather costs nothing extra (34.4% against 36.8% as rendered). Training on the batch with
-the turn undone (`--wide-derotate`) is the overnight chain `experiments/chains/b1007.sh`.
+weather costs nothing extra (34.4% against 36.8% as rendered).
+
+**Re-rendering, not the offset, is most of that cost.** The same drives re-rendered at 0 m
+(`packed_ac_v3_wide` through the virtual camera) score 8.3% against 4.6% native, so a
+fixed 3 m adds only ~1 point on top of re-rendering. Not the resampling: rendering at
+twice the size and area-averaging down (as the packs were made) gives 8.7%. What else
+differs between a re-render and its native pack (camera position, render settings, sky)
+is untested.
+
+**Training on the batch did not help** (2026-10-12/13, `experiments/chains/b1007.sh`: the
+release recipe plus both wander sets with the turn undone, `--wide-derotate`, head jitter
+as the release's; seeds 0 and 1; tracker, over 100 ms; release first):
+
+| Test | release | s0 | s1 |
+|---|---|---|---|
+| G1 held-out laps | 20.8% | 22.1% | 22.2% |
+| G2 unseen tracks | 24.1% | 23.5% | 25.6% |
+| G2 head turns (look) | 24.6% | 26.5% | 29.4% |
+| virtual camera: level / pitch 5 / roll 10 | 9.2 / 19.3 / 13.9% | 15.1 / 27.6 / 18.7% | 18.0 / 28.1 / 20.5% |
+| wander turned back, own / other weather | 17.2 / 16.1% | 19.0 / 16.0% | 20.2 / 17.9% |
+| fixed +3 m / -3 m | 9.2 / 9.2% | 6.6 / 8.5% | 8.6 / 11.0% |
+| real: indoor c80 / BHGP full / RaceChrono | 16.5 / 29.4 / 15.8% | 16.5 / 31.1 / 14.7% | 25.0 / 31.0 / 17.9% |
+
+Both pass the wrong-reference control. The labels are not the cause: the batch's agree
+with v3's for the same drives within ±0.4 m (median 0.0 m, fitted from the time to reach
+each place against 1 / speed). With the offset already cheap, there was little to learn,
+and the re-render gap is what the extra clips mostly carried. The release stays
+`v3_mobilenet_lr1_s0`; the batch stays as the lateral test set.
 
 **Colour hardly matters** (`pose_sensitivity.py --colour`, same tests, 2026-10-11): both
 laps greyscale 1.2%, both with red and blue swapped 1.1%; the live lap alone warmer

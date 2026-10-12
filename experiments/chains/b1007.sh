@@ -11,13 +11,13 @@
 source /Users/pvodopija/code/primal/experiments/chains/v3_lib.sh
 B1007=(--wide data/packed_ac_b1007_full_own,data/packed_ac_b1007_full_alt --wide-derotate --head 10 1 6)
 lateral() {
-  [[ -f runs/$1/lateral_offset.json ]] || ./.venv/bin/python experiments/lateral_offset.py $1 > runs/$1/lateral_offset.log 2>&1
+  [[ -f runs/$1/lateral_offset.json ]] || PYTHONPATH=. ./.venv/bin/python experiments/lateral_offset.py $1 > runs/$1/lateral_offset.log 2>&1
   echo "--- lateral $1"; grep -E "as rendered|turned back" runs/$1/lateral_offset.log | head -7
 }
 real() {  # runs: every model on every real-footage set, against the ORB truth
   for spec in "indoor-pov c80" "BHGP full" "race-chrono "; do
     local footage=${spec%% *} crop=${spec#* }
-    REAL_FOOTAGE=$footage REAL_CROP=$crop ./.venv/bin/python experiments/real_truth_orb.py "$@" 2>&1 | grep -E "single:" | sed "s/^/  $footage $crop: /"
+    REAL_FOOTAGE=$footage REAL_CROP=$crop PYTHONPATH=. ./.venv/bin/python experiments/real_truth_orb.py "$@" 2>&1 | grep -E "single:" | sed "s/^/  $footage $crop: /"
   done
 }
 lateral v3_mobilenet_lr1_s0
