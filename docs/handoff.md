@@ -2276,3 +2276,29 @@ questions that would explain the second: is the rig's camera (forward 2.2 m, hei
 1.15 m) where the v3 recordings' camera was, and do re-renders keep the recording's
 graphics settings (TAA, sharpening, LOD, clouds)? The ten new circuits remain the most
 promising data (the track-count curve has not flattened); pack them when D: has room.
+
+## 2026-10-13 — Mac → Windows: replay re-renders are blurry; check before packing the new circuits
+
+**Found:** frames re-rendered from replays carry less than half the fine detail of frames
+recorded live, at the model's view (`experiments/sharpness.py`: v3 recorded ~1130,
+`packed_ac_v3_wide` ~530, b1007 ~440). The geometry matches (same place, same scale); the
+re-renders are soft and their sky and light differ from the recording's. Blur costs this
+model precision, which is why b1007 did not help and every wide-trained model lost a little.
+
+**Asks, in order:**
+
+1. **Find the blur.** Pack a minute of one new circuit's *live* session and the same minute
+   of its *replay* re-render, and run `PYTHONPATH=. python experiments/sharpness.py <set>`
+   on each (and on `packed_ac_v3` as the yardstick). Then check what differs between live
+   and replay rendering: CSP/AC post-processing in replays (motion blur, depth of field,
+   TAA/FXAA, sharpening), render scale or resolution, OBS's encoder and bitrate, the
+   capture scaling. Fix it so a replay scores like a live recording, and report what it was.
+2. **Pack the ten new circuits**, live sessions first (`packed_ac_b1007_new_live`), each
+   set checked with `sharpness.py` (aim: within ~20% of v3); the opposite-weather replays
+   (`_new_alt`) only once replays are sharp. Old packs on D: may go (the Mac has its copies).
+3. **Wander for future recordings:** keep it; the Mac undoes the turn exactly from
+   `pose.npz`. A fixed lateral offset costs the model little, so new tracks matter more
+   than wander.
+
+Hand-over as usual: `git pull --rebase` first, a dated Windows → Mac entry, never
+force-push, never touch `main`.
