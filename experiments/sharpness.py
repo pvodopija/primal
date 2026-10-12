@@ -6,8 +6,11 @@ virtual camera, as training sees them. Recorded v3 laps score ~975. Wide packs s
 half of that (packed_ac_v3_wide ~530, b1007 ~540) while the virtual camera resampled
 bilinearly: at ~1:1 that is a low-pass filter, not anything in AC's replays (a replay
 re-render at v3's own FOV scores within ~10% of the live recording of the same drive).
-With the bicubic camera (2026-10-12): v3_wide 707, b1007 full_own 832, full_alt 683
-(mostly overcast: less contrast, not blur). A new set should score within ~20% of v3.
+With the bicubic camera (2026-10-12): v3_wide 707, b1007 full_own 832, full_alt 683.
+The score depends on the scenery and the weather as much as on blur (the new circuits run
+~300-1200, one track's clear and overcast passes up to 2x apart either way), so a set from
+other tracks is judged against the same frames rendered ideally from the 720p capture
+(the new circuits keep 91-101% of that); a set of the same tracks within ~20% of v3.
 
 Usage: PYTHONPATH=. python experiments/sharpness.py data/packed_ac_v3 data/packed_ac_new_live [...]
 """
