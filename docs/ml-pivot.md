@@ -2501,6 +2501,16 @@ one camera at any width; on real footage the gain from cropping (indoor: full wi
 picture's sides, not the width or the kart: likely motion blur on near walls, which the
 renders lack (untested).
 
+**Driving off the reference's line** (`experiments/lateral_offset.py`, 2026-10-12, the
+release model `v3_mobilenet_lr1_s0`; held-out tracks, references v3 laps on the AI line,
+live laps the batch b1007 renders through the virtual camera; tracker, over 100 ms): on
+the line 4.6%; fixed +3 m 9.2%, -3 m 9.2%; full-width wander 34-37% as rendered, 16-17%
+with the wander's turn undone (its camera turns with its path, up to ~17 deg off the car's
+heading; `pose.npz`'s `cam_yaw_deg`, undone by rendering at minus it). Offset alone, turn
+undone: 0.5-1.5 m 11%, 1.5-3.5 m 13%, 3.5-5 m 15%, over 5 m 30%. The forced opposite
+weather costs nothing extra (34.4% against 36.8% as rendered). Training on the batch with
+the turn undone (`--wide-derotate`) is the overnight chain `experiments/chains/b1007.sh`.
+
 **Colour hardly matters** (`pose_sensitivity.py --colour`, same tests, 2026-10-11): both
 laps greyscale 1.2%, both with red and blue swapped 1.1%; the live lap alone warmer
 (white balance), half desaturated, 40% darker or hue-shifted 30° 0.7-1.1%. Only a

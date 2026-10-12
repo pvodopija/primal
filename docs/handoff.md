@@ -2243,3 +2243,24 @@ kerb-at-the-apex frames as item 1. Two track-data problems found and handled:
 **Not packed yet.** D: has 94 GB free and the twenty sessions will pack to ~110 GB at
 320x172. Pavle decides which old packs go (see the question in the entry above); then
 `capture.pack` into `packed_ac_b1007_new_live` / `_new_alt` and `capture.usb_parts`.
+
+## 2026-10-12 (night) — Mac: batch b1007 received, checked, training
+
+All seven USB parts arrived (`data/usb_b1007_part1..7`, linked into `data/packed_ac_b1007_*`
+without copying). `experiments/check_batch.py`: every index entry present exactly once,
+counts as sent (134 / 106 / 17 / 19 laps; 409,257 / 402,518 / 54,905 / 55,457 frames),
+every lap readable with its pose rows; the only flag, three Magione laps whose last frame
+reads s = 1.0 (the line), is harmless. Training reads each wide lap's own camera from the
+index (320x172, 129.47 deg, AC's 100 deg from `rig.fov_deg`).
+
+What the batch showed before any training (release model, `lateral_offset.py`): a fixed
+3 m offset costs little (9% over 100 ms against 4.6% on the line), but the wander's camera
+turns with its path, up to ~17 deg off the car's heading, and that turn is most of the
+wander's cost (35% as rendered, 16-17% turned back). The opposite weather costs nothing
+extra. Tonight: the release recipe plus the wander turned back, two seeds
+(`experiments/chains/b1007.sh`).
+
+**For Windows:** the ten new circuits can be packed whenever D: has room; from the Mac's
+side every old pack on D: may go (the Mac has its own copies of v2, v3 and v3_wide;
+`data/sessions/` stays). For future wander renders, `wander_yaw` (turn with the wander)
+is fine to keep: the Mac can undo it exactly from `pose.npz`.
