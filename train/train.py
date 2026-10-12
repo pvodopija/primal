@@ -177,6 +177,10 @@ def evaluate(
     return {"overall": overall}, per_track
 
 
+# Wide pieces shorter than this (s) cannot be checked against held-out drives; left out.
+MIN_WIDE_PIECE_S = 5.0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", required=True)
@@ -269,11 +273,13 @@ def main() -> None:
     parser.add_argument("--strides", default="1,2,3,4",
                         help="frames between clip frames, drawn uniformly per clip; runtime uses 4, so centre them there")
     parser.add_argument("--wide", default=None,
-                        help="also train on this set of wide renders, seen through the virtual camera (train/camera.py)")
+                        help="also train on these sets of wide renders (comma-separated), seen through the virtual camera (train/camera.py)")
     parser.add_argument("--head", type=float, nargs=3, default=(14.0, 4.0, 8.0), metavar=("YAW", "PITCH", "ROLL"),
                         help="head pose amplitudes in degrees for live clips from --wide laps")
     parser.add_argument("--shake", type=float, default=0.0,
                         help="camera shake on every live clip, level drawn from [0, this]; 1 = a typical kart")
+    parser.add_argument("--wide-derotate", action="store_true",
+                        help="turn --wide laps that log a camera yaw (pose.npz) back to the car's heading: offset kept, turn undone")
     parser.add_argument("--wide-share", type=float, default=0.0,
                         help="share of live clips from --wide laps (0: laps drawn uniformly, about a fifth)")
     args = parser.parse_args()
@@ -300,10 +306,16 @@ def main() -> None:
     if args.wide:
         # Wide renders re-render recorded drives, some of them the held-out ones: any wide
         # lap that could be a held-out drive stays out, or G1 would test on a seen drive.
-        wide = LapIndex.load(Path(args.wide), split="train", tracks=sorted(train_index.by_track))
+        wide = LapIndex([lap for path in args.wide.split(",")
+                         for lap in LapIndex.load(Path(path), split="train", tracks=sorted(train_index.by_track)).laps])
         held = [lap for lap in train_index.laps if lap.lap_id in reserved]
-        kept = [w for w in wide.laps if not any(same_drive(w, h) for h in held)]
-        print(f"wide: {len(kept)} of {len(wide.laps)} laps ({len(wide.laps) - len(kept)} could be held-out drives)")
+        # Wander moves the camera's progress label up to a metre off the drive's, so a wider
+        # match (1.5 m) for re-renders; pieces too short to compare (capture drops split some
+        # recordings) are left out rather than risked.
+        short = [w for w in wide.laps if w.t()[-1] - w.t()[0] < MIN_WIDE_PIECE_S]
+        kept = [w for w in wide.laps if w not in short and not any(same_drive(w, h, rms_m=1.5) for h in held)]
+        print(f"wide: {len(kept)} of {len(wide.laps)} laps ({len(short)} pieces under {MIN_WIDE_PIECE_S:g} s, "
+              f"{len(wide.laps) - len(kept) - len(short)} could be held-out drives)")
         train_index = LapIndex(train_index.laps + kept)
     trainable = frozenset(lap.lap_id for lap in train_index.laps) - reserved
 
@@ -331,6 +343,7 @@ def main() -> None:
         head_roll_deg=args.head[2],
         shake_max=args.shake,
         wide_share=args.wide_share,
+        derotate_wide=args.wide_derotate,
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 

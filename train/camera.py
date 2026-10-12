@@ -111,11 +111,13 @@ class Shake:
 
 def render_clip(frames: np.ndarray, times: np.ndarray, rng: np.random.Generator, source: View = WIDE,
                 view: View = TRAINING, pose: tuple[float, float, float] = (0.0, 0.0, 0.0), shake_level: float = 0.0,
-                exposure_s: float | None = None, blur_samples: int = 4) -> np.ndarray:
+                exposure_s: float | None = None, blur_samples: int = 4, frame_poses: np.ndarray | None = None) -> np.ndarray:
     """
     Frames [T, H, W, 3] of one clip, taken at `times` (seconds), seen by `view` with a held
     head `pose` (yaw, pitch, roll) plus camera shake, with exposure blur from the shake.
-    Works for a clip or a whole lap: the shake covers every time given.
+    `frame_poses` [T, 3], if given, adds a pose per frame (e.g. turning a wandering
+    camera back to the car's heading). Works for a clip or a whole lap: the shake covers
+    every time given.
     """
     times = np.asarray(times, dtype=np.float64)
     rel = times - times[-1]
@@ -123,11 +125,12 @@ def render_clip(frames: np.ndarray, times: np.ndarray, rng: np.random.Generator,
     exposure = rng.uniform(0.002, 0.010) if exposure_s is None else exposure_s
     out = np.empty((len(frames), view.height, view.width, 3), dtype=np.uint8)
     for i, frame in enumerate(frames):
+        held = np.asarray(pose, dtype=np.float64) + (frame_poses[i] if frame_poses is not None else 0.0)
         if shake is None:
-            out[i] = render(frame, source, view, *pose)
+            out[i] = render(frame, source, view, *held)
             continue
         offsets = np.linspace(0.0, exposure, blur_samples) if exposure > 0 else np.zeros(1)
-        angles = shake.at(rel[i] - offsets) + np.asarray(pose)
+        angles = shake.at(rel[i] - offsets) + held
         acc = np.zeros((view.height, view.width, 3), dtype=np.float32)
         for yaw, pitch, roll in angles:
             acc += render(frame, source, view, yaw, pitch, roll)

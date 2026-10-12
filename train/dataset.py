@@ -30,6 +30,9 @@ import torch
 from torch.utils.data import Dataset
 
 
+_CAMERA_YAW: dict[str, np.ndarray | None] = {}
+
+
 @dataclass
 class Lap:
     lap_id: str
@@ -62,6 +65,26 @@ class Lap:
     # Horizontal field of view of the render. Wide renders (packed_ac_v3_wide, 121 deg)
     # are not seen as they are: the sampler turns a virtual camera inside them.
     fov_h_deg: float = 91.49
+    # The packed frames' size, and the render's vertical field of view before the barcode
+    # band came off the bottom (AC's FOV setting): with fov_h_deg they give the camera that
+    # took the frames, which the virtual camera turns inside (wide renders only).
+    frame_size: tuple[int, int] = (148, 80)
+    render_vfov_deg: float | None = None
+
+    def camera_yaw(self) -> np.ndarray | None:
+        """The camera's yaw against the car's heading per frame, degrees (rig renders with
+        pose.npz; positive = turned the way `camera.render(yaw=-this)` undoes), else None."""
+        key = str(self.directory)
+        if key not in _CAMERA_YAW:
+            pose = self.directory / "pose.npz"
+            _CAMERA_YAW[key] = np.load(pose)["cam_yaw_deg"].astype(np.float64) if pose.exists() else None
+        return _CAMERA_YAW[key]
+
+    @property
+    def source_view(self):
+        """The camera that rendered this lap's frames (train/camera.py View)."""
+        from train import camera
+        return camera.View.rendered(*self.frame_size, self.fov_h_deg, render_vfov_deg=self.render_vfov_deg)
 
     @property
     def directory(self) -> Path:
@@ -165,6 +188,9 @@ class LapIndex:
                     yaw_bias_deg=float(entry.get("yaw_bias_deg", 0.0)),
                     variant=entry.get("variant", "live"),
                     fov_h_deg=float(entry.get("fov_h_deg", 91.49)),
+                    frame_size=tuple(entry.get("frame_size", (148, 80))),
+                    # the rig logs AC's FOV; packed_ac_v3_wide predates it and was rendered at 90
+                    render_vfov_deg=float(entry["rig"]["fov_deg"]) if entry.get("rig") else 90.0,
                 )
             )
         index = LapIndex(laps)
@@ -218,8 +244,10 @@ def same_drive(a: Lap, b: Lap, frames: float = 2.0, rms_m: float = 0.6) -> bool:
     AC's bots lap within a few hundredths of each other, so this also catches some
     different drives; it is used to exclude, where erring that way is safe.
     """
-    if a.track != b.track or a.s_span < 0.98 or b.s_span < 0.98:
+    if a.track != b.track:
         return False
+    if a.s_span < 0.98 or b.s_span < 0.98:
+        return _same_drive_piece(a, b, rms_m)
     ta, tb = a.t().astype(np.float64), b.t().astype(np.float64)
     if abs((ta[-1] - ta[0]) - (tb[-1] - tb[0])) > frames / min(a.fps, b.fps):
         return False
@@ -228,6 +256,33 @@ def same_drive(a: Lap, b: Lap, frames: float = 2.0, rms_m: float = 0.6) -> bool:
                 for lap, t in ((a, ta), (b, tb))]
     gap = progress[0] - progress[1]
     return float(np.sqrt(np.mean((gap - np.median(gap)) ** 2))) <= rms_m
+
+
+def _same_drive_piece(a: Lap, b: Lap, rms_m: float, min_overlap_s: float = 5.0) -> bool:
+    """
+    same_drive when one lap is a piece (a capture drop splits a recording into pieces whose
+    lap boundaries need not match the other's): the piece is laid on the other lap wherever
+    it starts at the same place, and its progress over time compared there. A re-render
+    repeats it to centimetres; pieces too short to tell, or with no overlap, do not count.
+    """
+    piece, other = (a, b) if a.s_span <= b.s_span else (b, a)
+    tp, to = piece.t().astype(np.float64), other.t().astype(np.float64)
+    pp = np.unwrap(piece.s().astype(np.float64), period=1.0) * piece.track_length_m
+    po = np.unwrap(other.s().astype(np.float64), period=1.0) * other.track_length_m
+    length = piece.track_length_m
+    for shift in (-length, 0.0, length):  # the piece's start may sit a lap before or after
+        start = pp[0] + shift
+        if not po[0] <= start <= po[-1]:
+            continue
+        t0 = float(np.interp(start, po, to))  # when the other lap passed the piece's start
+        duration = min(tp[-1] - tp[0], to[-1] - t0)
+        if duration < min_overlap_s:
+            continue
+        grid = np.linspace(0.0, duration, 200)
+        gap = np.interp(tp[0] + grid, tp, pp) + shift - np.interp(t0 + grid, to, po)
+        if float(np.sqrt(np.mean((gap - np.median(gap)) ** 2))) <= rms_m:
+            return True
+    return False
 
 
 REFERENCE_AXES = ("distance", "time")
@@ -420,6 +475,8 @@ class SampleConfig:
     # Share of live clips drawn from wide laps where a track has both kinds; 0 draws
     # laps uniformly, which gives wide laps about a fifth of the clips.
     wide_share: float = 0.0
+    # Turn wide laps that log a camera yaw (pose.npz) back to the car's heading.
+    derotate_wide: bool = False
 
 
 def _to_chw(frames: np.ndarray) -> np.ndarray:
@@ -687,7 +744,7 @@ class AlignmentBatches(Dataset):
         return value
 
     def _camera(self, lap: Lap, raw: np.ndarray, times: np.ndarray, rng: np.random.Generator,
-                live: bool) -> tuple[np.ndarray, frozenset[str]]:
+                live: bool, frame_idx: np.ndarray | None = None) -> tuple[np.ndarray, frozenset[str]]:
         """
         Frames as the training camera sees them, and the camera_jitter parts still to
         apply. A wide lap is rendered through the virtual camera, which replaces
@@ -707,9 +764,12 @@ class AlignmentBatches(Dataset):
             pose = tuple(float(rng.uniform(-a, a)) for a in amplitude)
         elif level == 0.0:
             return raw, config.aug_parts
-        frames = camera.render_clip(raw, times, rng, source=camera.WIDE if lap.wide else camera.TRAINING,
+        # a wandering camera turned back to the car's heading: its offset kept, its turn undone
+        yaw = lap.camera_yaw() if lap.wide and config.derotate_wide and frame_idx is not None else None
+        frame_poses = np.stack([-yaw[frame_idx], np.zeros(len(frame_idx)), np.zeros(len(frame_idx))], 1) if yaw is not None else None
+        frames = camera.render_clip(raw, times, rng, source=lap.source_view if lap.wide else camera.TRAINING,
                                     view=camera.TRAINING, pose=pose, shake_level=level,
-                                    exposure_s=None if live else 0.0)
+                                    exposure_s=None if live else 0.0, frame_poses=frame_poses)
         return frames, (config.aug_parts - {"pose"} if lap.wide else config.aug_parts)
 
     def _clip_indices(self, lap: Lap, rng: np.random.Generator) -> np.ndarray:
@@ -757,7 +817,8 @@ class AlignmentBatches(Dataset):
         roll = int(rng.integers(0, n_bins)) if config.roll_reference else 0
         ref_raw = np.roll(ref_raw, roll, axis=0)
         ref_raw, ref_parts = self._camera(reference_lap, ref_raw,
-                                          np.roll(reference_lap.t()[grid.frame_idx].astype(np.float64), roll), rng, live=False)
+                                          np.roll(reference_lap.t()[grid.frame_idx].astype(np.float64), roll), rng, live=False,
+                                          frame_idx=np.roll(grid.frame_idx, roll))
         ref_s, ref_speed = np.roll(grid.frame_s, roll), np.roll(grid.speed_mps, roll)
         ref_pos, ref_time = np.roll(grid.pos_m, roll), np.roll(grid.time_s, roll)
         # Drawn only when enabled, so runs without these augmentations sample
@@ -787,7 +848,7 @@ class AlignmentBatches(Dataset):
             live_lap = pool[int(rng.integers(0, len(pool)))]
             indices = self._clip_indices(live_lap, rng)
             raw = np.asarray(live_lap.frames()[indices])
-            raw, parts = self._camera(live_lap, raw, live_lap.t()[indices].astype(np.float64), rng, live=True)
+            raw, parts = self._camera(live_lap, raw, live_lap.t()[indices].astype(np.float64), rng, live=True, frame_idx=indices)
             # Drawn only when enabled, so runs without traffic sample exactly what they always did.
             if config.p_traffic > 0.0 and rng.random() < config.p_traffic:
                 raw = draw_traffic(raw, rng, live_lap.t()[indices].astype(np.float64))
