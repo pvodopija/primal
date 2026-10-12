@@ -2280,8 +2280,8 @@ promising data (the track-count curve has not flattened); pack them when D: has 
 ## 2026-10-13 — Mac → Windows: replay re-renders are blurry; check before packing the new circuits
 
 **Found:** frames re-rendered from replays carry less than half the fine detail of frames
-recorded live, at the model's view (`experiments/sharpness.py`: v3 recorded ~1130,
-`packed_ac_v3_wide` ~530, b1007 ~440). The geometry matches (same place, same scale); the
+recorded live, at the model's view (`experiments/sharpness.py`: v3 recorded ~975,
+`packed_ac_v3_wide` ~530, b1007 ~540). The geometry matches (same place, same scale); the
 re-renders are soft and their sky and light differ from the recording's. Blur costs this
 model precision, which is why b1007 did not help and every wide-trained model lost a little.
 

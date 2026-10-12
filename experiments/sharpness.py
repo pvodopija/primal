@@ -2,8 +2,8 @@
 How much fine detail packed frames carry at the model's view: the variance of the
 Laplacian of the grey image's upper half (the scenery), median over frames spread along
 up to two whole laps per track. Wide packs are first turned into the training view by the
-virtual camera, as training sees them. Recorded v3 laps score ~1130; replay re-renders
-(packed_ac_v3_wide ~530, b1007 ~440) carry less than half of that detail, which costs
+virtual camera, as training sees them. Recorded v3 laps score ~975; replay re-renders
+(packed_ac_v3_wide ~530, b1007 ~540) carry about half of that detail, which costs
 the model precision, so a new set should score near v3 before it trains.
 
 Usage: PYTHONPATH=. python experiments/sharpness.py data/packed_ac_v3 data/packed_ac_new_live [...]
