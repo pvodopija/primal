@@ -2545,17 +2545,35 @@ behind), live channels swapped 4.3%. On real footage too: indoor GoPro greyscale
 against 16.5% in colour (`REAL_GREY=1`). The encoder matches structure, not colour; a
 monochrome camera works if the reference is monochrome too.
 
-**It knows a track when it sees one, given a little help** (`experiments/track_or_not.py`,
-2026-10-13). Raw closeness to AC track frames (mean cosine of the 10 nearest) separates
-track from not-track only weakly (AUROC 0.80): rooms from the GoPro's home sessions score
-like real tracks (0.50), synthetic pictures and wallpapers lower (0.44-0.45). A linear
-probe on the 128-d descriptor (logistic regression), trained on AC frames against
-synthetic pictures and wallpapers only, calls 99-100% of real track footage it never saw a
-track, synthetic and wallpapers 0%, and ranks the never-seen home rooms well below tracks
-(AUROC 0.95) though its default cut-off still passes 57% of them; it calls upside-down AC
-frames a track too (texture, not orientation). Real, varied negatives would be needed for
-a product check ("is the camera on a track, aimed right"), which would then cost one dot
-product per frame on the descriptor the encoder already computes.
+**A "track or not" check from the descriptor** (2026-10-13). The encoder was never
+trained on "track or not", but its 128-d descriptor holds it. Raw closeness to AC track
+frames separates track from not-track only weakly (`experiments/track_or_not.py`: AUROC
+0.80; rooms score like tracks). A linear probe on the descriptor (logistic regression: 128
+weights and a bias, one dot product per frame on what the encoder already computes),
+decided over 2 s windows (the mean probability of 30 frames at 15 Hz), works
+(`experiments/track_probe.py`):
+
+- **Negatives:** 3,971 Open Images validation photos (all CC BY 2.0: commercial use with
+  attribution; images with road, track or vehicle labels left out; resized copies and every
+  photo's author, title and source page in `data/negatives/openimages/attribution.csv`),
+  80% for training at three crops each, plus synthetic pictures and macOS wallpapers.
+- **Positives must include real track footage.** With rendered AC frames alone, the probe
+  learns "rendered or photographed": real tracks then fail (indoor kart 9% of windows,
+  RaceChrono 52%) while rooms and photos are rejected. The descriptor carries that trace
+  of the picture's origin, so each side needs both kinds.
+- **Results, each real video left out of training in turn** (share of 2 s windows called
+  track at p >= 0.5): outdoor kart GoPro 98.6%, BHGP helmet 97.7%, RaceChrono car 86.8%,
+  indoor kart GoPro 66.1% (dark, very wide, our only indoor footage); AC held-out tracks
+  ~98%. False alarms: the GoPro's home sessions (rooms, screens; never in training) ~1% of
+  windows, held-out photos ~3% of frames. A lower threshold (~0.3) would keep most indoor
+  windows while rooms stay near 0 (in the plot, not yet measured).
+- **The probe to ship** is trained with every real video: `runs/<run>/track_probe.json`
+  holds its weights, bias, threshold and window. It belongs to its encoder: a new release
+  needs the probe retrained (minutes). Uses: enable the start when the camera sees a
+  track; warn when it is aimed at the sky, the floor or the kart; before a reference lap
+  exists. Once there is one, the delta's confidence is the check that the model works.
+  More indoor footage is the most useful addition; credit Open Images (CC BY 2.0) if the
+  probe ships.
 
 **What the encoder looks at** (`experiments/what_it_sees.py`, occlusion maps): a band
 around the horizon, strongest left and right of the vanishing point (roadside objects

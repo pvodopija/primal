@@ -1,0 +1,142 @@
+{
+  "threshold": 0.5,
+  "window_s": 2.0,
+  "hz": 15.0,
+  "trained_on": {
+    "ac_frames": 16000,
+    "real_videos": [
+      "real: outdoor kart",
+      "real: indoor kart",
+      "real: BHGP helmet",
+      "real: RaceChrono car"
+    ],
+    "negatives": 10428,
+    "photos": "Open Images validation, CC BY 2.0, data/negatives/openimages/attribution.csv"
+  },
+  "leave_one_out": {
+    "real: outdoor kart": {
+      "real: outdoor kart": {
+        "frames": 6242,
+        "frames_called_track": 0.9466517141941685,
+        "windows": 208,
+        "windows_called_track": 0.9855769230769231
+      },
+      "AC, held-out tracks": {
+        "frames": 5876,
+        "frames_called_track": 0.9778761061946902,
+        "windows": 192,
+        "windows_called_track": 0.9791666666666666
+      },
+      "home GoPro sessions": {
+        "frames": 9882,
+        "frames_called_track": 0.013964784456587736,
+        "windows": 327,
+        "windows_called_track": 0.012232415902140673
+      },
+      "photos, held out": {
+        "frames": 795,
+        "frames_called_track": 0.03018867924528302,
+        "windows": 0,
+        "windows_called_track": null
+      }
+    },
+    "real: indoor kart": {
+      "real: indoor kart": {
+        "frames": 6744,
+        "frames_called_track": 0.6158066429418743,
+        "windows": 224,
+        "windows_called_track": 0.6607142857142857
+      },
+      "AC, held-out tracks": {
+        "frames": 5876,
+        "frames_called_track": 0.9739618788291354,
+        "windows": 192,
+        "windows_called_track": 0.9791666666666666
+      },
+      "home GoPro sessions": {
+        "frames": 9882,
+        "frames_called_track": 0.013964784456587736,
+        "windows": 327,
+        "windows_called_track": 0.009174311926605505
+      },
+      "photos, held out": {
+        "frames": 795,
+        "frames_called_track": 0.028930817610062894,
+        "windows": 0,
+        "windows_called_track": null
+      }
+    },
+    "real: BHGP helmet": {
+      "real: BHGP helmet": {
+        "frames": 9076,
+        "frames_called_track": 0.9387395328338475,
+        "windows": 302,
+        "windows_called_track": 0.9768211920529801
+      },
+      "AC, held-out tracks": {
+        "frames": 5876,
+        "frames_called_track": 0.976004084411164,
+        "windows": 192,
+        "windows_called_track": 0.9791666666666666
+      },
+      "home GoPro sessions": {
+        "frames": 9882,
+        "frames_called_track": 0.013762396276057479,
+        "windows": 327,
+        "windows_called_track": 0.012232415902140673
+      },
+      "photos, held out": {
+        "frames": 795,
+        "frames_called_track": 0.028930817610062894,
+        "windows": 0,
+        "windows_called_track": null
+      }
+    },
+    "real: RaceChrono car": {
+      "real: RaceChrono car": {
+        "frames": 4087,
+        "frames_called_track": 0.8372889650110105,
+        "windows": 136,
+        "windows_called_track": 0.8676470588235294
+      },
+      "AC, held-out tracks": {
+        "frames": 5876,
+        "frames_called_track": 0.9853641933287951,
+        "windows": 192,
+        "windows_called_track": 0.984375
+      },
+      "home GoPro sessions": {
+        "frames": 9882,
+        "frames_called_track": 0.012548067192875935,
+        "windows": 327,
+        "windows_called_track": 0.0030581039755351682
+      },
+      "photos, held out": {
+        "frames": 795,
+        "frames_called_track": 0.02389937106918239,
+        "windows": 0,
+        "windows_called_track": null
+      }
+    }
+  },
+  "final": {
+    "AC, held-out tracks": {
+      "frames": 5876,
+      "frames_called_track": 0.9761742682096665,
+      "windows": 192,
+      "windows_called_track": 0.9791666666666666
+    },
+    "home GoPro sessions": {
+      "frames": 9882,
+      "frames_called_track": 0.01507791944950415,
+      "windows": 327,
+      "windows_called_track": 0.012232415902140673
+    },
+    "photos, held out": {
+      "frames": 795,
+      "frames_called_track": 0.028930817610062894,
+      "windows": 0,
+      "windows_called_track": null
+    }
+  }
+}
