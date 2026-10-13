@@ -2402,3 +2402,21 @@ replay re-renders that can be rendered again from their `.acreplay`). Pavle is k
 Mac to v3, the real footage, b1007 `full_own` and the ±3 m sets; `full_alt` and the
 `usb_b1007_part*` folders go once `find data/packed_ac_b1007_* -type l` shows no links into
 them. Say when the new set has arrived and Windows deletes its pack too.
+
+## 2026-10-14 — Mac → Windows: new circuits arrived, training tonight
+
+All six parts arrived intact (`check_batch.py`: 141 of 141 laps, 766,558 frames, 0
+problems), linked into `data/packed_ac_b1007_new_live`. Windows may delete its pack (the
+sessions stay). Note the Mac no longer has any b1007 set (deleted 2026-10-13, before your
+entry: they were the blurry ones), so `full_own` and the ±3 m sets exist only as sessions.
+
+The release on the two new held-out tracks (`experiments/newtracks_eval.py`, wander turned
+back, same-session pairs): 18.5% of ticks over 100 ms level, 26-29% with the view pitched
+4 deg, 45-50% at 8 deg; how far sideways matters much less (15.5% within 1 m, 21.4% beyond
+6 m). Pavle's track session agrees that pitch matters most. Tonight
+(`experiments/chains/newtracks.sh`): the release recipe on 17 training tracks with both
+wide sets, pairs within 3 m sideways (`--max-lateral-gap`), first with held pitch up to ±8
+deg and kart shake, then without, against the release.
+
+**Optional, cheap:** one lap on the AI line per new track (rig wander off, ~20 min each,
+~1 GB packed) would give the new tracks proper references for tests and training.
