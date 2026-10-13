@@ -1,0 +1,112 @@
+{
+  "auroc_track_vs_not": 0.8016083333333334,
+  "threshold_keeps_95pct_track": 0.4239497184753418,
+  "groups": {
+    "AC, held-out tracks": {
+      "kind": "track",
+      "median": 0.5471450686454773,
+      "p5": 0.4660089612007141,
+      "p95": 0.6194733381271362,
+      "above_threshold": 0.9966666666666667,
+      "auroc_vs_not": 0.9037148148148149
+    },
+    "real: indoor kart": {
+      "kind": "track",
+      "median": 0.5008537769317627,
+      "p5": 0.4207744896411896,
+      "p95": 0.5772386193275452,
+      "above_threshold": 0.94,
+      "auroc_vs_not": 0.7505148148148149
+    },
+    "real: BHGP helmet": {
+      "kind": "track",
+      "median": 0.5009499788284302,
+      "p5": 0.40322765707969666,
+      "p95": 0.5986880660057068,
+      "above_threshold": 0.8966666666666666,
+      "auroc_vs_not": 0.7208037037037037
+    },
+    "real: RaceChrono car": {
+      "kind": "track",
+      "median": 0.5340480804443359,
+      "p5": 0.4283166527748108,
+      "p95": 0.612619936466217,
+      "above_threshold": 0.9666666666666667,
+      "auroc_vs_not": 0.8314
+    },
+    "home GoPro sessions": {
+      "kind": "not",
+      "median": 0.49895334243774414,
+      "p5": 0.40418052673339844,
+      "p95": 0.5744370222091675,
+      "above_threshold": 0.8866666666666667
+    },
+    "synthetic": {
+      "kind": "not",
+      "median": 0.4501817226409912,
+      "p5": 0.3690986931324005,
+      "p95": 0.48329439759254456,
+      "above_threshold": 0.7833333333333333
+    },
+    "AC upside down": {
+      "kind": "probe",
+      "median": 0.42565569281578064,
+      "p5": 0.36507973074913025,
+      "p95": 0.48534896969795227,
+      "above_threshold": 0.5233333333333333
+    },
+    "AC mirrored": {
+      "kind": "probe",
+      "median": 0.5440988540649414,
+      "p5": 0.46142953634262085,
+      "p95": 0.6352317333221436,
+      "above_threshold": 0.9933333333333333
+    },
+    "macOS wallpapers": {
+      "kind": "not",
+      "median": 0.44013774394989014,
+      "p5": 0.3872785270214081,
+      "p95": 0.4869486689567566,
+      "above_threshold": 0.7933333333333333
+    }
+  },
+  "probe": {
+    "AC, held-out tracks": {
+      "median_p_track": 0.978548144876808,
+      "called_track": 0.9833333333333333
+    },
+    "real: indoor kart": {
+      "median_p_track": 0.8837144822320535,
+      "called_track": 0.99
+    },
+    "real: BHGP helmet": {
+      "median_p_track": 0.9695603024965478,
+      "called_track": 1.0
+    },
+    "real: RaceChrono car": {
+      "median_p_track": 0.9402386049533952,
+      "called_track": 1.0
+    },
+    "home GoPro sessions": {
+      "median_p_track": 0.5495907792119614,
+      "called_track": 0.5666666666666667
+    },
+    "synthetic": {
+      "median_p_track": 0.020134480380818515,
+      "called_track": 0.0
+    },
+    "AC upside down": {
+      "median_p_track": 0.979460173464436,
+      "called_track": 0.9933333333333333
+    },
+    "AC mirrored": {
+      "median_p_track": 0.9788772080785801,
+      "called_track": 0.98
+    },
+    "macOS wallpapers": {
+      "median_p_track": 0.026347684917314394,
+      "called_track": 0.0
+    }
+  },
+  "probe_auroc_track_vs_home": 0.9517388888888889
+}

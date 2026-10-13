@@ -2545,6 +2545,18 @@ behind), live channels swapped 4.3%. On real footage too: indoor GoPro greyscale
 against 16.5% in colour (`REAL_GREY=1`). The encoder matches structure, not colour; a
 monochrome camera works if the reference is monochrome too.
 
+**It knows a track when it sees one, given a little help** (`experiments/track_or_not.py`,
+2026-10-13). Raw closeness to AC track frames (mean cosine of the 10 nearest) separates
+track from not-track only weakly (AUROC 0.80): rooms from the GoPro's home sessions score
+like real tracks (0.50), synthetic pictures and wallpapers lower (0.44-0.45). A linear
+probe on the 128-d descriptor (logistic regression), trained on AC frames against
+synthetic pictures and wallpapers only, calls 99-100% of real track footage it never saw a
+track, synthetic and wallpapers 0%, and ranks the never-seen home rooms well below tracks
+(AUROC 0.95) though its default cut-off still passes 57% of them; it calls upside-down AC
+frames a track too (texture, not orientation). Real, varied negatives would be needed for
+a product check ("is the camera on a track, aimed right"), which would then cost one dot
+product per frame on the descriptor the encoder already computes.
+
 **What the encoder looks at** (`experiments/what_it_sees.py`, occlusion maps): a band
 around the horizon, strongest left and right of the vanishing point (roadside objects
 where they meet the sky), little at the top and least in the bottom third (road, hood,
