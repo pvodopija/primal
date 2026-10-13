@@ -280,6 +280,8 @@ def main() -> None:
                         help="camera shake on every live clip, level drawn from [0, this]; 1 = a typical kart")
     parser.add_argument("--wide-derotate", action="store_true",
                         help="turn --wide laps that log a camera yaw (pose.npz) back to the car's heading: offset kept, turn undone")
+    parser.add_argument("--max-lateral-gap", type=float, default=0.0,
+                        help="pair a live clip only with a reference place at most this far sideways (m, pose.npz); 0: any")
     parser.add_argument("--wide-share", type=float, default=0.0,
                         help="share of live clips from --wide laps (0: laps drawn uniformly, about a fifth)")
     args = parser.parse_args()
@@ -306,8 +308,9 @@ def main() -> None:
     if args.wide:
         # Wide renders re-render recorded drives, some of them the held-out ones: any wide
         # lap that could be a held-out drive stays out, or G1 would test on a seen drive.
+        # every training-split track of every set, including tracks the recorded data lacks
         wide = LapIndex([lap for path in args.wide.split(",")
-                         for lap in LapIndex.load(Path(path), split="train", tracks=sorted(train_index.by_track)).laps])
+                         for lap in LapIndex.load(Path(path), split="train", tracks=tracks).laps])
         held = [lap for lap in train_index.laps if lap.lap_id in reserved]
         # Wander moves the camera's progress label up to a metre off the drive's, so a wider
         # match (1.5 m) for re-renders; pieces too short to compare (capture drops split some
@@ -344,6 +347,7 @@ def main() -> None:
         shake_max=args.shake,
         wide_share=args.wide_share,
         derotate_wide=args.wide_derotate,
+        max_lateral_gap_m=args.max_lateral_gap,
     )
     train_set = AlignmentBatches(train_index, train_config, steps=steps, seed=args.seed)
 

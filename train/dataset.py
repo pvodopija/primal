@@ -31,6 +31,7 @@ from torch.utils.data import Dataset
 
 
 _CAMERA_YAW: dict[str, np.ndarray | None] = {}
+_LATERAL: dict[str, np.ndarray | None] = {}
 
 
 @dataclass
@@ -70,6 +71,15 @@ class Lap:
     # took the frames, which the virtual camera turns inside (wide renders only).
     frame_size: tuple[int, int] = (148, 80)
     render_vfov_deg: float | None = None
+
+    def lateral(self) -> np.ndarray | None:
+        """The camera's offset from the AI line per frame, metres right (rig renders with
+        pose.npz), else None (recorded on or near the AI line)."""
+        key = str(self.directory)
+        if key not in _LATERAL:
+            pose = self.directory / "pose.npz"
+            _LATERAL[key] = np.load(pose)["lateral_m"].astype(np.float64) if pose.exists() else None
+        return _LATERAL[key]
 
     def camera_yaw(self) -> np.ndarray | None:
         """The camera's yaw against the car's heading per frame, degrees (rig renders with
@@ -477,6 +487,9 @@ class SampleConfig:
     wide_share: float = 0.0
     # Turn wide laps that log a camera yaw (pose.npz) back to the car's heading.
     derotate_wide: bool = False
+    # Pair a live clip only with a reference place at most this far sideways from it
+    # (pose.npz's lateral_m; laps without one count as on the AI line); 0: any pair.
+    max_lateral_gap_m: float = 0.0
 
 
 def _to_chw(frames: np.ndarray) -> np.ndarray:
@@ -772,6 +785,17 @@ class AlignmentBatches(Dataset):
                                     exposure_s=None if live else 0.0, frame_poses=frame_poses)
         return frames, (config.aug_parts - {"pose"} if lap.wide else config.aug_parts)
 
+    @staticmethod
+    def _lateral_gap(reference_lap: Lap, grid, live_lap: Lap, indices: np.ndarray) -> float:
+        """How far sideways the clip's last frame is from the reference's frame at the same place, m."""
+        ref_lat, live_lat = reference_lap.lateral(), live_lap.lateral()
+        if ref_lat is None and live_lat is None:
+            return 0.0
+        live_x = float(live_lat[indices[-1]]) if live_lat is not None else 0.0
+        j = int(round(float(grid.target(float(live_lap.s()[indices[-1]]))))) % grid.n_bins
+        ref_x = float(ref_lat[grid.frame_idx[j]]) if ref_lat is not None else 0.0
+        return abs(live_x - ref_x)
+
     def _clip_indices(self, lap: Lap, rng: np.random.Generator) -> np.ndarray:
         clip_len = self.config.clip_len
         if rng.random() < self.config.p_static:
@@ -845,8 +869,13 @@ class AlignmentBatches(Dataset):
             # Drawn only when enabled, so runs without it sample exactly what they always did.
             if len(pools) == 2:
                 pool = pools[0] if rng.random() < config.wide_share else pools[1]
-            live_lap = pool[int(rng.integers(0, len(pool)))]
-            indices = self._clip_indices(live_lap, rng)
+            # Drawn once unless a lateral gap is set, so runs without it sample exactly what they always did.
+            for _ in range(20 if config.max_lateral_gap_m > 0 else 1):
+                live_lap = pool[int(rng.integers(0, len(pool)))]
+                indices = self._clip_indices(live_lap, rng)
+                if (config.max_lateral_gap_m <= 0
+                        or self._lateral_gap(reference_lap, grid, live_lap, indices) <= config.max_lateral_gap_m):
+                    break
             raw = np.asarray(live_lap.frames()[indices])
             raw, parts = self._camera(live_lap, raw, live_lap.t()[indices].astype(np.float64), rng, live=True, frame_idx=indices)
             # Drawn only when enabled, so runs without traffic sample exactly what they always did.
