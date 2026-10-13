@@ -2535,7 +2535,7 @@ Both pass the wrong-reference control. The labels are not the cause: the batch's
 with v3's for the same drives within ±0.4 m (median 0.0 m, fitted from the time to reach
 each place against 1 / speed). With the offset already cheap, there was little to learn,
 and the re-render gap is what the extra clips mostly carried. The release stays
-`v3_mobilenet_lr1_s0`; the batch stays as the lateral test set.
+`v3_mobilenet_lr1_s0`. The batch was deleted from the Mac (2026-10-13): replay re-renders carry about half the detail of recordings (`experiments/sharpness.py`); `lateral_offset.py` needs a sharp re-render of it (Windows keeps the sessions).
 
 **Colour hardly matters** (`pose_sensitivity.py --colour`, same tests, 2026-10-11): both
 laps greyscale 1.2%, both with red and blue swapped 1.1%; the live lap alone warmer
