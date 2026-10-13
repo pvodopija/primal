@@ -2302,3 +2302,103 @@ model precision, which is why b1007 did not help and every wide-trained model lo
 
 Hand-over as usual: `git pull --rebase` first, a dated Windows → Mac entry, never
 force-push, never touch `main`.
+
+## 2026-10-13 (night) — Windows → Mac: the blur is the virtual camera's resampling; ten new circuits packed (live only), six USB parts
+
+### The blur
+
+**Not AC's replays.** At v3's own FOV a replay re-render scores like the live recording of
+the same drive (`sharpness.py`'s measure, Laguna: live 969, its replay re-render 882, both
+in `packed_ac_v3`). On the new circuits every replay pass keeps as much detail as its live
+pass; the differences between them follow the weather (clear and overcast up to 2x apart,
+either way round), not live against replay.
+
+**It is `train/camera.py`'s bilinear warp.** The wide packs are only ~4% finer than the
+training view (focal 75.5 px against 72.1), and a bilinear resample that close to 1:1 is a
+low-pass filter: v3's own frames lose 58% of their score through the same warp (873 → 367),
+and wide frames resampled nearest-neighbour score like v3 (841-849). Bicubic keeps what an
+ideal render straight from the 720p capture keeps (warped at 8x and area-averaged down):
+every new-circuit session, live and replay, keeps 91-101% of that ideal through pack +
+bicubic camera. Fixed in **cf9489c** (`render` uses `INTER_CUBIC`; test
+`test_a_near_one_to_one_render_keeps_fine_detail` fails on bilinear).
+
+`sharpness.py` with the bicubic camera:
+
+| Set | Before | Bicubic |
+|---|---|---|
+| `packed_ac_v3` (native) | 975 | 975 |
+| `packed_ac_v3_wide` | ~530 | 707 |
+| `packed_ac_b1007_full_own` | ~540 | 832 (−15%) |
+| `packed_ac_b1007_full_alt` | — | 683 |
+| `packed_ac_b1007_new_live` (other tracks) | — | 547 |
+
+**About "not the resampling" (ml-pivot, 8.7% at twice the size and area-averaged):** that
+control is blurrier still, not sharper. On the new set: bilinear 444, bilinear to 2x then
+`INTER_AREA` down 302, bicubic 647. So whether detail explains the re-render gap (8.3%
+against 4.6%) is untested; re-running that 0 m comparison and the b1007 recipe with the
+bicubic camera is the test. Note `train/dataset.py`'s pose augmentation (`warpAffine`,
+`INTER_LINEAR`) blurs native v3 clips the same way whenever it moves them; left as is
+(changes the release recipe, your call).
+
+The score itself follows scenery and weather as much as blur (the new circuits run 300 to
+1000), so a set of other tracks is judged against its own ideal render, not against v3's
+975 (`sharpness.py`'s docstring, d15896e).
+
+### Ten new circuits: `packed_ac_b1007_new_live`
+
+Live bot laps, rig full-width wander (turn logged in `pose.npz`, `cam_yaw_deg`), 100°
+vertical, 320x172, `--ref-spacing-m 2.0`, the session's own weather at noon. **141 laps (70
+full), 766,558 frames, 126.7 GB**; 8 training tracks and 2 holdout.
+
+| Track | Split | Weather | Laps (full) | Frames | `sharpness.py` | Kept of ideal |
+|---|---|---|---|---|---|---|
+| `ks_zandvoort` | train | 15 | 12 (9) | 70,626 | 460 | 95% |
+| `ks_barcelona__layout_gp` | train | 19 | 15 (8) | 78,645 | 448 | 99% |
+| `mugello` | train | 15 | 15 (9) | 79,790 | 477 | 94% |
+| `imola` | train | 19 | 18 (6) | 79,092 | 1001 | 96% |
+| `spa` | train | 15 | 17 (8) | 102,743 | 597 | 93% |
+| `rt_suzuka__suzukagp` | train | 19 | 16 (5) | 91,184 | 678 | 94% |
+| `ks_silverstone1967` | train | 15 | 14 (8) | 64,068 | 307 | 96% |
+| `js_thruxton` | train | 19 | 13 (8) | 53,881 | 496 | 98% |
+| `deutschlandring` | **holdout** | 15 | 9 (4) | 82,512 | 837 | 93% |
+| `rt_daytona__sportscar` | **holdout** | 19 | 12 (5) | 64,017 | 802 | 91% |
+
+Together with v3: 17 training tracks (9 + 8) and 5 unseen (3 + 2).
+
+**The opposite-weather passes are not packed** (Pavle's call): they repeat the same drives
+on the same paths with only the light changed, and the forced weather cost nothing extra in
+your tests (34.4% vs 36.8%), while colour barely matters (greyscale 1.2%). The ten replay
+sessions (`data/batch1007_new_alt.txt`) stay on Windows; about 4 hours to pack if wanted.
+
+**One thing to handle: the references.** Every lap of a new track wanders across the full
+width on its own path, and no new track has a lap on the AI line, so a reference and a live
+clip can be up to the track's width apart (your numbers: over 5 m costs ~30%). Either pair
+clips by `pose.npz` `lateral_m` (e.g. within 3 m of the reference), or ask and Windows
+records one on-line lap per new track (rig wander off, ~20 min each unattended, ~1 GB per
+track packed). The camera sits where v3's did (1.15 m up, the bumper camera's place).
+
+### On the USB drive (six trips)
+
+`D:\Documents\Transfer\newtracks\usb_newtracks_part1..6`: 23.4 / 23.7 / 23.9 / 23.8 / 23.5
+/ 8.4 GB, filled lap by lap (new `capture.usb_parts --by-lap`, 07cdc7d), so a session can
+span two neighbouring parts. Each part has `packed_ac_b1007_new_live/laps/...`, the whole
+`index.json` and a `MANIFEST.txt`. `experiments/check_batch.py` on the parts here: 141 of
+141 laps, 0 problems. On the Mac:
+
+```bash
+for p in /Volumes/<USB>/usb_newtracks_part*; do
+  mkdir -p data/packed_ac_b1007_new_live && cp -R "$p"/packed_ac_b1007_new_live/. data/packed_ac_b1007_new_live/
+done
+```
+
+(one part per trip: run the loop after each copy, or copy each part to
+`data/usb_newtracks_partN` and run `check_batch.py data/usb_newtracks` once all six are in).
+
+### Disk
+
+Windows deleted every old pack (v1, v2, v3, v3_wide, lines/smoke/yaw, b1007 and their USB
+copies); `data/sessions/` holds everything they came from (235 GB, of which 132 GB are
+replay re-renders that can be rendered again from their `.acreplay`). Pavle is keeping the
+Mac to v3, the real footage, b1007 `full_own` and the ±3 m sets; `full_alt` and the
+`usb_b1007_part*` folders go once `find data/packed_ac_b1007_* -type l` shows no links into
+them. Say when the new set has arrived and Windows deletes its pack too.
