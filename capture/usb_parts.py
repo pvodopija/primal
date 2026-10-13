@@ -25,8 +25,8 @@ def tree_size(path: Path) -> int:
     return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
 
 
-def plan_units(sets: list[Path], cap: float) -> list[tuple[Path, list[str], int]]:
-    """(set, lap paths, bytes): one per session, or one per lap for a session over the cap."""
+def plan_units(sets: list[Path], cap: float, by_lap: bool = False) -> list[tuple[Path, list[str], int]]:
+    """(set, lap paths, bytes): one per session, or one per lap for a session over the cap (or always, by_lap)."""
     units = []
     for packed in sets:
         by_session: dict[str, list[str]] = defaultdict(list)
@@ -34,7 +34,7 @@ def plan_units(sets: list[Path], cap: float) -> list[tuple[Path, list[str], int]
             by_session[lap["session_id"]].append(lap["path"])
         for paths in by_session.values():
             sizes = [tree_size(packed / p) for p in paths]
-            if sum(sizes) <= cap:
+            if sum(sizes) <= cap and not by_lap:
                 units.append((packed, paths, sum(sizes)))
             else:
                 units.extend((packed, [p], size) for p, size in zip(paths, sizes))
@@ -55,6 +55,18 @@ def fill_parts(units: list[tuple[Path, list[str], int]], cap: float) -> list[tup
     return [(total, members) for total, members in sorted(parts, key=lambda p: -p[0])]
 
 
+def fill_in_order(units: list[tuple[Path, list[str], int]], cap: float) -> list[tuple[int, list]]:
+    """Laps in index order, each part filled until the next lap won't fit: a session's laps
+    stay in one part or two neighbouring ones, and no part is left half empty."""
+    parts: list[list] = [[0, []]]
+    for unit in units:
+        if parts[-1][1] and parts[-1][0] + unit[2] > cap:
+            parts.append([0, []])
+        parts[-1][0] += unit[2]
+        parts[-1][1].append(unit)
+    return [(total, members) for total, members in parts]
+
+
 def link_tree(source: Path, target: Path) -> None:
     for f in source.rglob("*"):
         if f.is_file():
@@ -70,10 +82,13 @@ def main() -> None:
     parser.add_argument("--dest", required=True, help="where the part folders go (same volume as the sets)")
     parser.add_argument("--prefix", required=True, help="parts are named usb_<prefix>_partN")
     parser.add_argument("--max-gb", type=float, default=24.0)
+    parser.add_argument("--by-lap", action="store_true",
+                        help="fill parts lap by lap in order (fewest parts) instead of keeping sessions whole")
     args = parser.parse_args()
 
     cap = args.max_gb * 1e9
-    parts = fill_parts(plan_units([Path(s) for s in args.sets], cap), cap)
+    units = plan_units([Path(s) for s in args.sets], cap, by_lap=args.by_lap)
+    parts = fill_in_order(units, cap) if args.by_lap else fill_parts(units, cap)
     for i, (total, members) in enumerate(parts, 1):
         root = Path(args.dest) / f"usb_{args.prefix}_part{i}"
         carried = []
