@@ -45,3 +45,34 @@ def test_int8_weights_sit_on_a_per_channel_grid():
     steps = q / scale.view(-1, 1, 1, 1)
     assert torch.allclose(steps, steps.round(), atol=1e-4)
     assert (q - w).abs().max() <= scale.max() / 2 + 1e-6
+
+
+def test_range_balance_penalises_a_loud_channel_and_its_gradient_evens_it_out():
+    torch.manual_seed(0)
+    net = nn.Sequential(nn.Conv2d(3, 8, 3, padding=1), nn.BatchNorm2d(8), nn.ReLU())
+    with torch.no_grad():
+        net[0].weight[0] *= 50  # one channel far louder than the rest
+    net.train()
+    net[1].eval()  # frozen statistics, as the encoder's BatchNorms
+    balance = quantize.RangeBalance(net, target=4.0)
+    x = torch.randn(16, 3, 16, 16)
+    optimiser = torch.optim.SGD(net.parameters(), lr=0.05)
+    net.eval()
+    with torch.no_grad():
+        before = net[1](net[0](x)).abs().amax(dim=(0, 2, 3))
+    net.train()
+    net[1].eval()
+    first = None
+    for _ in range(60):
+        balance.clear()
+        net(x)
+        p = balance.penalty()
+        first = float(p) if first is None else first
+        optimiser.zero_grad()
+        p.backward()
+        optimiser.step()
+    net.eval()
+    with torch.no_grad():
+        after = net[1](net[0](x)).abs().amax(dim=(0, 2, 3))
+    assert first > 0
+    assert float(after.max() / after.median()) < float(before.max() / before.median())

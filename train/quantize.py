@@ -56,10 +56,13 @@ class _Weight(nn.Module):
 
 
 class _ActivationRange:
-    """An int8 activation range per layer: the percentile of what it has seen, averaged.
-    Kept on the layer's device and refreshed every EVERY calls, so training never waits on it."""
+    """An int8 activation range per layer, averaged over what it has seen: the 99.99th
+    percentile ("percentile"), or the plain minimum and maximum ("minmax"), which is how
+    TFLite calibrates. Kept on the layer's device and refreshed every EVERY calls, so
+    training never waits on it."""
 
-    def __init__(self):
+    def __init__(self, ranges: str = "percentile"):
+        self.ranges = ranges
         self.lo: torch.Tensor | None = None
         self.hi: torch.Tensor | None = None
         self.frozen = False
@@ -67,10 +70,13 @@ class _ActivationRange:
 
     def _update(self, out: torch.Tensor) -> None:
         flat = out.detach().flatten().float()
-        if flat.numel() > SAMPLE:  # a random sample gives the percentile as well, far faster
-            flat = flat[torch.randint(0, flat.numel(), (SAMPLE,), device=flat.device)]
-        k = max(int(round((1 - PERCENTILE) * flat.numel())), 1)
-        hi, lo = flat.topk(k).values[-1], flat.topk(k, largest=False).values[-1]
+        if self.ranges == "minmax":
+            hi, lo = flat.max(), flat.min()
+        else:
+            if flat.numel() > SAMPLE:  # a random sample gives the percentile as well, far faster
+                flat = flat[torch.randint(0, flat.numel(), (SAMPLE,), device=flat.device)]
+            k = max(int(round((1 - PERCENTILE) * flat.numel())), 1)
+            hi, lo = flat.topk(k).values[-1], flat.topk(k, largest=False).values[-1]
         if self.lo is None:
             self.lo, self.hi = lo, hi
         else:
@@ -110,7 +116,7 @@ class Handle:
         self.hooks, self.ranges, self.weighted = [], [], []
 
 
-def install(module: nn.Module, mode: str) -> Handle:
+def install(module: nn.Module, mode: str, ranges: str = "percentile") -> Handle:
     if mode not in MODES:
         raise ValueError(f"mode {mode!r}, not one of {MODES}")
     handle = Handle()
@@ -122,7 +128,7 @@ def install(module: nn.Module, mode: str) -> Handle:
             if mode == "fp16":
                 handle.hooks.append(m.register_forward_hook(lambda mod, i, o: round_fp16(o) if torch.is_tensor(o) and o.is_floating_point() else o))
             else:
-                r = _ActivationRange()
+                r = _ActivationRange(ranges)
                 handle.ranges.append(r)
                 handle.hooks.append(m.register_forward_hook(r))
     return handle
@@ -131,3 +137,46 @@ def install(module: nn.Module, mode: str) -> Handle:
 def float_state_dict(model: nn.Module) -> dict:
     """The state dict under the usual names, whether or not weights are parametrized."""
     return {k.replace(".parametrizations.weight.original", ".weight"): v for k, v in model.state_dict().items()}
+
+
+BALANCE_FRAMES = 16
+
+
+class RangeBalance:
+    """Channel balancing for int8: int8 gives a whole tensor one scale, so a channel far
+    louder than the rest leaves the quiet ones a few steps. For every BatchNorm and activation
+    output it measures each channel's largest magnitude in the batch and, when the loudest
+    channel exceeds the median one by more than `target` times, adds the log of the excess:
+    trained with it, the network spreads its signal evenly (2026-10-15: the stem's channels
+    spanned 28-34x). Only on tensors that train (gradients on);
+    `clear` before a step's forward, `penalty` after it."""
+
+    def __init__(self, module: nn.Module, target: float = 4.0):
+        self.target = float(target)
+        self.terms: list[torch.Tensor] = []
+        self.seen: set[int] = set()  # layers measured this step: once each is plenty, and fast
+        self.hooks = [m.register_forward_hook(self._hook) for m in module.modules()
+                      if isinstance(m, (nn.BatchNorm2d, nn.Hardswish, nn.ReLU, nn.ReLU6))]
+
+    def _hook(self, module: nn.Module, inputs, out: torch.Tensor) -> None:
+        # gradients on, not module.training: the encoder's BatchNorms stay in eval mode (ImageNet's statistics)
+        if (id(module) in self.seen or not (torch.is_grad_enabled() and torch.is_tensor(out)
+                                            and out.requires_grad and out.dim() == 4)):
+            return
+        self.seen.add(id(module))
+        # each channel's loudest value over a few frames: a copy (so in-place activations after
+        # this layer cannot touch what the gradient needs) small enough that a step's hundreds of
+        # frames do not multiply the activation memory
+        r = out[:BALANCE_FRAMES].clone().abs().amax(dim=(0, 2, 3)) + 1e-6
+        excess = torch.log(r.max()) - torch.log(r.median()) - torch.log(torch.tensor(self.target, device=r.device))
+        self.terms.append(torch.relu(excess))
+
+    def clear(self) -> None:
+        self.terms, self.seen = [], set()
+
+    def penalty(self) -> torch.Tensor | float:
+        return torch.stack(self.terms).mean() if self.terms else 0.0
+
+    def remove(self) -> None:
+        for h in self.hooks:
+            h.remove()

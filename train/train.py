@@ -247,6 +247,12 @@ def main() -> None:
     parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
     parser.add_argument("--qat", choices=("fp16", "int8"), default=None,
                         help="train the encoder under simulated float16 or int8 arithmetic (train/quantize.py)")
+    parser.add_argument("--qat-ranges", choices=("percentile", "minmax"), default="percentile",
+                        help="int8 activation ranges: the 99.99th percentile, or min/max as TFLite calibrates")
+    parser.add_argument("--balance", type=float, default=0.0,
+                        help="weight of the channel-balancing term for int8 (train/quantize.py RangeBalance); 0: off")
+    parser.add_argument("--balance-target", type=float, default=4.0,
+                        help="loudest channel / median channel allowed before the balancing term applies")
     parser.add_argument("--teacher", default=None,
                         help="checkpoint of a stronger model to learn from as well (distillation), e.g. a resnet18 run")
     parser.add_argument("--distill-weight", type=float, default=1.0)
@@ -392,8 +398,13 @@ def main() -> None:
         print(f"started from {args.init}")
     if args.qat:
         from train import quantize
-        quantize.install(model.encoder, args.qat)
-        print(f"encoder trains under simulated {args.qat} (weights and every layer's output rounded)")
+        quantize.install(model.encoder, args.qat, ranges=args.qat_ranges)
+        print(f"encoder trains under simulated {args.qat} ({args.qat_ranges} ranges; weights and every layer's output rounded)")
+    balance = None
+    if args.balance > 0:
+        from train import quantize
+        balance = quantize.RangeBalance(model.encoder, args.balance_target)
+        print(f"channel balancing: weight {args.balance}, loudest / median channel over {args.balance_target}x penalised")
 
     name = args.name or f"{gate.name}_{time.strftime('%Y%m%d-%H%M%S')}"
     run = ML_ROOT / "runs" / name
@@ -455,6 +466,8 @@ def main() -> None:
             grad_index = reference_grad_bins(
                 batch["frame_targets"], reference.shape[0], args.ref_grad_window, args.ref_grad_random, generator
             ).to(device)
+        if balance is not None:
+            balance.clear()  # terms from the last step's backward (checkpoint recomputation) out
         logits, correlation = model(
             live, reference, use_checkpoint=not args.no_checkpoint, ref_grad_index=grad_index
         )
@@ -470,6 +483,8 @@ def main() -> None:
             sigma_bins=args.sigma_bins,
         )
         total = parts.total
+        if balance is not None:
+            total = total + args.balance * balance.penalty()
         if teacher is not None:
             # Learn from the teacher too: its belief over the reference (where the clip is)
             # and its per-frame similarity rows (which places look alike), both softened.
