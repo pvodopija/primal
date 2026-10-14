@@ -91,7 +91,8 @@ STREAM = os.environ.get("REAL_STREAM", "")
 FRAMES_SUFFIX = (f"_{CROP_NAME}" if CROP_NAME else "") + (f"_{STREAM}" if STREAM else "")
 # REAL_GREY=1: every frame greyscale (three equal channels), reference and live alike
 GREY = os.environ.get("REAL_GREY") == "1"
-SUFFIX = FRAMES_SUFFIX + ("_grey" if GREY else "")
+# PRIMAL_SIMULATE=int8|fp16 (train/eval.py's load_model) scores the encoder as on an NPU: results apart
+SUFFIX = FRAMES_SUFFIX + ("_grey" if GREY else "") + (f"_{os.environ['PRIMAL_SIMULATE']}" if os.environ.get("PRIMAL_SIMULATE") else "")
 
 
 def _colour(f: np.ndarray) -> np.ndarray:

@@ -245,6 +245,8 @@ def main() -> None:
     parser.add_argument("--aug-parts", default="pose,blur,occlude,vignette,jpeg",
                         help="which --camera-aug effects to apply, comma-separated")
     parser.add_argument("--init", default=None, help="start from this checkpoint's weights (e.g. a clean fine-tune)")
+    parser.add_argument("--qat", choices=("fp16", "int8"), default=None,
+                        help="train the encoder under simulated float16 or int8 arithmetic (train/quantize.py)")
     parser.add_argument("--teacher", default=None,
                         help="checkpoint of a stronger model to learn from as well (distillation), e.g. a resnet18 run")
     parser.add_argument("--distill-weight", type=float, default=1.0)
@@ -388,6 +390,10 @@ def main() -> None:
     if args.init:
         model.load_state_dict(torch.load(args.init, map_location=device, weights_only=False)["model"])
         print(f"started from {args.init}")
+    if args.qat:
+        from train import quantize
+        quantize.install(model.encoder, args.qat)
+        print(f"encoder trains under simulated {args.qat} (weights and every layer's output rounded)")
 
     name = args.name or f"{gate.name}_{time.strftime('%Y%m%d-%H%M%S')}"
     run = ML_ROOT / "runs" / name
@@ -515,7 +521,7 @@ def main() -> None:
                 best = summary.median_m
                 torch.save(
                     {
-                        "model": model.state_dict(),
+                        "model": quantize.float_state_dict(model) if args.qat else model.state_dict(),
                         "args": vars(args),
                         "frame_size": list(frame_size),
                         "step": step,

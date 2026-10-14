@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import zlib
 from dataclasses import asdict
 from pathlib import Path
@@ -58,7 +59,25 @@ def load_model(checkpoint: Path, device: torch.device) -> tuple[SequenceAligner,
     ).to(device)
     model.load_state_dict(payload["model"])
     model.eval()
+    simulate = os.environ.get("PRIMAL_SIMULATE")
+    if simulate:  # every evaluation "as on the NPU": the encoder in simulated fp16 or int8
+        from train import quantize
+        handle = quantize.install(model.encoder, simulate)
+        if simulate == "int8":
+            _calibrate(model, device)
+            handle.freeze_ranges()
+        print(f"encoder simulated in {simulate}")
     return model, payload
+
+
+def _calibrate(model: SequenceAligner, device: torch.device, frames: int = 256) -> None:
+    """int8 activation ranges from AC training frames, as a deployed model's calibration."""
+    laps = LapIndex.load(Path("data/packed_ac_v3"), split="train").laps
+    rng = np.random.default_rng(0)
+    picks = [np.asarray(laps[i].frames()[int(rng.integers(0, laps[i].n_frames))]) for i in rng.integers(0, len(laps), frames)]
+    with torch.no_grad():
+        for _ in range(3):
+            model.encoder(torch.from_numpy(_to_chw(np.stack(picks))).to(device))
 
 
 def reference_axis_of(payload: dict) -> str:
