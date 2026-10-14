@@ -2568,6 +2568,38 @@ Float32 matches exactly (cosine 1.0000) and runs on the GPU, not the Neural Engi
 `train/release.py` now refuses to write a release below its own tolerance (cosine 0.995)
 and takes `--encoder-precision float32`.
 
+**On the target hardware: float16 and int8** (2026-10-15). Core ML's agreement with PyTorch
+(`experiments/coreml_int8.py`, cosine on 240 frames each of AC held-out tracks and two real
+videos never trained on; tolerance 0.995): in float16 the release passes everywhere, the
+pitch model fails on real RaceChrono frames (min 0.932, 82 of 240; sim frames pass); with
+int8 weights and int8 activations (Core ML's A8W8, the nearest stand-in for Halo's int8 NPU)
+**every model collapses** (median 0.56-0.72 the release, 0.39-0.62 the pitch model). The
+pitch model's sensitivity is not a range problem (activations peak ~200, pre-normalisation
+lengths 15-21, BatchNorm gains as the release's): a rounding-sized nudge after the first
+block grows to a 100% change through blocks 5-7 (squeeze-excite, hard-swish) on its worst
+frame, where the release's stays ~10-20%.
+
+`train/quantize.py` simulates both (int8: per-channel weights, per-tensor asymmetric
+activations over a tracked 99.99th percentile, every layer's output, rounding passed
+straight through); `--qat int8` trains under it, `PRIMAL_SIMULATE=int8|fp16` evaluates any
+script as on an NPU. `newtracks_pitch_qat8_s0` (`experiments/chains/qat.sh`: the pitch model
+trained on 2000 steps under int8):
+
+| | pitch model | QAT int8 |
+|---|---|---|
+| Core ML float16, min cosine sim / RaceChrono / indoor | 0.999 / **0.932** / 0.999 | 0.999 / **0.9997** / 0.999 |
+| Core ML A8W8, median cosine | 0.39-0.62 | 0.75-0.82 |
+| simulated int8: new tracks level / ±8 deg | 23.7 / 38-40% | **20.9 / 31-36%** |
+| simulated int8: real indoor / BHGP / RaceChrono | 19.1 / 31.3 / 19.3% | **16.2 / 29.3 / 15.4%** |
+| float: real indoor / BHGP / RaceChrono | 16.2 / **28.2** / 16.8% | **13.7** / 29.5 / **13.6%** |
+| float: G2 / new tracks level / ±8 deg | **22.6 / 15.0 / 23-26%** | 27.9 / 17.4 / 26-32% |
+
+Float16 is fixed: `releases/primal-qat8-20261014` passes its check in float16 (cosine min
+0.9997) and runs on the Neural Engine. Int8 is better but not there: Core ML quantizes
+activations symmetrically (no zero point), which the simulation does not train for, so
+its A8W8 still diverges. In float the rounding acted as a regulariser on two of the three
+real videos (best indoor and RaceChrono so far) and cost the sim tests 2-5 points.
+
 **Colour hardly matters** (`pose_sensitivity.py --colour`, same tests, 2026-10-11): both
 laps greyscale 1.2%, both with red and blue swapped 1.1%; the live lap alone warmer
 (white balance), half desaturated, 40% darker or hue-shifted 30° 0.7-1.1%. Only a

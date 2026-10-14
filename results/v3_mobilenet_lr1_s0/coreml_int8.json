@@ -1,0 +1,32 @@
+{
+  "float16, AC held-out tracks": {
+    "cosine_min": 0.9994125366210938,
+    "cosine_median": 0.9997619986534119,
+    "below_0.995": 0
+  },
+  "float16, real: RaceChrono": {
+    "cosine_min": 0.9995028972625732,
+    "cosine_median": 0.9997920393943787,
+    "below_0.995": 0
+  },
+  "float16, real: indoor kart": {
+    "cosine_min": 0.9994746446609497,
+    "cosine_median": 0.9997592568397522,
+    "below_0.995": 0
+  },
+  "int8 weights + int8 activations, AC held-out tracks": {
+    "cosine_min": 0.06968776136636734,
+    "cosine_median": 0.5565779805183411,
+    "below_0.995": 240
+  },
+  "int8 weights + int8 activations, real: RaceChrono": {
+    "cosine_min": 0.41985276341438293,
+    "cosine_median": 0.6375064849853516,
+    "below_0.995": 240
+  },
+  "int8 weights + int8 activations, real: indoor kart": {
+    "cosine_min": 0.5038515329360962,
+    "cosine_median": 0.7183717489242554,
+    "below_0.995": 240
+  }
+}

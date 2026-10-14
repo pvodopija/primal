@@ -1,0 +1,21 @@
+encoder simulated in int8
+  newtracks_pitch_s0 deutschlandring              done
+  newtracks_pitch_s0 rt_daytona__sportscar        done
+
+newtracks_pitch_s0: new held-out tracks, two-mode tracker: over 100 ms, then the share of ticks off by 0.1-0.15 s, 0.15-0.25 s, 0.25-0.5 s, 0.5-1 s, over 1 s
+  level               23.7%  (median  42 ms, p90  420 ms)   5.6%   4.7%   4.5%   4.2%   4.8%
+  pitch -4            35.8%  (median  63 ms, p90  605 ms)   9.3%   8.0%   6.8%   5.0%   6.6%
+  pitch +4            34.9%  (median  64 ms, p90  544 ms)   9.4%   8.0%   6.9%   4.9%   5.8%
+  pitch -8            40.3%  (median  74 ms, p90  611 ms)  11.0%   9.6%   7.9%   5.5%   6.3%
+  pitch +8            38.3%  (median  73 ms, p90  567 ms)  11.4%   9.0%   6.8%   4.4%   6.6%
+  pitch -12           46.6%  (median  90 ms, p90  773 ms)  11.7%  10.9%   9.1%   6.8%   8.1%
+  pitch +12           46.9%  (median  91 ms, p90  664 ms)  13.6%  12.0%   8.4%   6.0%   6.8%
+  pitch -16           70.0%  (median 253 ms, p90 25337 ms)   9.1%  10.6%  10.8%   8.4%  31.0%
+  pitch +16           71.8%  (median 222 ms, p90 11826 ms)  11.6%  12.9%  10.9%   7.0%  29.4%
+  shake 1             25.2%  (median  43 ms, p90  451 ms)   6.4%   4.9%   4.6%   4.4%   5.0%
+  shake 2             26.9%  (median  45 ms, p90  482 ms)   6.7%   5.6%   4.8%   4.4%   5.4%
+  shake 2, pitch -8   41.3%  (median  77 ms, p90  593 ms)  11.2%  10.5%   8.0%   5.6%   6.1%
+  level, 0-1 m sideways:  21.1% (37 ms, 11353 ticks)
+  level, 1-3 m sideways:  22.6% (40 ms, 20616 ticks)
+  level, 3-6 m sideways:  25.3% (44 ms, 19659 ticks)
+  level, 6-99 m sideways:  26.2% (51 ms, 8365 ticks)
