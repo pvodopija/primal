@@ -21,6 +21,8 @@ The parent checkout is `hotlapp`. This folder is a **submodule** at
 3. [`../README.md`](../README.md) — how to capture, pack, train, and run gates.
    [`capture-log.md`](capture-log.md) holds the measurements behind the capture
    setup and the inventory of recorded sessions.
+   [`releases.md`](releases.md) lists the model releases (what each is good at, which
+   one the app has) and how to put one in the app.
 4. Code, in this order: `train/dataset.py`, `train/model.py`, `train/eval.py`,
    `train/synthetic.py`. Capture only if the task is the AC overlay / labels.
 
@@ -36,6 +38,7 @@ trees with other (mostly closed) plans.
 | `tests/` | Overlay wire format, fake-recording e2e, sampler invariants + a learning smoke test. |
 | `docs/ml-pivot.md` | Active system design. |
 | `results/INDEX.md` | Every training run: settings, controls, headline numbers; its result files next to it. |
+| `releases/` (not in git) | Model releases for devices, built by `train/release.py`; recorded in `docs/releases.md`. |
 | `experiments/` | The scripts behind each finding, mapped in its README. |
 
 The network is given a live clip of K frames **and** one reference lap. It
