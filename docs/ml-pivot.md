@@ -2678,7 +2678,13 @@ descriptors** (`npu/encode_tflite.py` on TFLite's reference kernels, scored by
 `real_truth_orb.py` with `PRIMAL_DESCRIPTORS`; the head in float), over 100 ms: indoor 15.7%
 (float 16.2%), BHGP 29.6% (28.2%), RaceChrono 16.0% (16.8%); unsplit int8 23.4 / 35.8 / 17.1%.
 The cosine tolerance of 0.995 is stricter than the delta needs: what matters is that places
-keep their order. Still to check: the head in int8 too, and Halo itself.
+keep their order. **The head in int8 too** (simulated: `PRIMAL_SIMULATE_HEAD=int8`, TFLite's
+min/max ranges set online; the encoder's int8 descriptors from TFLite): indoor 16.5%, BHGP
+29.8%, but RaceChrono 21.0% (16.0% with the head in float; median 45 against 36 ms). Its
+reference is the longest (87 s, ~1700 bins): one tensor holds the match's peak and the many
+weak bins, the same one-scale problem along the lap. Next: the head only fine-tuned under int8
+(the encoder frozen), and/or the head run on a window of bins around the tracker (also cuts
+its NPU time), or 16-bit activations for the head; then Halo itself.
 
 **A stress demo** (`experiments/stress_demo.py`, `runs/demos/stress_deutschlandring.mp4`):
 one lap of the held-out Deutschlandring under heavy shake, a nodding head, braking dips,

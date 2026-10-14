@@ -67,6 +67,10 @@ def load_model(checkpoint: Path, device: torch.device) -> tuple[SequenceAligner,
             _calibrate(model, device)
             handle.freeze_ranges()
         print(f"encoder simulated in {simulate}")
+    if os.environ.get("PRIMAL_SIMULATE_HEAD"):  # the head as on an NPU too: int8, TFLite's min/max ranges, set online
+        from train import quantize
+        quantize.install(model.head, os.environ["PRIMAL_SIMULATE_HEAD"], ranges="minmax")
+        print(f"head simulated in {os.environ['PRIMAL_SIMULATE_HEAD']}")
     return model, payload
 
 
