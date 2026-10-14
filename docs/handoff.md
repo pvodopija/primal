@@ -2420,3 +2420,20 @@ deg and kart shake, then without, against the release.
 
 **Optional, cheap:** one lap on the AI line per new track (rig wander off, ~20 min each,
 ~1 GB packed) would give the new tracks proper references for tests and training.
+
+## 2026-10-15 — Mac → Windows: branch history rewritten (read before pulling)
+
+`resolution-agnostic-encoder` was rewritten from `1cac6d7` onward and force-pushed (Pavle's
+decision): a result file had carried a small trained probe's weights. Only that file changed;
+every commit since has a new hash. **On Windows, before anything else:**
+
+```bash
+git fetch origin
+git status        # if there is unpushed work, save it first (git format-patch origin/resolution-agnostic-encoder..)
+git reset --hard origin/resolution-agnostic-encoder
+```
+
+Never merge or push the old history back (it would bring the weights back). From now on, no
+trained parameters, checkpoints, releases, exports or data go into git, however small:
+`.gitignore` blocks the file types, and `experiments.index_runs` skips any result JSON
+holding weights.
