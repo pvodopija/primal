@@ -2662,6 +2662,24 @@ from the int8 training, not the balancing; and min/max QAT cost float accuracy (
 35.0%, new tracks level 15.0 -> 19.9%, ±8 deg 23-26 -> 36-40%, night lap times 66 -> 124 ms;
 indoor 16.2 -> 14.9%). Not adopted.
 
+**The channel split: Halo's int8 at full-precision accuracy** (2026-10-16). Instead of
+retraining, the exported network keeps a layer's output as several tensors, each a group of
+channels of similar range with its own int8 scale (`npu/build_mobilenet.py ... split`:
+per-channel operations run per group, a full convolution reading the groups is one
+convolution per group, added; the float network is unchanged, cosine 1.000000 to PyTorch).
+Groups from the calibration frames: a full convolution's output (the stem, the blocks'
+expansions) is split when its loudest channel exceeds its median by over 6x, a new group
+starting at 4x below a group's loudest, at most 3. On the pitch model as trained: 5 layers
+split (the stem 18x into 1, 10 and 5 channels); TFLite int8 agreement with PyTorch from median
+0.47-0.56 to 0.92 (AC held out), 0.86 (RaceChrono), 0.96 (indoor); Vela: all 181 operators on
+the NPU, 6.0 ms a frame (4.6 unsplit), 248 KiB SRAM, 1.13 MB weights. Finer splitting
+(4x, up to 5 or 6 groups) gains nothing and costs up to 8.3 ms. **The delta with Halo's int8
+descriptors** (`npu/encode_tflite.py` on TFLite's reference kernels, scored by
+`real_truth_orb.py` with `PRIMAL_DESCRIPTORS`; the head in float), over 100 ms: indoor 15.7%
+(float 16.2%), BHGP 29.6% (28.2%), RaceChrono 16.0% (16.8%); unsplit int8 23.4 / 35.8 / 17.1%.
+The cosine tolerance of 0.995 is stricter than the delta needs: what matters is that places
+keep their order. Still to check: the head in int8 too, and Halo itself.
+
 **A stress demo** (`experiments/stress_demo.py`, `runs/demos/stress_deutschlandring.mp4`):
 one lap of the held-out Deutschlandring under heavy shake, a nodding head, braking dips,
 glances down at the wheel (-15 deg) and a stretch with the helmet tilted up; over 100 ms:

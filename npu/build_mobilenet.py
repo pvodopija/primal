@@ -8,7 +8,7 @@ for Halo (Ethos-U55-128, 160 MHz, npu/vela.ini): which operators run on the NPU,
 The descriptor's final unit-length scaling stays outside the model (128 numbers, on the CPU);
 cosine similarity ignores it.
 
-Usage: .venv-npu/bin/python npu/build_mobilenet.py EXPORT.npz OUT_DIR [CLIP_PERCENTILE, e.g. 99.99]
+Usage: .venv-npu/bin/python npu/build_mobilenet.py EXPORT.npz OUT_DIR [split | CLIP_PERCENTILE, e.g. 99.99]
 """
 from __future__ import annotations
 
@@ -81,7 +81,7 @@ def build(p: dict, clips: list[tuple[float, float]] | None = None) -> keras.Mode
     for c, src in enumerate((2, 1, 0)):
         w[0, 0, src, c] = 1.0 / p["std"][c]
     norm.set_weights([w, (-p["mean"] / p["std"]).astype(np.float32)])
-    block_in, block_outputs = None, []
+    block_in, block_outputs, conv_points = None, [], {}
     for i, op in enumerate(json.loads(str(p["ops"]))):
         if op["type"] == "block_start":
             block_in = x
@@ -111,6 +111,7 @@ def build(p: dict, clips: list[tuple[float, float]] | None = None) -> keras.Mode
                 layer = keras.layers.Conv2D(w.shape[0], w.shape[-1], strides=op["stride"])
                 x = layer(x)
                 layer.set_weights([w.transpose(2, 3, 1, 0), b])
+            pre = x
             if op["act"]:  # the folded conv's own output is an int8 tensor too, before its activation
                 x = point(x)
             if op["act"] == "relu":
@@ -118,6 +119,7 @@ def build(p: dict, clips: list[tuple[float, float]] | None = None) -> keras.Mode
             elif op["act"] == "hardswish":
                 x = keras.layers.Lambda(lambda t: t * hard_sigmoid(t))(x)
             x = point(x)
+            conv_points[i] = (pre, x)
     x = keras.layers.Reshape((int(np.prod(x.shape[1:])),))(x)
     proj = keras.layers.Dense(p["proj_w"].shape[0], name="project")
     x = proj(x)
@@ -125,6 +127,7 @@ def build(p: dict, clips: list[tuple[float, float]] | None = None) -> keras.Mode
     model = keras.Model(inp, x, name="mobilenet_encoder")
     model.block_outputs = block_outputs  # each block's output, for locating int8 losses
     model.points = points
+    model.conv_points = conv_points  # op index -> (output before its activation, after)
     return model
 
 
@@ -144,6 +147,121 @@ def clip_ranges(p: dict, calib: np.ndarray, percentile: float) -> list[tuple[flo
     return out
 
 
+# Channel split (2026-10-16): int8 gives a tensor one scale, so a layer whose loudest channel is
+# ~30x its median one (the stem) leaves its quiet channels a few steps. Its output is kept as
+# several tensors instead, each a group of channels of similar range with a scale of its own:
+# per-channel operations (depthwise convolution, activations, squeeze-excite gating) run per
+# group, and a full convolution reading the groups is one convolution per group, added. The
+# network computes exactly the same; only the int8 scales change.
+SPLIT_OVER, SPLIT_CAP, SPLIT_MAX = (float(os.environ.get(k, d)) for k, d in (("SPLIT_OVER", 6.0), ("SPLIT_CAP", 4.0), ("SPLIT_MAX", 3)))  # split a full conv's output over this spread; groups within this; at most
+
+
+def split_plan(p: dict, calib: np.ndarray) -> dict[int, list[np.ndarray]]:
+    """Which full convolutions (the stem, the blocks' expansions) to split, and into which channel groups."""
+    ops = json.loads(str(p["ops"]))
+    model = build(p)
+    wanted = {i: pts for i, pts in model.conv_points.items() if ops[i]["groups"] == 1 and ops[i]["act"]}
+    probe = keras.Model(model.input, [t for pts in wanted.values() for t in pts])
+    peaks = None
+    for k in range(len(calib)):
+        out = [np.abs(v.numpy()).max(axis=(0, 1, 2)) for v in probe(calib[k:k + 1], training=False)]
+        peaks = out if peaks is None else [np.maximum(a, b) for a, b in zip(peaks, out)]
+    plan = {}
+    for n, i in enumerate(wanted):
+        r = np.maximum(peaks[2 * n], peaks[2 * n + 1]) + 1e-6  # before and after the activation
+        if r.max() / np.median(r) <= SPLIT_OVER:
+            continue
+        groups, current = [], []
+        for c in np.argsort(-r):
+            if current and r[current[0]] / r[c] > SPLIT_CAP and len(groups) < SPLIT_MAX - 1:
+                groups.append(current)
+                current = []
+            current.append(int(c))
+        groups.append(current)
+        plan[i] = [np.array(sorted(g)) for g in groups]
+        print(f"  split op {i}: spread {r.max() / np.median(r):.1f}x -> groups of {[len(g) for g in groups]} channels, "
+              f"within {max(r[g].max() / r[g].min() for g in plan[i]):.1f}x")
+    return plan
+
+
+def build_split(p: dict, plan: dict[int, list[np.ndarray]]) -> keras.Model:
+    """The encoder with the planned outputs kept as channel groups (see SPLIT_OVER)."""
+    def act(t, kind):
+        if kind == "relu":
+            return keras.layers.ReLU()(t)
+        if kind == "hardswish":
+            return keras.layers.Lambda(lambda v: v * hard_sigmoid(v))(t)
+        return t
+
+    def full_conv(x, w, b, kernel, stride, pad, out_groups, kind):
+        padded = [(keras.layers.ZeroPadding2D(pad)(t) if pad else t, idx) for t, idx in x]
+        out = []
+        for oidx in out_groups:
+            parts = []
+            for k, (t, iidx) in enumerate(padded):
+                layer = keras.layers.Conv2D(len(oidx), kernel, strides=stride, use_bias=k == 0)
+                y = layer(t)
+                weights = w[np.ix_(oidx, iidx)].transpose(2, 3, 1, 0)
+                layer.set_weights([weights, b[oidx]] if k == 0 else [weights])
+                parts.append(y)
+            out.append((act(parts[0] if len(parts) == 1 else keras.layers.Add()(parts), kind), oidx))
+        return out
+
+    inp = keras.Input((80, 148, 3), batch_size=1, name="image")
+    norm = keras.layers.Conv2D(3, 1, name="normalise")
+    t = norm(inp)
+    wn = np.zeros((1, 1, 3, 3), np.float32)
+    for c, src in enumerate((2, 1, 0)):
+        wn[0, 0, src, c] = 1.0 / p["std"][c]
+    norm.set_weights([wn, (-p["mean"] / p["std"]).astype(np.float32)])
+    x, block_in = [(t, np.arange(3))], None
+    for i, op in enumerate(json.loads(str(p["ops"]))):
+        if op["type"] == "block_start":
+            block_in = x
+        elif op["type"] == "block_end":
+            if op["residual"]:
+                assert len(block_in) == len(x) == 1, "a residual across a split"
+                x = [(keras.layers.Add()([block_in[0][0], x[0][0]]), x[0][1])]
+        elif op["type"] == "se":
+            k = op["key"]
+            w1, b1, w2, b2 = p[k + "fc1"], p[k + "fc1b"], p[k + "fc2"], p[k + "fc2b"]
+            parts = []
+            for j, (t, idx) in enumerate(x):
+                fc1 = keras.layers.Conv2D(w1.shape[0], 1, use_bias=j == 0)
+                parts.append(fc1(keras.layers.GlobalAveragePooling2D(keepdims=True)(t)))
+                fc1.set_weights([w1[:, idx].transpose(2, 3, 1, 0), b1] if j == 0 else [w1[:, idx].transpose(2, 3, 1, 0)])
+            s = keras.layers.ReLU()(parts[0] if len(parts) == 1 else keras.layers.Add()(parts))
+            out = []
+            for t, idx in x:
+                fc2 = keras.layers.Conv2D(len(idx), 1)
+                gate = fc2(s)
+                fc2.set_weights([w2[idx].transpose(2, 3, 1, 0), b2[idx]])
+                out.append((keras.layers.Multiply()([t, keras.layers.Lambda(hard_sigmoid)(gate)]), idx))
+            x = out
+        else:
+            w, b = p[op["w"]], p[op["b"]]
+            if op["groups"] > 1:  # depthwise: per channel, so per group
+                out = []
+                for t, idx in x:
+                    if op["pad"]:
+                        t = keras.layers.ZeroPadding2D(op["pad"])(t)
+                    layer = keras.layers.DepthwiseConv2D(w.shape[-1], strides=op["stride"])
+                    y = layer(t)
+                    layer.set_weights([w[idx].transpose(2, 3, 0, 1), b[idx]])
+                    out.append((act(y, op["act"]), idx))
+                x = out
+            else:
+                x = full_conv(x, w, b, w.shape[-1], op["stride"], op["pad"], plan.get(i, [np.arange(w.shape[0])]), op["act"])
+    parts = []
+    for j, (t, idx) in enumerate(x):
+        hw, channels = int(t.shape[1] * t.shape[2]), p["proj_w"].shape[1] // int(t.shape[1] * t.shape[2])
+        cols = np.array([q * channels + c for q in range(hw) for c in idx])
+        dense = keras.layers.Dense(p["proj_w"].shape[0], use_bias=j == 0)
+        parts.append(dense(keras.layers.Reshape((hw * len(idx),))(t)))
+        dense.set_weights([p["proj_w"][:, cols].T, p["proj_b"]] if j == 0 else [p["proj_w"][:, cols].T])
+    return keras.Model(inp, parts[0] if len(parts) == 1 else keras.layers.Add()(parts), name="mobilenet_encoder_split")
+
+
 def cosines(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return np.sum(a * b, 1) / np.linalg.norm(a, axis=1) / np.linalg.norm(b, axis=1)
 
@@ -155,9 +273,14 @@ def main() -> None:
     to_float = lambda f: f.astype(np.float32) / 255.0  # BGR uint8 -> [0, 1]
     test, calib = to_float(p["test"]), to_float(p["calibration"])
     names, per = json.loads(str(p["set_names"])), int(p["per_set"])
-    percentile = float(sys.argv[3]) if len(sys.argv) > 3 else None
-    model = build(p, clip_ranges(p, calib, percentile) if percentile else None)
-    report = {"clip_percentile": percentile}
+    option = sys.argv[3] if len(sys.argv) > 3 else None
+    if option == "split":
+        model = build_split(p, split_plan(p, calib[:64]))
+        report = {"split": True}
+    else:
+        percentile = float(option) if option else None
+        model = build(p, clip_ranges(p, calib, percentile) if percentile else None)
+        report = {"clip_percentile": percentile}
     fp32 = np.concatenate([model(test[k:k + 1], training=False).numpy() for k in range(len(test))])
     c = cosines(fp32, p["descriptors"])
     report["keras_float32_cosine_min"] = float(c.min())

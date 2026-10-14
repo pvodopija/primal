@@ -101,6 +101,9 @@ FRAMES_SUFFIX = (f"_{CROP_NAME}" if CROP_NAME else "") + (f"_{STREAM}" if STREAM
 GREY = os.environ.get("REAL_GREY") == "1"
 # PRIMAL_SIMULATE=int8|fp16 (train/eval.py's load_model) scores the encoder as on an NPU: results apart
 SUFFIX = FRAMES_SUFFIX + ("_grey" if GREY else "") + (f"_{os.environ['PRIMAL_SIMULATE']}" if os.environ.get("PRIMAL_SIMULATE") else "")
+# PRIMAL_DESCRIPTORS=<file.npy> (with PRIMAL_TAG=<name>): every frame's descriptor computed elsewhere, e.g. by the
+# int8 encoder Halo would run (npu/encode_tflite.py); results kept apart under the tag
+SUFFIX += f"_{os.environ['PRIMAL_TAG']}" if os.environ.get("PRIMAL_TAG") else ""
 
 
 def _colour(f: np.ndarray) -> np.ndarray:

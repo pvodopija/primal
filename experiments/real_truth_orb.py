@@ -14,6 +14,7 @@ Usage: PYTHONPATH=. python experiments/real_truth_orb.py RUN [RUN ...]
 from __future__ import annotations
 
 import json
+import os
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -170,9 +171,13 @@ def main() -> None:
         else:
             model, payload = load_model(Path("runs") / run / "best.pt", device)
             clip_len = int(payload["args"]["clip_len"])
-            with torch.no_grad():
-                desc = torch.cat([model.encode_reference(torch.from_numpy(_to_chw(f[i:i + 256])).to(device), use_checkpoint=False)
-                                  for i in range(0, len(f), 256)])
+            if os.environ.get("PRIMAL_DESCRIPTORS"):  # descriptors computed elsewhere (npu/encode_tflite.py)
+                desc = torch.from_numpy(np.load(os.environ["PRIMAL_DESCRIPTORS"])).float().to(device)
+                assert len(desc) == len(f), (len(desc), len(f))
+            else:
+                with torch.no_grad():
+                    desc = torch.cat([model.encode_reference(torch.from_numpy(_to_chw(f[i:i + 256])).to(device), use_checkpoint=False)
+                                      for i in range(0, len(f), 256)])
             ref = desc[torch.from_numpy(bin_frame).to(device)]
             logits_of = lambda rows, desc=desc, ref=ref, model=model: model.head(
                 torch.einsum("tkd,nd->tkn", desc[torch.from_numpy(rows).to(device)], ref) * model.logit_scale.exp())
