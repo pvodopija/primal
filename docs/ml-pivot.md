@@ -2651,6 +2651,17 @@ by construction, so a mid-lap error that cancels by the line goes unseen. Mid-la
 a second measure (track sector loops, a 10-25 Hz GNSS logger) or a consistency test (lap A
 against the fastest directly, and through a third lap).
 
+**Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
+the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
+`--qat-ranges minmax`, and `--balance 1.0`, a layer's loudest channel over its median beyond 4x
+penalised). The stem's spread barely moved (`experiments/channel_spread.py`: 33.6x -> 30.9x;
+the median layer 4.3x -> 5.6x): averaged over 55 layers the stem's term is a small part of a
+small penalty, and its gradient reaches one element a channel. TFLite int8 agreement rose from
+0.47-0.56 (the pitch model as exported) to 0.67-0.70, as yesterday's percentile QAT did, so
+from the int8 training, not the balancing; and min/max QAT cost float accuracy (G2 22.6% ->
+35.0%, new tracks level 15.0 -> 19.9%, ±8 deg 23-26 -> 36-40%, night lap times 66 -> 124 ms;
+indoor 16.2 -> 14.9%). Not adopted.
+
 **A stress demo** (`experiments/stress_demo.py`, `runs/demos/stress_deutschlandring.mp4`):
 one lap of the held-out Deutschlandring under heavy shake, a nodding head, braking dips,
 glances down at the wheel (-15 deg) and a stretch with the helmet tilted up; over 100 ms:

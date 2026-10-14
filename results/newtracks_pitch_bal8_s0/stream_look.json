@@ -1,0 +1,156 @@
+{
+  "checkpoint": "runs/newtracks_pitch_bal8_s0/best.pt",
+  "args": {
+    "cmd": "stream",
+    "data": "data/packed_ac_v3",
+    "checkpoint": "runs/newtracks_pitch_bal8_s0/best.pt",
+    "stride": 2,
+    "holdout_laps": 99,
+    "speed_sigma": 2.0,
+    "speed_noise": 0.0,
+    "window": 8,
+    "traffic_test": 0.0,
+    "look": true,
+    "lag_k": null,
+    "seed": 0,
+    "out": "runs/newtracks_pitch_bal8_s0/stream_look.json",
+    "device": "mps"
+  },
+  "report": {
+    "G2 single": {
+      "median_m": 2.55181884765625,
+      "median_ms": 69.7336196899414,
+      "p90_ms": 278.6231994628906,
+      "over_100ms": 0.3631334760885082,
+      "over_10m": 0.09939329050678088,
+      "worst_m": 811.7769775390625,
+      "ticks": 5604
+    },
+    "G2 filter": {
+      "median_m": 2.5220947265625,
+      "median_ms": 69.54383850097656,
+      "p90_ms": 226.93557739257812,
+      "over_100ms": 0.35974304068522484,
+      "over_10m": 0.07155603140613848,
+      "worst_m": 61.1226806640625,
+      "ticks": 5604
+    },
+    "G2 filter, reference time": {
+      "median_m": 1.56109619140625,
+      "median_ms": 43.182373046875,
+      "p90_ms": 105.6295394897461,
+      "over_100ms": 0.11795146324054247,
+      "over_10m": 0.011241970021413276,
+      "worst_m": 17.689208984375,
+      "ticks": 5604
+    },
+    "G2 filter, reference time, two modes": {
+      "median_m": 1.45001220703125,
+      "median_ms": 39.74151611328125,
+      "p90_ms": 107.68299102783203,
+      "over_100ms": 0.12544610992148467,
+      "over_10m": 0.011241970021413276,
+      "worst_m": 16.556396484375,
+      "ticks": 5604
+    },
+    "G2 filter + speed": {
+      "median_m": 0.769287109375,
+      "median_ms": 21.47674560546875,
+      "p90_ms": 59.21478271484375,
+      "over_100ms": 0.0324768022840828,
+      "over_10m": 0.0012491077801570307,
+      "worst_m": 10.4488525390625,
+      "ticks": 5604
+    },
+    "G2 rt_lime_rock_park__no_chicane single": {
+      "median_m": 3.24224853515625,
+      "median_ms": 88.80043029785156,
+      "p90_ms": 312.5495910644531,
+      "over_100ms": 0.4559968847352025,
+      "over_10m": 0.13395638629283488,
+      "worst_m": 811.7769775390625,
+      "ticks": 2568
+    },
+    "G2 rt_lime_rock_park__no_chicane filter": {
+      "median_m": 3.389892578125,
+      "median_ms": 95.72696685791016,
+      "p90_ms": 257.35797119140625,
+      "over_100ms": 0.47702492211838005,
+      "over_10m": 0.09735202492211838,
+      "worst_m": 61.1226806640625,
+      "ticks": 2568
+    },
+    "G2 rt_lime_rock_park__no_chicane filter, reference time": {
+      "median_m": 1.6485595703125,
+      "median_ms": 45.30811309814453,
+      "p90_ms": 110.56957244873047,
+      "over_100ms": 0.12577881619937695,
+      "over_10m": 0.02453271028037383,
+      "worst_m": 17.689208984375,
+      "ticks": 2568
+    },
+    "G2 rt_lime_rock_park__no_chicane filter, reference time, two modes": {
+      "median_m": 1.71343994140625,
+      "median_ms": 46.75865173339844,
+      "p90_ms": 116.21456146240234,
+      "over_100ms": 0.1557632398753894,
+      "over_10m": 0.02453271028037383,
+      "worst_m": 16.556396484375,
+      "ticks": 2568
+    },
+    "G2 rt_lime_rock_park__no_chicane filter + speed": {
+      "median_m": 0.89007568359375,
+      "median_ms": 23.62060546875,
+      "p90_ms": 71.67015075683594,
+      "over_100ms": 0.05101246105919003,
+      "over_10m": 0.0027258566978193145,
+      "worst_m": 10.4488525390625,
+      "ticks": 2568
+    },
+    "G2 rt_oulton_park__fosters single": {
+      "median_m": 2.1173095703125,
+      "median_ms": 58.940887451171875,
+      "p90_ms": 228.02162170410156,
+      "over_100ms": 0.2845849802371542,
+      "over_10m": 0.07015810276679842,
+      "worst_m": 522.9224853515625,
+      "ticks": 3036
+    },
+    "G2 rt_oulton_park__fosters filter": {
+      "median_m": 1.99853515625,
+      "median_ms": 54.317474365234375,
+      "p90_ms": 188.1237030029297,
+      "over_100ms": 0.2605401844532279,
+      "over_10m": 0.049736495388669304,
+      "worst_m": 26.7708740234375,
+      "ticks": 3036
+    },
+    "G2 rt_oulton_park__fosters filter, reference time": {
+      "median_m": 1.50152587890625,
+      "median_ms": 41.47529602050781,
+      "p90_ms": 102.73361206054688,
+      "over_100ms": 0.11133069828722003,
+      "over_10m": 0.0,
+      "worst_m": 6.053466796875,
+      "ticks": 3036
+    },
+    "G2 rt_oulton_park__fosters filter, reference time, two modes": {
+      "median_m": 1.3223876953125,
+      "median_ms": 35.62736511230469,
+      "p90_ms": 99.86305236816406,
+      "over_100ms": 0.09980237154150198,
+      "over_10m": 0.0,
+      "worst_m": 7.058349609375,
+      "ticks": 3036
+    },
+    "G2 rt_oulton_park__fosters filter + speed": {
+      "median_m": 0.71490478515625,
+      "median_ms": 20.006179809570312,
+      "p90_ms": 48.51531982421875,
+      "over_100ms": 0.016798418972332016,
+      "over_10m": 0.0,
+      "worst_m": 3.18310546875,
+      "ticks": 3036
+    }
+  }
+}

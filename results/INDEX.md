@@ -11,10 +11,11 @@ run's folder; what each experiment tested is in `experiments/README.md` and
 
 | run | finished | data | training | seed | wrong-ref control | protocol | G1 | G2 metres | G2 ref. time | G2 + speed | other results |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| newtracks_pitch_bal8_s0 | 2026-10-14 23:23 | packed_ac_v3 | lr=0.0001, with_look, init newtracks_pitch_s0, 2500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 37.3% | 35.0% | 13.0% | 2.3% | channel_spread.json, gates_v3.json, newtracks_eval.json, stream_look.json, stream_v3.json |
 | newtracks_pitch_qat8_s0 | 2026-10-14 14:05 | packed_ac_v3 | lr=0.0001, with_look, init newtracks_pitch_s0, 2000 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 29.6% | 27.9% | 10.2% | 1.3% | coreml_int8.json, gates_v3.json, newtracks_eval.json, newtracks_eval_int8.json, stream_look.json, stream_v3.json |
 | newtracks_s0 | 2026-10-14 09:39 | packed_ac_v3 | lr=0.0001, with_look, init newtracks_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 23.0% | 23.9% | 9.1% | 1.3% | camera_v3_bicubic.json, gates_v3.json, newtracks_eval.json, stream_look.json, stream_v3.json |
 | newtracks_s0_base | 2026-10-14 08:53 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
-| newtracks_pitch_s0 | 2026-10-14 05:07 | packed_ac_v3 | lr=0.0001, with_look, init newtracks_pitch_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 23.5% | 22.6% | 8.7% | 1.1% | camera_v3_bicubic.json, coreml_int8.json, gates_v3.json, newtracks_eval.json, newtracks_eval_int8.json, stream_look.json, stream_v3.json |
+| newtracks_pitch_s0 | 2026-10-14 05:07 | packed_ac_v3 | lr=0.0001, with_look, init newtracks_pitch_s0_base, 1500 steps | 0 | PASS | v3, stride 2, 3 unseen tracks | 23.5% | 22.6% | 8.7% | 1.1% | camera_v3_bicubic.json, channel_spread.json, coreml_int8.json, gates_v3.json, newtracks_eval.json, newtracks_eval_int8.json, stream_look.json, stream_v3.json |
 | newtracks_pitch_s0_base | 2026-10-14 04:08 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 0 |  |  |  |  |  |  |  |
 | b1007_mobilenet_s1 | 2026-10-12 08:39 | packed_ac_v3 | lr=0.0001, with_look, init b1007_mobilenet_s1_base, 1500 steps | 1 | PASS | v3, stride 2, 3 unseen tracks | 22.2% | 25.6% | 9.5% | 1.7% | camera_v3.json, gates_v3.json, lateral_offset.json, stream_look.json, stream_v3.json |
 | b1007_mobilenet_s1_base | 2026-10-12 08:00 | packed_ac_v3 | aug[pose] pitch±1.0, mirror_p=0.5, with_look, 6000 steps | 1 |  |  |  |  |  |  |  |

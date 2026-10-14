@@ -1,0 +1,45 @@
+=== train newtracks_pitch_bal8_s0  21:29
+=== spread  23:24
+newtracks_pitch_s0: loudest/median channel, median over 55 tensors 4.3x; worst: features.0.2 33.6x, features.0.1 28.2x, features.10.block.0.2 13.7x, features.7.block.0.2 11.9x, features.5.block.0.2 9.3x
+newtracks_pitch_bal8_s0: loudest/median channel, median over 55 tensors 5.6x; worst: features.0.2 30.9x, features.0.1 26.0x, features.2.block.0.1 14.8x, features.2.block.1.2 14.4x, features.3.block.0.1 12.2x
+=== Halo int8 (TFLite)  23:24
+  newtracks_pitch_s0: Keras float32 against PyTorch: cosine min 1.000000 (the port is exact if ~1)
+  newtracks_pitch_s0:   int8 TFLite, AC held-out tracks   cosine min -0.0108, median 0.4685, 240 of 240 below 0.995
+  newtracks_pitch_s0:   int8 TFLite, real: RaceChrono     cosine min 0.1977, median 0.4781, 240 of 240 below 0.995
+  newtracks_pitch_s0:   int8 TFLite, real: indoor kart    cosine min 0.1787, median 0.5613, 240 of 240 below 0.995
+  newtracks_pitch_s0:   Vela Shared_Sram NPU ops 95, CPU ops 0 [], 4.56 ms, SRAM 232 KiB, flash 1095 KiB, utilisation 15%
+  newtracks_pitch_bal8_s0: Keras float32 against PyTorch: cosine min 1.000000 (the port is exact if ~1)
+  newtracks_pitch_bal8_s0:   int8 TFLite, AC held-out tracks   cosine min 0.4921, median 0.7032, 240 of 240 below 0.995
+  newtracks_pitch_bal8_s0:   int8 TFLite, real: RaceChrono     cosine min 0.3589, median 0.6733, 240 of 240 below 0.995
+  newtracks_pitch_bal8_s0:   int8 TFLite, real: indoor kart    cosine min 0.5098, median 0.6924, 240 of 240 below 0.995
+  newtracks_pitch_bal8_s0:   Vela Shared_Sram NPU ops 95, CPU ops 0 [], 4.56 ms, SRAM 232 KiB, flash 1094 KiB, utilisation 15%
+=== accuracy  23:25
+--- newtracks_pitch_bal8_s0    PASS: error must collapse to chance when the reference is wrong
+G1 filter                                                       2.22 m   72 ms   252 ms    37.3%    6.9%   1411.0 m
+G1 filter + speed                                               1.00 m   32 ms    83 ms     5.4%    0.0%      8.3 m
+G2 filter                                                       2.42 m   67 ms   241 ms    35.0%    8.8%   1295.0 m
+G2 filter + speed                                               0.93 m   25 ms    67 ms     2.3%    0.4%     52.2 m
+G2 ks_silverstone__national filter                              2.88 m   80 ms   334 ms    41.7%   12.7%   1295.0 m
+G2 ks_silverstone__national filter + speed                      1.02 m   28 ms    74 ms     3.6%    0.6%     52.2 m
+G2 same car filter                                              3.25 m   91 ms   897 ms    46.8%   18.4%   1168.6 m
+G2 same car filter + speed                                      1.06 m   29 ms    78 ms     3.9%    0.0%      7.7 m
+G2 rt_lime_rock_park__no_chicane filter                         2.17 m   59 ms   180 ms    30.2%    3.4%    262.7 m
+G2 rt_lime_rock_park__no_chicane filter + speed                 0.81 m   21 ms    56 ms     0.5%    0.0%      6.3 m
+G2 rt_oulton_park__fosters filter                               1.80 m   50 ms   160 ms    22.6%    3.6%    115.4 m
+G2 rt_oulton_park__fosters filter + speed                       0.87 m   24 ms    53 ms     0.9%    0.0%      5.4 m
+  head turns: G2 filter                                                       2.52 m   70 ms   227 ms    36.0%    7.2%     61.1 m
+  head turns: G2 filter + speed                                               0.77 m   21 ms    59 ms     3.2%    0.1%     10.4 m
+  level               19.9%  (median  37 ms, p90  254 ms)   5.4%   4.4%   3.5%   3.3%   3.3%
+  pitch -8            40.2%  (median  76 ms, p90  545 ms)  11.8%  10.2%   7.6%   4.8%   5.8%
+  pitch +8            35.6%  (median  70 ms, p90  415 ms)  12.1%   8.8%   5.8%   4.0%   4.8%
+  pitch -12           43.0%  (median  80 ms, p90  783 ms)  10.6%  10.2%   8.2%   5.8%   8.2%
+  pitch +12           41.6%  (median  81 ms, p90  547 ms)  14.9%  10.4%   5.8%   4.7%   5.9%
+  shake 2             21.3%  (median  38 ms, p90  268 ms)   6.1%   4.7%   3.8%   3.4%   3.4%
+  lap times: median |error| 124 ms, max 296 ms over 11 laps
+  delta at the line against the fastest lap: median |error| 21 ms, max 105 ms
+  indoor-pov c80: newtracks_pitch_s0     single: median   39 ms, p90   170, >100 ms  18.3% | tracker: median   43 ms, p90   132, >100 ms  16.2%
+  indoor-pov c80: newtracks_pitch_bal8_s0 single: median   44 ms, p90   185, >100 ms  19.6% | tracker: median   38 ms, p90   140, >100 ms  14.9%
+  BHGP full: newtracks_pitch_s0     single: median   63 ms, p90   293, >100 ms  34.1% | tracker: median   55 ms, p90   205, >100 ms  28.2%
+  BHGP full: newtracks_pitch_bal8_s0 single: median   89 ms, p90   461, >100 ms  45.2% | tracker: median   63 ms, p90   219, >100 ms  31.8%
+  race-chrono : newtracks_pitch_s0     single: median   44 ms, p90   173, >100 ms  20.2% | tracker: median   36 ms, p90   165, >100 ms  16.8%
+  race-chrono : newtracks_pitch_bal8_s0 single: median   50 ms, p90   182, >100 ms  22.1% | tracker: median   38 ms, p90   171, >100 ms  17.0%
