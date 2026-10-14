@@ -2641,6 +2641,15 @@ were faster than the 53.2 s out-lap, but none had its delta shown on 80% of its 
 (`best_lap_bars_<run>.png`, every lap against the fastest: ahead or behind along the lap, and
 time won or lost in 12 sectors; finer sectors show the delta's ±50 ms jitter, not driving)
 repeat across laps where the driving does (a loss in the last sector on nearly every lap).
+Against the previous lap instead (`experiments/previous_lap_check.py`, a different reference
+for each lap): the pitch model 72 ms median at the line (max 151), the release 41 ms (max 132);
+against the fastest, 22 and 50 ms. Over 11 laps the order flips with the reference, so at the
+line the two are about equal (typically 20-70 ms); the pitch model's clear gains are the
+session's own line detection (lap times 66 against 189 ms) and the share of the lap shown.
+The check is independent only at the line: the sectors' gains add up to the delta at the line
+by construction, so a mid-lap error that cancels by the line goes unseen. Mid-lap truth needs
+a second measure (track sector loops, a 10-25 Hz GNSS logger) or a consistency test (lap A
+against the fastest directly, and through a third lap).
 
 **A stress demo** (`experiments/stress_demo.py`, `runs/demos/stress_deutschlandring.mp4`):
 one lap of the held-out Deutschlandring under heavy shake, a nodding head, braking dips,
