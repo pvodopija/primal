@@ -59,6 +59,14 @@ _SETS = {
     # A RaceChrono Pro video (car, dash camera, 60 fps) with its GPS delta drawn on: the
     # overlays are greyed out before anything sees a frame. Crossings from RaceChrono's own
     # lap clock (experiments/racechrono_read.py); lap 2 starts from a standstill.
+    # Pavle's night session (2026-10-13), a HERO7 on his helmet, unstabilised (stabilisation delays
+    # the live preview), 1080p60, wide lens; his phone running the app on the wheel. Crossings: the
+    # first from the pit lane noted by hand (~1:18), the rest from the transponder's lap times
+    # (exact spacing, so no refinement). The bottom band (wheel, hands, phone) greyed out.
+    "night1": dict(video="night1/GH010018.MP4", crossings=[78.0, 131.213, 180.578, 229.658, 278.751, 327.982, 376.188, 424.206, 472.244, 520.281, 569.321, 617.128, 665.314],
+                   lap_times=[53.213, 49.365, 49.08, 49.093, 49.231, 48.206, 48.018, 48.038, 48.037, 49.04, 47.807, 48.186],
+                   crop=(229, 1051, 0, 444), truth_crop=(0, 1920, 0, 420), reference="fastest", refine="exact",
+                   window_s=3.0, masks=[(0, 560, 1920, 1080)]),
     "race-chrono": dict(video="race-chrono/race-chrono.mp4", crossings=None, crop=(0, 1280, 14, 706), truth_crop=(0, 1280, 285, 490),
                         reference=1, refine_s=1.0, window_s=3.0, refine="orb",
                         masks=[(0, 0, 225, 165), (225, 0, 872, 94), (860, 98, 1280, 282), (438, 492, 668, 720),
@@ -147,6 +155,8 @@ def reference_lap(laps: list[tuple[float, float]]) -> int:
 
 
 def refine_crossings(px: np.ndarray, t: np.ndarray) -> list[float]:
+    if _S.get("refine") == "exact":  # spaced by a transponder's lap times: nothing to refine
+        return [float(c) for c in CROSSINGS_S]
     if _S.get("refine") == "orb":  # refined by features: real_truth_orb.orb_crossings writes them
         return json.loads((ROOT / "starts_orb.json").read_text())
     anchor = int(np.argmin(np.abs(t - CROSSINGS_S[0])))

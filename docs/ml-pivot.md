@@ -2619,6 +2619,29 @@ accuracy nor its Vela placement is measured yet. Next: even out the channel rang
 training (a range-balancing term, or cross-layer equalisation), or a backbone without
 squeeze-excite and hard-swish.
 
+**Pavle's night session** (2026-10-13; `REAL_FOOTAGE=night1`: a HERO7 on his helmet,
+unstabilised, 1080p60, wide lens, a lit outdoor kart track at night, his phone running the app
+on the wheel, greyed out with the wheel and hands as a bottom band; 12 laps with a
+transponder's lap times, which place every line crossing exactly). The ORB truth fails here
+(20-27 inliers a frame against ~300 indoors, its estimates hitting its ±3 s window, the three
+models agreeing among themselves to 34 ms while ~600 ms from it), so the transponder is the
+truth (`experiments/session_bars.py`):
+
+| | release | **pitch model** | QAT int8 |
+|---|---|---|---|
+| delta at the line against the fastest lap, median / max error | 50 / 94 ms | **22 / 89 ms** | 41 / 89 ms |
+| lap times, the session's own line detection, median / max error | 189 / 435 ms | **66 / 204 ms** | 216 / 319 ms |
+| share of the lap with the delta shown | 49-78% | **64-79%** | 48-75% |
+
+Replayed through `train/session.py` from the first crossing (before it, the pit-exit lane),
+the reference never closed by itself (no view of its start again with enough agreement; the
+replay closes it by hand at the line 15 s late), and no faster lap became the reference: all
+were faster than the 53.2 s out-lap, but none had its delta shown on 80% of its ticks
+(`swap_shown_min`), so the session compared every lap with the out-lap. The bars
+(`best_lap_bars_<run>.png`, every lap against the fastest: ahead or behind along the lap, and
+time won or lost in 12 sectors; finer sectors show the delta's ±50 ms jitter, not driving)
+repeat across laps where the driving does (a loss in the last sector on nearly every lap).
+
 **A stress demo** (`experiments/stress_demo.py`, `runs/demos/stress_deutschlandring.mp4`):
 one lap of the held-out Deutschlandring under heavy shake, a nodding head, braking dips,
 glances down at the wheel (-15 deg) and a stretch with the helmet tilted up; over 100 ms:
