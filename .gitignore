@@ -6,3 +6,22 @@ __pycache__/
 .DS_Store
 .venv-npu/
 releases/
+
+# Trained models, checkpoints, releases and arrays never go into git, wherever they sit
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.mlpackage/
+*.mlmodel
+*.mlmodelc/
+*.tflite
+*.onnx
+*.h5
+*.keras
+*.npz
+*.npy
+*.f32
+*.f64
+*.mp4
+*.ts

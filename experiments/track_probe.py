@@ -13,7 +13,8 @@ GoPro, BHGP helmet camera, RaceChrono car) scored by a probe trained without it.
 AC laps of the held-out tracks, the other 20% of the photos, and the GoPro's home sessions
 (rooms and screens, a kind of "not track" with no example in training). The probe to ship
 is then trained with every real video.
-Writes runs/RUN/track_probe.json (the weights, bias, threshold and every result) and .png.
+Writes runs/RUN/track_probe_weights.npz (the probe, never in git), runs/RUN/track_probe.json
+(threshold and every result) and .png.
 
 Usage: PYTHONPATH=. python experiments/track_probe.py RUN [WALLPAPER_DIR]
 """
@@ -173,8 +174,10 @@ def main() -> None:
     for n, (k, r) in final.items():
         show(n, k, r)
     report["final"] = {n: {k2: v for k2, v in r.items() if not k2.startswith("_")} for n, (k, r) in final.items()}
+    # the probe's weights are a trained model: an .npz in runs/ (never in git), the results in the JSON
+    np.savez(Path("runs") / run / "track_probe_weights.npz", weights=w, bias=np.array(b))
     (Path("runs") / run / "track_probe.json").write_text(json.dumps(
-        {"weights": w.tolist(), "bias": b, "threshold": 0.5, "window_s": WINDOW / HZ, "hz": HZ,
+        {"threshold": 0.5, "window_s": WINDOW / HZ, "hz": HZ,
          "trained_on": {"ac_frames": len(ac_pos), "real_videos": list(real), "negatives": len(neg),
                         "photos": "Open Images validation, CC BY 2.0, data/negatives/openimages/attribution.csv"},
          **report}, indent=2))

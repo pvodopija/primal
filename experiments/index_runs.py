@@ -37,6 +37,9 @@ def sync() -> list[str]:
         out = RESULTS / name
         out.mkdir(parents=True, exist_ok=True)
         for f in list((RUNS / name).glob("*.json")) + list((RUNS / name).glob("*.log")):
+            if f.suffix == ".json" and _holds_weights(f):  # trained parameters never go into git
+                print(f"  skipped {f}: it holds trained weights")
+                continue
             shutil.copy2(f, out / f.name)
         for log in (RUNS / "lc_logs").glob(f"{name}.*log"):
             shutil.copy2(log, out / log.name)
@@ -44,10 +47,14 @@ def sync() -> list[str]:
     for f in list((RUNS / "lc_logs").glob("*")) + [RUNS / "v3"]:
         stem = f.name.split(".")[0]
         if f.is_file() and stem not in runs:
+            if f.suffix not in TEXT or (f.suffix == ".json" and _holds_weights(f)):  # logs and results only
+                continue
             other.mkdir(exist_ok=True)
             shutil.copy2(f, other / f.name)
         elif f.is_dir():
             for g in f.glob("*.json"):
+                if _holds_weights(g):
+                    continue
                 other.mkdir(exist_ok=True)
                 shutil.copy2(g, other / f"{f.name}_{g.name}")
     return runs
@@ -101,6 +108,22 @@ def row(name: str) -> str:
     data = Path(str(args.get("data", ""))).name
     return (f"| {name} | {when} | {data} | {training(args)} | {args.get('seed', '')} | {control} | "
             + " | ".join(head) + f" | {files} |")
+
+
+TEXT = {".log", ".out", ".json", ".txt", ".csv"}  # what may be copied into git from runs/
+WEIGHT_KEYS = {"weights", "weight", "bias", "state_dict", "model", "params", "parameters"}
+
+
+def _holds_weights(path: Path) -> bool:
+    """Whether a result file carries trained parameters (keys like "weights" anywhere in it)."""
+    def walk(v) -> bool:
+        if isinstance(v, dict):
+            return any((k in WEIGHT_KEYS and isinstance(x, (list, dict))) or walk(x) for k, x in v.items())
+        return isinstance(v, list) and any(walk(x) for x in v[:50])
+    try:
+        return walk(json.loads(path.read_text()))
+    except ValueError:
+        return False
 
 
 def main() -> None:

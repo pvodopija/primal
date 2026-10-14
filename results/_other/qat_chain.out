@@ -71,3 +71,5 @@ newtracks_pitch_qat8_s0  int8 weights + int8 activations  real: indoor kart    c
   "encoder_cosine_min": 0.9996834993362427,
   "head_argmax_same": true,
 written releases/primal-qat8-20261014
+122 runs indexed in /Users/pvodopija/code/primal/results/INDEX.md
+qat done 15:28
