@@ -1,0 +1,13 @@
+  newtracks_pitch_s0 deutschlandring              done
+  newtracks_pitch_s0 rt_daytona__sportscar        done
+
+newtracks_pitch_s0: new held-out tracks, two-mode tracker, over 100 ms (median ms)
+  pitch  +0 deg   all  15.0% (32 ms)   within 3 m sideways  12.0% (29 ms)
+  pitch  -4 deg   all  20.3% (42 ms)   within 3 m sideways  16.7% (37 ms)
+  pitch  +4 deg   all  17.7% (42 ms)   within 3 m sideways  14.3% (39 ms)
+  pitch  -8 deg   all  26.1% (51 ms)   within 3 m sideways  21.3% (45 ms)
+  pitch  +8 deg   all  23.2% (52 ms)   within 3 m sideways  19.1% (47 ms)
+  level, 0-1 m sideways:  10.9% (27 ms, 11353 ticks)
+  level, 1-3 m sideways:  12.7% (30 ms, 20616 ticks)
+  level, 3-6 m sideways:  16.6% (34 ms, 19659 ticks)
+  level, 6-99 m sideways:  22.7% (45 ms, 8365 ticks)

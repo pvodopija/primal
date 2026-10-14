@@ -127,10 +127,17 @@ def session_summary(events: list) -> dict:
             "shown": float(np.mean([r.shown for r in readings]))}
 
 
+# Core ML's descriptors against PyTorch's on the golden frames: the release's own tolerance.
+COSINE_MIN = 0.995
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("run")
     ap.add_argument("--name")
+    ap.add_argument("--encoder-precision", choices=("float16", "float32"), default="float16",
+                    help="float16 runs on the Neural Engine; float32 (GPU and CPU) when a model loses too much "
+                         "in float16 (the check below says so)")
     a = ap.parse_args()
     name = a.name or f"primal-{a.run.replace('_', '-')}-{time.strftime('%Y%m%d')}"
     out = Path("releases") / name
@@ -162,7 +169,7 @@ def main() -> None:
 
     encoder_ml = ct.convert(traced_enc, inputs=[ct.ImageType(name="image", shape=(1, 3, 80, 148), color_layout=ct.colorlayout.BGR, scale=1 / 255)],
                             outputs=[ct.TensorType(name="descriptor")], minimum_deployment_target=ct.target.iOS17,
-                            compute_precision=ct.precision.FLOAT16)
+                            compute_precision=getattr(ct.precision, a.encoder_precision.upper()))
     head_ml = ct.convert(traced_head, inputs=[ct.TensorType(name="clip", shape=(clip_len, 128)),
                                               ct.TensorType(name="reference", shape=(ct.RangeDim(32, 20000, default=240), 128))],
                          outputs=[ct.TensorType(name="logits")], minimum_deployment_target=ct.target.iOS17,
@@ -177,8 +184,15 @@ def main() -> None:
     ml_logits = head_ml.predict({"clip": clip.numpy(), "reference": reference.numpy()})["logits"].reshape(-1)
     check = {"encoder_cosine_min": float(cosine.min()), "encoder_cosine_median": float(np.median(cosine)),
              "head_logits_max_abs_diff": float(np.abs(ml_logits - reference_logits).max()),
-             "head_argmax_same": bool(np.argmax(ml_logits) == np.argmax(reference_logits))}
+             "head_argmax_same": bool(np.argmax(ml_logits) == np.argmax(reference_logits)),
+             "encoder_precision": a.encoder_precision}
     print(json.dumps(check, indent=2))
+    # a release that fails its own tolerance is not a release
+    if check["encoder_cosine_min"] < COSINE_MIN or not check["head_argmax_same"]:
+        shutil.rmtree(out)
+        raise SystemExit(f"Core ML disagrees with PyTorch (encoder cosine min {check['encoder_cosine_min']:.4f}, "
+                         f"tolerance {COSINE_MIN}; head argmax same {check['head_argmax_same']}): nothing written. "
+                         f"With --encoder-precision float32 the encoder runs unrounded.")
 
     # golden cases for the device's own tests
     for i, f in enumerate(golden):
@@ -187,7 +201,7 @@ def main() -> None:
              "descriptors": write_f32(out / "golden" / "descriptors.f32", descriptors),
              "clip": "the first clip_len descriptors", "reference": "all the descriptors",
              "logits": write_f32(out / "golden" / "logits.f32", reference_logits),
-             "tolerance": {"descriptor_cosine_min": 0.995, "logits_argmax": "same bin"}}
+             "tolerance": {"descriptor_cosine_min": COSINE_MIN, "logits_argmax": "same bin"}}
 
     # preprocessing: camera frames and the model inputs the contract makes of them
     index["preprocess"] = []

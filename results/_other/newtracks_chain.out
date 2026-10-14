@@ -1,0 +1,90 @@
+--- camera (bicubic) v3_mobilenet_lr1_s0
+level                                              25.2%           39 ms    98 ms     9.3%
+yaw 7                                              44.5%           69 ms   196 ms    35.9%
+pitch 5                                            36.1%           53 ms   137 ms    19.1%
+roll 10                                            35.2%           43 ms   121 ms    16.2%
+shake 2                                            26.2%           37 ms    98 ms     9.4%
+same session: level                                 7.1%           15 ms    41 ms     0.9%
+=== train newtracks_pitch_s0_base  01:19
+=== train newtracks_pitch_s0  04:34
+--- newtracks_pitch_s0    PASS: error must collapse to chance when the reference is wrong
+G1 filter                                                       1.57 m   50 ms   164 ms    23.5%    2.2%    339.4 m
+G1 filter + speed                                               0.70 m   22 ms    59 ms     1.4%    0.0%      4.5 m
+G2 filter                                                       1.81 m   49 ms   156 ms    22.6%    3.6%   1080.4 m
+G2 filter + speed                                               0.74 m   20 ms    57 ms     1.1%    0.0%      6.8 m
+G2 ks_silverstone__national filter                              2.04 m   56 ms   178 ms    26.9%    5.1%   1080.4 m
+G2 ks_silverstone__national filter + speed                      0.91 m   25 ms    67 ms     1.8%    0.0%      6.8 m
+G2 same car filter                                              2.39 m   66 ms   236 ms    34.3%    8.7%   1080.4 m
+G2 same car filter + speed                                      1.12 m   31 ms    76 ms     2.6%    0.0%      6.2 m
+G2 rt_lime_rock_park__no_chicane filter                         1.72 m   46 ms   139 ms    19.2%    2.4%    249.0 m
+G2 rt_lime_rock_park__no_chicane filter + speed                 0.71 m   19 ms    45 ms     0.3%    0.0%      4.4 m
+G2 rt_oulton_park__fosters filter                               1.45 m   40 ms   120 ms    14.9%    1.0%     34.9 m
+G2 rt_oulton_park__fosters filter + speed                       0.49 m   14 ms    36 ms     0.2%    0.0%      5.5 m
+  head turns: G2 filter                                                       1.86 m   52 ms   158 ms    23.9%    3.4%     49.5 m
+  head turns: G2 filter + speed                                               0.70 m   19 ms    45 ms     0.0%    0.0%      2.9 m
+--- camera (bicubic) newtracks_pitch_s0
+level                                              29.1%           40 ms   116 ms    14.1%
+yaw 7                                              40.1%           55 ms   160 ms    25.2%
+pitch 5                                            32.8%           46 ms   119 ms    15.6%
+roll 10                                            36.8%           44 ms   128 ms    17.2%
+shake 2                                            29.7%           42 ms   116 ms    14.2%
+same session: level                                 5.5%           13 ms    34 ms     0.4%
+--- new held-out tracks newtracks_pitch_s0
+  newtracks_pitch_s0 deutschlandring              done
+  newtracks_pitch_s0 rt_daytona__sportscar        done
+newtracks_pitch_s0: new held-out tracks, two-mode tracker, over 100 ms (median ms)
+  pitch  +0 deg   all  15.0% (32 ms)   within 3 m sideways  12.0% (29 ms)
+  pitch  -4 deg   all  20.3% (42 ms)   within 3 m sideways  16.7% (37 ms)
+  pitch  +4 deg   all  17.7% (42 ms)   within 3 m sideways  14.3% (39 ms)
+  pitch  -8 deg   all  26.1% (51 ms)   within 3 m sideways  21.3% (45 ms)
+  pitch  +8 deg   all  23.2% (52 ms)   within 3 m sideways  19.1% (47 ms)
+  level, 0-1 m sideways:  10.9% (27 ms, 11353 ticks)
+  level, 1-3 m sideways:  12.7% (30 ms, 20616 ticks)
+  level, 3-6 m sideways:  16.6% (34 ms, 19659 ticks)
+  level, 6-99 m sideways:  22.7% (45 ms, 8365 ticks)
+=== train newtracks_s0_base  05:38
+=== train newtracks_s0  08:53
+--- newtracks_s0    PASS: error must collapse to chance when the reference is wrong
+G1 filter                                                       1.57 m   50 ms   160 ms    23.0%    1.9%   1462.0 m
+G1 filter + speed                                               0.75 m   24 ms    63 ms     1.4%    0.0%      5.1 m
+G2 filter                                                       1.87 m   51 ms   167 ms    23.9%    4.1%    768.7 m
+G2 filter + speed                                               0.80 m   22 ms    58 ms     1.3%    0.0%     13.2 m
+G2 ks_silverstone__national filter                              2.08 m   57 ms   194 ms    27.9%    6.0%    768.7 m
+G2 ks_silverstone__national filter + speed                      0.87 m   24 ms    66 ms     1.9%    0.0%     13.2 m
+G2 same car filter                                              2.48 m   68 ms   279 ms    35.8%   10.3%    761.0 m
+G2 same car filter + speed                                      1.06 m   29 ms    73 ms     3.1%    0.0%      6.1 m
+G2 rt_lime_rock_park__no_chicane filter                         1.83 m   50 ms   147 ms    21.0%    2.7%     41.9 m
+G2 rt_lime_rock_park__no_chicane filter + speed                 0.79 m   21 ms    50 ms     0.3%    0.0%      6.7 m
+G2 rt_oulton_park__fosters filter                               1.50 m   42 ms   126 ms    16.5%    0.9%     47.5 m
+G2 rt_oulton_park__fosters filter + speed                       0.68 m   19 ms    43 ms     0.3%    0.0%      5.6 m
+  head turns: G2 filter                                                       2.06 m   58 ms   174 ms    28.2%    4.1%     47.7 m
+  head turns: G2 filter + speed                                               0.92 m   26 ms    56 ms     0.2%    0.0%      3.7 m
+--- camera (bicubic) newtracks_s0
+level                                              29.7%           41 ms   113 ms    13.9%
+yaw 7                                              39.9%           55 ms   162 ms    25.7%
+pitch 5                                            39.9%           57 ms   149 ms    22.9%
+roll 10                                            39.7%           47 ms   137 ms    19.8%
+shake 2                                            30.4%           42 ms   114 ms    14.6%
+same session: level                                 5.4%           14 ms    37 ms     0.6%
+--- new held-out tracks newtracks_s0
+  pitch  +0 deg   all  15.5% (32 ms)   within 3 m sideways  13.2% (30 ms)
+  pitch  -4 deg   all  25.2% (54 ms)   within 3 m sideways  21.6% (50 ms)
+  pitch  +4 deg   all  19.3% (45 ms)   within 3 m sideways  16.5% (41 ms)
+  pitch  -8 deg   all  36.7% (72 ms)   within 3 m sideways  31.6% (64 ms)
+  pitch  +8 deg   all  38.3% (79 ms)   within 3 m sideways  33.3% (71 ms)
+  level, 0-1 m sideways:  12.1% (28 ms, 11353 ticks)
+  level, 1-3 m sideways:  13.8% (31 ms, 20616 ticks)
+  level, 3-6 m sideways:  17.0% (33 ms, 19659 ticks)
+  level, 6-99 m sideways:  21.1% (42 ms, 8365 ticks)
+=== real footage  09:57
+  indoor-pov c80: v3_mobilenet_lr1_s0    single: median   43 ms, p90   279, >100 ms  20.4% | tracker: median   40 ms, p90   144, >100 ms  16.5%
+  indoor-pov c80: newtracks_pitch_s0     single: median   39 ms, p90   170, >100 ms  18.3% | tracker: median   43 ms, p90   132, >100 ms  16.2%
+  indoor-pov c80: newtracks_s0           single: median   39 ms, p90   323, >100 ms  21.2% | tracker: median   37 ms, p90   156, >100 ms  16.5%
+  BHGP full: v3_mobilenet_lr1_s0    single: median   76 ms, p90   361, >100 ms  40.0% | tracker: median   58 ms, p90   214, >100 ms  29.4%
+  BHGP full: newtracks_pitch_s0     single: median   63 ms, p90   293, >100 ms  34.1% | tracker: median   55 ms, p90   205, >100 ms  28.2%
+  BHGP full: newtracks_s0           single: median   73 ms, p90   353, >100 ms  38.2% | tracker: median   59 ms, p90   212, >100 ms  29.5%
+  race-chrono : v3_mobilenet_lr1_s0    single: median   46 ms, p90   178, >100 ms  21.6% | tracker: median   34 ms, p90   154, >100 ms  15.8%
+  race-chrono : newtracks_pitch_s0     single: median   44 ms, p90   173, >100 ms  20.2% | tracker: median   36 ms, p90   165, >100 ms  16.8%
+  race-chrono : newtracks_s0           single: median   43 ms, p90   188, >100 ms  23.2% | tracker: median   35 ms, p90   175, >100 ms  15.5%
+121 runs indexed in /Users/pvodopija/code/primal/results/INDEX.md
+newtracks done 09:58

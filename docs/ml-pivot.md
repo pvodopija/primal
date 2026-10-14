@@ -2537,6 +2537,37 @@ each place against 1 / speed). With the offset already cheap, there was little t
 and the re-render gap is what the extra clips mostly carried. The release stays
 `v3_mobilenet_lr1_s0`. The batch was deleted from the Mac (2026-10-13): replay re-renders carry about half the detail of recordings (`experiments/sharpness.py`); `lateral_offset.py` needs a sharp re-render of it (Windows keeps the sessions).
 
+**The ten new circuits, and pitch** (2026-10-14/15, `experiments/chains/newtracks.sh`; one
+seed each; the release recipe on 17 training tracks: v3's 9 plus 8 new ones as wide renders,
+with `packed_ac_v3_wide`, both through the bicubic virtual camera, the wander's turn undone,
+live clips paired with reference places within 3 m sideways, `--max-lateral-gap 3`). The
+release on the two new held-out tracks (`experiments/newtracks_eval.py`, same-session
+pairs) loses most to pitch: 18.5% level, 26-29% at ±4 deg, 45-50% at ±8 deg, while 6 m
+sideways costs ~6 points. Tracker, over 100 ms:
+
+| Test | release | new tracks, pitch ±8 + shake 1 | new tracks only |
+|---|---|---|---|
+| new held-out tracks: level / ±4 / ±8 deg | 18.5 / 26-29 / 46-50% | **15.0 / 18-20 / 23-26%** | 15.5 / 19-25 / 37-38% |
+| G2 unseen v3 tracks / with head turns | 24.1 / 24.6% | **22.6 / 23.9%** | 23.9 / 28.2% |
+| G1 held-out laps of training tracks | **20.8%** | 23.5% | 23.0% |
+| virtual camera (bicubic): pitch 5 / yaw 7 | 19.1 / 35.9% | **15.6 / 25.2%** | 22.9 / 25.7% |
+| virtual camera: level / shake 2 (wide live, native reference) | **9.3 / 9.4%** | 14.1 / 14.2% | 13.9 / 14.6% |
+| virtual camera: same session, level | 0.9% | **0.4%** | 0.6% |
+| real: indoor c80 / BHGP full / RaceChrono | 16.5 / 29.4 / 15.8% | 16.2 / 28.2 / 16.8% | 16.5 / 29.5 / 15.5% |
+
+Pitch emphasis halves the pitch errors on unseen tracks and helps yaw too; the new tracks
+alone help level on new tracks. Both lose ~2.5 points on G1 (17 tracks at the same steps:
+less training per original track) and on wide-live-against-native-reference pairs; real
+footage moves within ±1 point. Both pass the wrong-reference control.
+
+**Released as `primal-newtracks-pitch-s0-20261014` with a float32 encoder.** In float16 this
+model's Core ML encoder disagrees with PyTorch on a third of the golden frames (cosine min
+0.932 with the Neural Engine, 0.950 GPU, 0.991 CPU; the release model's 0.9995), although no
+activation comes near float16's range (peaks ~200): it is more sensitive to rounding.
+Float32 matches exactly (cosine 1.0000) and runs on the GPU, not the Neural Engine.
+`train/release.py` now refuses to write a release below its own tolerance (cosine 0.995)
+and takes `--encoder-precision float32`.
+
 **Colour hardly matters** (`pose_sensitivity.py --colour`, same tests, 2026-10-11): both
 laps greyscale 1.2%, both with red and blue swapped 1.1%; the live lap alone warmer
 (white balance), half desaturated, 40% darker or hue-shifted 30° 0.7-1.1%. Only a
