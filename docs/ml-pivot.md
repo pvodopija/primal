@@ -2600,6 +2600,30 @@ activations symmetrically (no zero point), which the simulation does not train f
 its A8W8 still diverges. In float the rounding acted as a regulariser on two of the three
 real videos (best indoor and RaceChrono so far) and cost the sim tests 2-5 points.
 
+**MobileNet on Halo's NPU** (2026-10-15; `npu/export_mobilenet.py` in the training
+environment, then `.venv-npu/bin/python npu/build_mobilenet.py` with TensorFlow 2.21 and Vela
+5.2: the encoder rebuilt in Keras with PyTorch's explicit padding, float32 matching PyTorch to
+cosine 0.9999998, full-integer int8 TFLite calibrated on 256 AC frames, run on TFLite's
+reference kernels, compiled for the Ethos-U55-128 at 160 MHz). **It fits and runs entirely on
+the NPU:** 95 operators, none on the CPU, 4.6 ms a frame (14% of the NPU at 30 fps), 231 KiB
+of SRAM, 1.09 MB of weights in MRAM (tight beside ~0.6 MB of firmware in 1.8 MB). **Int8
+accuracy is not there yet** (`newtracks_pitch_qat8_s0`, cosine to PyTorch's float32): median
+0.68-0.70 as converted; with every activation clamped at its 99.99th percentile before and
+after each activation function (the points QAT clipped) 0.77-0.87, the float model losing a
+little to the clamps (min 0.94). The cause is at the first convolution: its channels span
+~25x (largest ~140, median ~5, the release alike), and int8 has one scale per tensor, so the
+quiet channels lose most of their steps (cosine 0.80 after one depthwise layer). 16-bit
+activations (the U55 supports 16x8) convert once hard-swish is written as clamp and multiply
+(TFLite has no 16x8 HARD_SWISH), but TFLite's own kernels abort on that model, so neither its
+accuracy nor its Vela placement is measured yet. Next: even out the channel ranges in
+training (a range-balancing term, or cross-layer equalisation), or a backbone without
+squeeze-excite and hard-swish.
+
+**A stress demo** (`experiments/stress_demo.py`, `runs/demos/stress_deutschlandring.mp4`):
+one lap of the held-out Deutschlandring under heavy shake, a nodding head, braking dips,
+glances down at the wheel (-15 deg) and a stretch with the helmet tilted up; over 100 ms:
+release 11.0%, pitch model 5.1%, QAT 4.1% (same-session pair).
+
 **Colour hardly matters** (`pose_sensitivity.py --colour`, same tests, 2026-10-11): both
 laps greyscale 1.2%, both with red and blue swapped 1.1%; the live lap alone warmer
 (white balance), half desaturated, 40% darker or hue-shifted 30° 0.7-1.1%. Only a
