@@ -67,6 +67,13 @@ _SETS = {
                    lap_times=[53.213, 49.365, 49.08, 49.093, 49.231, 48.206, 48.018, 48.038, 48.037, 49.04, 47.807, 48.186],
                    crop=(229, 1051, 0, 444), truth_crop=(0, 1920, 0, 420), reference="fastest", refine="exact",
                    window_s=3.0, masks=[(0, 560, 1920, 1080)]),
+    # A YouTube hire-kart lap (FastNotFamous, Ace Karts) with Dragy's 25 Hz GPS delta drawn on, 50 fps
+    # of which every second frame is new (25 fps), a rear-camera inset updating in between. Laps 2:02-2:42
+    # and 2:42-3:21; the crossings from Dragy's own lap clock (experiments/draggy_read.py), lap 1 the
+    # reference (as Dragy's for lap 2). Overlays and the wheel band greyed out.
+    "draggy": dict(video="draggy/draggy.mp4", crossings=[122.4, 161.68, 201.12],
+                   crop=(229, 1051, 0, 444), truth_crop=(0, 1280, 0, 380), reference=0, refine="exact", window_s=3.0,
+                   masks=[(33, 40, 187, 293), (450, 0, 828, 124), (853, 20, 973, 60), (1049, 20, 1257, 107), (0, 380, 1280, 720)]),
     "race-chrono": dict(video="race-chrono/race-chrono.mp4", crossings=None, crop=(0, 1280, 14, 706), truth_crop=(0, 1280, 285, 490),
                         reference=1, refine_s=1.0, window_s=3.0, refine="orb",
                         masks=[(0, 0, 225, 165), (225, 0, 872, 94), (860, 98, 1280, 282), (438, 492, 668, 720),

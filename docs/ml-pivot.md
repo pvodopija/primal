@@ -2686,6 +2686,18 @@ weak bins, the same one-scale problem along the lap. Next: the head only fine-tu
 (the encoder frozen), and/or the head run on a window of bins around the tracker (also cuts
 its NPU time), or 16-bit activations for the head; then Halo itself.
 
+**Against Dragy (25 Hz GPS)** (2026-10-16, `REAL_FOOTAGE=draggy`: a YouTube hire-kart video,
+FastNotFamous at Ace Karts, Dragy's delta and lap clock read off its overlay by
+`experiments/draggy_read.py`; 50 fps of which every second frame is new; lap 2 (39.44 s)
+against lap 1 (39.28 s), Dragy's own line crossings, so both use the same reference;
+`experiments/draggy_compare.py`): against the ORB truth (411 inliers a frame, but brief
+±0.3-0.5 s glitches of its own), PRIMAL (pitch model) median 42 ms / 9.6% over 100 ms, Dragy
+59 ms / 21.0%; PRIMAL against Dragy 35 ms median, 3.8% over 100 ms: the two independent
+systems follow each other all lap. The release model 48 ms / 19.4% against the truth (the
+pitch model 37 / 12.9% in `real_truth_orb.py`). In the last second PRIMAL rises to +0.37 s
+(Dragy +0.21, its lap times +0.16): the view just before the line looks like the reference's
+start, the known end-of-lap weak spot.
+
 **A stress demo** (`experiments/stress_demo.py`, `runs/demos/stress_deutschlandring.mp4`):
 one lap of the held-out Deutschlandring under heavy shake, a nodding head, braking dips,
 glances down at the wheel (-15 deg) and a stretch with the helmet tilted up; over 100 ms:
