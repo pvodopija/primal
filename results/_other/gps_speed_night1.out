@@ -1,0 +1,12 @@
+newtracks_pitch_s0: every lap against the fastest; at the line vs the transponder, along the lap vs the GPS position
+  camera only (as shipped)                         line   22 / max   89 ms | along   91 ms, p90  283, 46.3% over 100 | first 3 s  478 ms | shown  86% | jumps  9.3%
+  + GPS speed 18 Hz, sigma 0.3 m/s                 line   50 / max  204 ms | along  108 ms, p90  317, 52.7% over 100 | first 3 s  125 ms | shown  71% | jumps  0.7%
+  + GPS speed 18 Hz, sigma 0.6 m/s                 line   23 / max   81 ms | along   78 ms, p90  248, 40.3% over 100 | first 3 s  126 ms | shown  76% | jumps  0.3%
+  + GPS speed 18 Hz, sigma 1.2 m/s                 line   27 / max   58 ms | along   64 ms, p90  195, 33.1% over 100 | first 3 s  140 ms | shown  80% | jumps  0.5%
+  + GPS speed 18 Hz, sigma 2.0 m/s                 line   24 / max   48 ms | along   61 ms, p90  178, 30.4% over 100 | first 3 s  118 ms | shown  81% | jumps  1.0%
+  + GPS speed 18 Hz, sigma 3.0 m/s                 line   19 / max   70 ms | along   63 ms, p90  183, 31.7% over 100 | first 3 s  123 ms | shown  82% | jumps  0.9%
+  + GPS speed 18 Hz, sigma 5.0 m/s                 line   13 / max   50 ms | along   70 ms, p90  197, 36.0% over 100 | first 3 s  133 ms | shown  83% | jumps  1.1%
+  + GPS speed 18 Hz, sigma 2.0, one-mode tracker   line   39 / max   80 ms | along   64 ms, p90  185, 31.4% over 100 | first 3 s  103 ms | shown  81% | jumps  0.5%
+  + GPS speed 1 Hz (phone rate), sigma 0.6 m/s     line   72 / max  158 ms | along   93 ms, p90  247, 47.4% over 100 | first 3 s  155 ms | shown  73% | jumps  0.5%
+  + GPS speed 1 Hz (phone rate), sigma 2.0 m/s     line   15 / max   66 ms | along   62 ms, p90  185, 32.9% over 100 | first 3 s  135 ms | shown  81% | jumps  0.9%
+  + GPS speed 1 Hz (phone rate), sigma 5.0 m/s     line   15 / max   63 ms | along   71 ms, p90  195, 36.9% over 100 | first 3 s  135 ms | shown  83% | jumps  1.1%

@@ -40,3 +40,16 @@ def test_reference_time_beats_metres_when_the_pace_follows_the_reference():
     in_time = _run_estimator(stream, EstimatorConfig(**REFERENCE_TIME), None, None, 0, reference_time=True).numpy()
     in_metres = _run_estimator(stream, EstimatorConfig(), None, None, 0).numpy()
     assert np.median(_error_bins(in_time, truth)) < np.median(_error_bins(in_metres, truth))
+
+
+def test_a_speed_sensor_converted_through_the_reference_speed_steadies_noisy_beliefs():
+    # a kart 8% faster than the reference with an uneven pace along the lap, seen through very
+    # noisy beliefs; the sensor reads its m/s, the reference lap's own m/s known per bin
+    rate = 1.08
+    stream, truth = _stream(rate=rate, noise_bins=20.0, seed=2)
+    v_ref = 12.0 + 6.0 * np.sin(np.arange(N_BINS) / N_BINS * 6 * np.pi)
+    speed = rate * np.interp(truth, np.arange(N_BINS), v_ref)
+    config = EstimatorConfig(**REFERENCE_TIME)
+    blind = _run_estimator(stream, config, None, None, 0, reference_time=True).numpy()
+    sensed = _run_estimator(stream, config, speed, 1.0, 0, reference_time=True, reference_speed=v_ref).numpy()
+    assert np.median(_error_bins(sensed, truth)) < 0.6 * np.median(_error_bins(blind, truth))

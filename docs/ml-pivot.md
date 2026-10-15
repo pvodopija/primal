@@ -2702,6 +2702,31 @@ floodlights and a lit sign over a dark field. The delta's impossible jumps follo
 bins after the first three: 81 ms. The signal is there at night; the levers are the line's
 wrap and night scenery in training (zero night frames so far).
 
+**The GPS's speed in the tracker** (`experiments/gps_speed.py`; `ProgressEstimator(...,
+reference_speed=)`, `lap_series(..., speed_at=, speed_sigma=)`). In reference time a particle's
+speed is a rate through the reference lap, so a sensor's m/s is compared with the rate times
+the reference lap's own speed at the particle's place, both from the same receiver (its lag and
+scale cancel). Each tick takes the last fix's 2D speed, as live. Night session, pitch model,
+every lap against the fastest:
+
+| tracker input | at the line vs transponder, median / max | along the lap vs GPS position, median / over 100 ms | first 3 s after the line | impossible jumps (>0.3 s in 1 s) |
+|---|---|---|---|---|
+| camera only (as shipped) | 22 / 89 ms | 91 ms / 46.3% | 478 ms | 9.3% of ticks |
+| + GPS speed 18 Hz, trusted to 0.3 m/s | 50 / 204 | 108 / 52.7% | 125 | 0.7% |
+| + GPS speed 18 Hz, 2.0 m/s | **24 / 48** | **61 / 30.4%** | 118 | 1.0% |
+| + GPS speed 18 Hz, 5.0 m/s | 13 / 50 | 70 / 36.0% | 133 | 1.1% |
+| + GPS speed at 1 Hz (a phone's rate), 2.0 m/s | **15 / 66** | **62 / 32.9%** | 135 | 0.9% |
+
+Trusted loosely (~2 m/s: the speed only has to rule out the impossible), it removes the jumps
+(9.3% -> 1%, needing no truth to count), the post-line spike (478 -> ~120 ms) and a third of the
+along-lap error; at the line (the only independent truth) the median holds and the worst lap
+halves. Trusted tightly it hurts (a particle's place is uncertain where the reference brakes,
+so the reference speed it reads is too). **1 Hz does as well as 18 Hz**: a phone's GPS speed
+(Doppler, far better than its position) is the candidate for live. Caveat: the along-lap truth
+is the same receiver's position, not independent of its speed; the jumps and the line are.
+The one-mode tracker is no better (line 39 ms). Not yet in the app's session logic
+(`train/session.py`, `train/live.py`).
+
 **Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
 the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
 `--qat-ranges minmax`, and `--balance 1.0`, a layer's loudest channel over its median beyond 4x

@@ -715,11 +715,13 @@ def _lag_corrected(stream: dict, bins: torch.Tensor, k: float) -> torch.Tensor:
 
 def _run_estimator(stream: dict, config: EstimatorConfig, speed: np.ndarray | None,
                    speed_sigma: float | None, seed: int, reference_time: bool = False,
-                   noise_profile: np.ndarray | None = None) -> torch.Tensor:
+                   noise_profile: np.ndarray | None = None,
+                   reference_speed: np.ndarray | None = None) -> torch.Tensor:
     g = stream["grid"]
-    if reference_time:  # positions in reference seconds; a speed sensor would need converting
-        assert speed is None
-        est = ProgressEstimator(g.time_s, g.lap_time_s, config, seed=seed, noise_profile=noise_profile)
+    if reference_time:  # positions in reference seconds: a speed (m/s) needs the reference's own per bin
+        assert speed is None or reference_speed is not None
+        est = ProgressEstimator(g.time_s, g.lap_time_s, config, seed=seed, noise_profile=noise_profile,
+                                reference_speed=reference_speed)
     else:
         est = ProgressEstimator(g.pos_m, g.track_length_m, config, seed=seed)
     dts = np.diff(stream["t"], prepend=stream["t"][0] - 1.0 / STREAM_HZ)

@@ -1,0 +1,112 @@
+{
+  "camera only (as shipped)": {
+    "along_median_ms": 90.80268525934443,
+    "along_p90_ms": 282.6115430333495,
+    "along_over_100ms": 0.4631538263334192,
+    "first_3s_median_ms": 477.86707825936855,
+    "line_median_ms": 22.430252767076553,
+    "line_max_ms": 89.02444865994141,
+    "shown_share": 0.8575245974509781,
+    "jump_share": 0.09260670731707317
+  },
+  "+ GPS speed 18 Hz, sigma 0.3 m/s": {
+    "along_median_ms": 108.44355817296325,
+    "along_p90_ms": 317.2129796771817,
+    "along_over_100ms": 0.5271837155372326,
+    "first_3s_median_ms": 124.50837338185217,
+    "line_median_ms": 49.560288158556176,
+    "line_max_ms": 204.05798158792265,
+    "shown_share": 0.7113730568796071,
+    "jump_share": 0.0066056910569105695
+  },
+  "+ GPS speed 18 Hz, sigma 0.6 m/s": {
+    "along_median_ms": 78.10246583255598,
+    "along_p90_ms": 248.26164982340453,
+    "along_over_100ms": 0.4026024220561711,
+    "first_3s_median_ms": 126.48377839522418,
+    "line_median_ms": 22.576891503231167,
+    "line_max_ms": 81.41660197095746,
+    "shown_share": 0.7573157327995975,
+    "jump_share": 0.0029217479674796746
+  },
+  "+ GPS speed 18 Hz, sigma 1.2 m/s": {
+    "along_median_ms": 64.46766192287967,
+    "along_p90_ms": 194.55765063623858,
+    "along_over_100ms": 0.3311002318989951,
+    "first_3s_median_ms": 140.02165097429398,
+    "line_median_ms": 27.167861010038763,
+    "line_max_ms": 58.48591320456009,
+    "shown_share": 0.7954229589142606,
+    "jump_share": 0.005208333333333333
+  },
+  "+ GPS speed 18 Hz, sigma 2.0 m/s": {
+    "along_median_ms": 60.80502943781596,
+    "along_p90_ms": 177.76778859663622,
+    "along_over_100ms": 0.3040453491368204,
+    "first_3s_median_ms": 118.45702443923045,
+    "line_median_ms": 24.391860778482766,
+    "line_max_ms": 47.55352714307293,
+    "shown_share": 0.8104218675185764,
+    "jump_share": 0.009527439024390244
+  },
+  "+ GPS speed 18 Hz, sigma 3.0 m/s": {
+    "along_median_ms": 63.469381071488584,
+    "along_p90_ms": 183.27823127622455,
+    "along_over_100ms": 0.3167997938675599,
+    "first_3s_median_ms": 123.42177206568472,
+    "line_median_ms": 19.030635097177395,
+    "line_max_ms": 70.23689321416526,
+    "shown_share": 0.8247400936957934,
+    "jump_share": 0.008892276422764227
+  },
+  "+ GPS speed 18 Hz, sigma 5.0 m/s": {
+    "along_median_ms": 70.47152832956272,
+    "along_p90_ms": 197.15756622067752,
+    "along_over_100ms": 0.3595722751868075,
+    "first_3s_median_ms": 132.6584829182753,
+    "line_median_ms": 13.110540015819794,
+    "line_max_ms": 50.110870937700724,
+    "shown_share": 0.8260120685247118,
+    "jump_share": 0.01130589430894309
+  },
+  "+ GPS speed 18 Hz, sigma 2.0, one-mode tracker": {
+    "along_median_ms": 64.0674449754357,
+    "along_p90_ms": 184.724457441077,
+    "along_over_100ms": 0.31383664004122647,
+    "first_3s_median_ms": 103.04313514859587,
+    "line_median_ms": 39.24786106966849,
+    "line_max_ms": 79.84273503267403,
+    "shown_share": 0.8072691040668661,
+    "jump_share": 0.00508130081300813
+  },
+  "+ GPS speed 1 Hz (phone rate), sigma 0.6 m/s": {
+    "along_median_ms": 93.21945814462396,
+    "along_p90_ms": 246.99229844616258,
+    "along_over_100ms": 0.47371811388817314,
+    "first_3s_median_ms": 155.2876951511468,
+    "line_median_ms": 71.90939032282628,
+    "line_max_ms": 158.44994923752154,
+    "shown_share": 0.7329172043679595,
+    "jump_share": 0.004700203252032521
+  },
+  "+ GPS speed 1 Hz (phone rate), sigma 2.0 m/s": {
+    "along_median_ms": 62.4456334649679,
+    "along_p90_ms": 184.73311569045842,
+    "along_over_100ms": 0.3294254058232414,
+    "first_3s_median_ms": 135.11376190648505,
+    "line_median_ms": 14.724059422697167,
+    "line_max_ms": 65.74898939287976,
+    "shown_share": 0.8120574314942629,
+    "jump_share": 0.008511178861788617
+  },
+  "+ GPS speed 1 Hz (phone rate), sigma 5.0 m/s": {
+    "along_median_ms": 71.06731048007298,
+    "along_p90_ms": 195.25893226882695,
+    "along_over_100ms": 0.36859056944086577,
+    "first_3s_median_ms": 135.40450836987716,
+    "line_median_ms": 14.738029236955441,
+    "line_max_ms": 63.07189601892915,
+    "shown_share": 0.8287882425203699,
+    "jump_share": 0.01054369918699187
+  }
+}

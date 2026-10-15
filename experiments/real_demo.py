@@ -73,8 +73,11 @@ def setup(run: str) -> SimpleNamespace:
                            desc=desc, ref=desc[torch.from_numpy(bin_frame).to(device)], truth=np.load(ROOT / "truth_orb.npz"))
 
 
-def lap_series(S: SimpleNamespace, lap_no: int, fps: float) -> SimpleNamespace:
-    """One live lap at runtime settings: ticks, PRIMAL's reference time and delta, the true delta, confidence."""
+def lap_series(S: SimpleNamespace, lap_no: int, fps: float, speed_at=None, speed_sigma: float | None = None,
+               config: dict | None = None) -> SimpleNamespace:
+    """One live lap at runtime settings: ticks, PRIMAL's reference time and delta, the true delta, confidence.
+    With `speed_at` (video times -> m/s, e.g. the camera's GPS) the tracker also takes that speed at
+    every tick, the reference lap's own speed at each bin read from the same source."""
     a, b = S.laps[lap_no - 1]
     T, n, t = S.T, S.n, S.t
     ticks = np.arange(a + (S.K - 1) * S.stride / fps, b, 1 / HZ)
@@ -87,8 +90,11 @@ def lap_series(S: SimpleNamespace, lap_no: int, fps: float) -> SimpleNamespace:
                                   * S.model.logit_scale.exp())
             beliefs.append(logits.softmax(-1).cpu().double())
             single.append(soft_argmax_circular(logits, window=8).float().cpu())
+    speed = None if speed_at is None else speed_at(ticks)
+    reference_speed = None if speed_at is None else np.maximum(speed_at(S.laps[S.r][0] + S.grid.time_s), 0.5)
     bins = _run_estimator({"grid": S.grid, "belief": torch.cat(beliefs).numpy(), "t": ticks},
-                          EstimatorConfig(**REFERENCE_TIME_TWO_MODES), None, None, 0, reference_time=True).numpy()
+                          EstimatorConfig(**(config or REFERENCE_TIME_TWO_MODES)), speed, speed_sigma, 0,
+                          reference_time=True, reference_speed=reference_speed).numpy()
     ref_t = np.interp(bins % n, np.arange(n), S.grid.time_s)
     single_t = np.interp(torch.cat(single).numpy() % n, np.arange(n), S.grid.time_s)
     agree = np.abs((single_t - ref_t + T / 2) % T - T / 2) < AGREE_S

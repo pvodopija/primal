@@ -86,8 +86,13 @@ class ProgressEstimator:
         config: EstimatorConfig | None = None,
         seed: int = 0,
         noise_profile: np.ndarray | None = None,
+        reference_speed: np.ndarray | None = None,
     ) -> None:
         self.config = config or EstimatorConfig()
+        # With positions in reference seconds a particle's speed is a rate through the
+        # reference lap; a speed sensor's m/s is that rate times the reference lap's own speed
+        # there (per bin, m/s, measured by the same sensor so its lag and scale cancel).
+        self.reference_speed = None if reference_speed is None else np.asarray(reference_speed, dtype=np.float64)
         # Per-bin multiplier on accel_noise, e.g. larger where the reference brakes hard,
         # which is where a driver's pace departs from it most.
         self.noise_profile = None if noise_profile is None else np.asarray(noise_profile, dtype=np.float64)
@@ -189,6 +194,12 @@ class ProgressEstimator:
         if speed_obs is not None and speed_sigma:
             # The sensor reads true speed times its own scale.
             predicted = self.speed * self.scale
+            if self.reference_speed is not None:
+                x = self.bin_of(self.position)
+                k0 = np.floor(x).astype(np.int64) % self.n_bins
+                frac = x - np.floor(x)
+                predicted = predicted * ((1.0 - frac) * self.reference_speed[k0]
+                                         + frac * self.reference_speed[(k0 + 1) % self.n_bins])
             self.weight = self.weight * np.exp(-0.5 * ((predicted - speed_obs) / speed_sigma) ** 2)
         total = self.weight.sum()
         if not np.isfinite(total) or total <= 0.0:
