@@ -727,7 +727,7 @@ def _run_estimator(stream: dict, config: EstimatorConfig, speed: np.ndarray | No
     dts = np.diff(stream["t"], prepend=stream["t"][0] - 1.0 / STREAM_HZ)
     out = np.empty(dts.size)
     for i, (belief, dt) in enumerate(zip(stream["belief"], dts)):
-        obs = None if speed is None else float(speed[i])
+        obs = None if speed is None or not np.isfinite(speed[i]) else float(speed[i])  # NaN: no reading this tick
         out[i] = est.bin_of(est.step(belief, dt, speed_obs=obs, speed_sigma=speed_sigma).position_m)
     return torch.from_numpy(out)
 

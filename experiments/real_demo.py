@@ -74,10 +74,11 @@ def setup(run: str) -> SimpleNamespace:
 
 
 def lap_series(S: SimpleNamespace, lap_no: int, fps: float, speed_at=None, speed_sigma: float | None = None,
-               config: dict | None = None) -> SimpleNamespace:
+               config: dict | None = None, reference_smooth_s: float = 0.0) -> SimpleNamespace:
     """One live lap at runtime settings: ticks, PRIMAL's reference time and delta, the true delta, confidence.
     With `speed_at` (video times -> m/s, e.g. the camera's GPS) the tracker also takes that speed at
-    every tick, the reference lap's own speed at each bin read from the same source."""
+    every tick, the reference lap's own speed at each bin read from the same source (averaged over
+    +-reference_smooth_s: a noisy reading there would meet every later lap)."""
     a, b = S.laps[lap_no - 1]
     T, n, t = S.T, S.n, S.t
     ticks = np.arange(a + (S.K - 1) * S.stride / fps, b, 1 / HZ)
@@ -91,7 +92,15 @@ def lap_series(S: SimpleNamespace, lap_no: int, fps: float, speed_at=None, speed
             beliefs.append(logits.softmax(-1).cpu().double())
             single.append(soft_argmax_circular(logits, window=8).float().cpu())
     speed = None if speed_at is None else speed_at(ticks)
-    reference_speed = None if speed_at is None else np.maximum(speed_at(S.laps[S.r][0] + S.grid.time_s), 0.5)
+    reference_speed = None
+    if speed_at is not None:  # bins without a reading take their neighbours'
+        v = speed_at(S.laps[S.r][0] + S.grid.time_s)
+        ok = np.isfinite(v)
+        v = np.interp(np.arange(len(v)), np.flatnonzero(ok), v[ok])
+        k = int(round(reference_smooth_s * n / T))
+        if k > 0:
+            v = np.convolve(np.r_[v[-k:], v, v[:k]], np.ones(2 * k + 1) / (2 * k + 1), mode="valid")
+        reference_speed = np.maximum(v, 0.5)
     bins = _run_estimator({"grid": S.grid, "belief": torch.cat(beliefs).numpy(), "t": ticks},
                           EstimatorConfig(**(config or REFERENCE_TIME_TWO_MODES)), speed, speed_sigma, 0,
                           reference_time=True, reference_speed=reference_speed).numpy()

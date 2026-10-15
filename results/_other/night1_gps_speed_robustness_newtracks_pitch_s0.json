@@ -1,0 +1,142 @@
+{
+  "1 Hz as recorded": {
+    "along_median_ms": 62.4456334649679,
+    "along_p90_ms": 184.73311569045842,
+    "along_over_100ms": 0.3294254058232414,
+    "first_3s_median_ms": 135.11376190648505,
+    "line_median_ms": 14.724059422697167,
+    "line_max_ms": 65.74898939287976,
+    "shown_share": 0.8120574314942629,
+    "jump_share": 0.008511178861788617
+  },
+  "1 Hz, noise 0.5 m/s": {
+    "along_median_ms": 74.52651080415151,
+    "along_p90_ms": 221.77608946051527,
+    "along_over_100ms": 0.4020870909559392,
+    "first_3s_median_ms": 141.7234632955413,
+    "line_median_ms": 102.23918111997676,
+    "line_max_ms": 145.62618919338632,
+    "shown_share": 0.799553012809398,
+    "jump_share": 0.008003048780487805
+  },
+  "1 Hz, noise 0.5 m/s, trusted to 4 m/s": {
+    "along_median_ms": 72.86887050776159,
+    "along_p90_ms": 201.7752638413921,
+    "along_over_100ms": 0.37168255604225714,
+    "first_3s_median_ms": 127.35246422326973,
+    "line_median_ms": 40.43731682720875,
+    "line_max_ms": 112.88709120641371,
+    "shown_share": 0.826272279408471,
+    "jump_share": 0.01054369918699187
+  },
+  "1 Hz, noise 1.0 m/s, trusted to 4 m/s": {
+    "along_median_ms": 78.56062611032222,
+    "along_p90_ms": 223.66823405438475,
+    "along_over_100ms": 0.4035042514815769,
+    "first_3s_median_ms": 123.73915117933443,
+    "line_median_ms": 90.58571772489898,
+    "line_max_ms": 136.3383192810197,
+    "shown_share": 0.8189897819205271,
+    "jump_share": 0.00978150406504065
+  },
+  "1 Hz, 30% lost, none past 1.5 s": {
+    "along_median_ms": 80.50934414875677,
+    "along_p90_ms": 233.74652151083353,
+    "along_over_100ms": 0.40749806750837414,
+    "first_3s_median_ms": 172.68586979345991,
+    "line_median_ms": 42.850603797145226,
+    "line_max_ms": 70.04698323149228,
+    "shown_share": 0.7969837673514676,
+    "jump_share": 0.012703252032520325
+  },
+  "1 Hz, noise 0.5, reference averaged +-1.5 s": {
+    "along_median_ms": 72.99323194668794,
+    "along_p90_ms": 214.51736270673584,
+    "along_over_100ms": 0.37748003091986604,
+    "first_3s_median_ms": 117.7257442313504,
+    "line_median_ms": 81.47520598054214,
+    "line_max_ms": 158.4946153003024,
+    "shown_share": 0.798334186973738,
+    "jump_share": 0.009400406504065041
+  },
+  "1 Hz, noise 1.0, reference averaged +-1.5 s": {
+    "along_median_ms": 96.10385308331182,
+    "along_p90_ms": 276.5797972205172,
+    "along_over_100ms": 0.4808039165163618,
+    "first_3s_median_ms": 110.41700188796888,
+    "line_median_ms": 149.55401026744042,
+    "line_max_ms": 302.3184908255274,
+    "shown_share": 0.7546245892865933,
+    "jump_share": 0.008130081300813009
+  },
+  "1 Hz, noise 1.0, ref +-1.5 s, trusted to 4": {
+    "along_median_ms": 79.95294257999674,
+    "along_p90_ms": 217.63081386905085,
+    "along_over_100ms": 0.408013398608606,
+    "first_3s_median_ms": 139.19701203146496,
+    "line_median_ms": 78.82753976841883,
+    "line_max_ms": 127.74680372840308,
+    "shown_share": 0.8174423939533731,
+    "jump_share": 0.01016260162601626
+  },
+  "1 Hz as recorded, reference averaged +-1.5 s": {
+    "along_median_ms": 68.4773313203344,
+    "along_p90_ms": 185.11969286163037,
+    "along_over_100ms": 0.34102035557845917,
+    "first_3s_median_ms": 128.06647187275468,
+    "line_median_ms": 19.82108945016492,
+    "line_max_ms": 43.92443116440958,
+    "shown_share": 0.7993414690993361,
+    "jump_share": 0.008511178861788617
+  },
+  "1 Hz, noise 1.0 m/s": {
+    "along_median_ms": 108.2080868494053,
+    "along_p90_ms": 297.9148219972683,
+    "along_over_100ms": 0.5298892038134502,
+    "first_3s_median_ms": 101.07094986575937,
+    "line_median_ms": 176.24638327060893,
+    "line_max_ms": 279.16421121329904,
+    "shown_share": 0.7336580826694188,
+    "jump_share": 0.011432926829268292
+  },
+  "1 Hz, 1 s late": {
+    "along_median_ms": 66.44045244290275,
+    "along_p90_ms": 198.03727241180414,
+    "along_over_100ms": 0.3401185261530533,
+    "first_3s_median_ms": 128.35432975754378,
+    "line_median_ms": 26.205620421237086,
+    "line_max_ms": 91.96752263727959,
+    "shown_share": 0.7994766647926362,
+    "jump_share": 0.00546239837398374
+  },
+  "1 Hz, 2 s late": {
+    "along_median_ms": 72.67677239485693,
+    "along_p90_ms": 226.74711258709772,
+    "along_over_100ms": 0.37825302757021384,
+    "first_3s_median_ms": 105.31425101337888,
+    "line_median_ms": 13.337146172013092,
+    "line_max_ms": 79.07540254152678,
+    "shown_share": 0.7762675258173388,
+    "jump_share": 0.010289634146341464
+  },
+  "1 Hz, 30% of fixes lost": {
+    "along_median_ms": 117.80773393716437,
+    "along_p90_ms": 767.4000169124287,
+    "along_over_100ms": 0.5467662973460449,
+    "first_3s_median_ms": 846.8451740610519,
+    "line_median_ms": 126.62113737260583,
+    "line_max_ms": 598.3998310846844,
+    "shown_share": 0.586328709084437,
+    "jump_share": 0.11369410569105691
+  },
+  "0.5 Hz, noise 0.5 m/s, 1 s late": {
+    "along_median_ms": 94.34975576638394,
+    "along_p90_ms": 296.0022728627434,
+    "along_over_100ms": 0.4770677660396805,
+    "first_3s_median_ms": 128.447823990669,
+    "line_median_ms": 45.022610382218886,
+    "line_max_ms": 99.75230152983272,
+    "shown_share": 0.7558594305403379,
+    "jump_share": 0.010416666666666666
+  }
+}

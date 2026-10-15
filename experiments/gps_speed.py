@@ -15,6 +15,8 @@ delta jumps more than JUMP_S within a second.
 
 Usage: REAL_FOOTAGE=night1 PYTHONPATH=. python experiments/gps_speed.py RUN
        (writes ROOT/gps_speed_<run>.json)
+       ... gps_speed.py robustness RUN: the 1 Hz speed degraded as a phone might deliver it (noise,
+       lag, lost fixes; writes ROOT/gps_speed_robustness_<run>.json)
 """
 from __future__ import annotations
 
@@ -85,6 +87,57 @@ def main() -> None:
     (ROOT / f"gps_speed_{run}{SUFFIX}.json").write_text(json.dumps(report, indent=2))
 
 
+def degraded(every: int, noise: float = 0.0, lag_s: float = 0.0, dropout: float = 0.0, seed: int = 0,
+             max_age_s: float | None = None):
+    """The GPS speed made worse, as a phone might deliver it: every n-th fix, each off by Gaussian
+    noise (m/s), all late by lag_s (the same for both laps: one device), a share of fixes lost (the
+    last one held, or with max_age_s none once the last is older)."""
+    z = np.load(ROOT / "gpmf.npz")
+    t, v = z["GPS5_t"][::every] + lag_s, z["GPS5"][::every, 3].copy()
+    rng = np.random.default_rng(seed)
+    v = v + rng.normal(0.0, noise, len(v))
+    keep = rng.random(len(v)) >= dropout
+    t, v = t[keep], v[keep]
+
+    def at(when):
+        i = np.clip(np.searchsorted(t, when, side="right") - 1, 0, len(v) - 1)
+        out = v[i].astype(float)
+        if max_age_s is not None:
+            out[np.asarray(when) - t[i] > max_age_s] = np.nan
+        return out
+    return at
+
+
+def robustness(run: str) -> None:
+    """How good a phone's speed must be: the 1 Hz condition (sigma 2 m/s) degraded."""
+    S = setup(run)
+    fps = cv2.VideoCapture(str(VIDEO)).get(cv2.CAP_PROP_FPS)
+    t, xy = gps_xy()
+    conditions = {"1 Hz as recorded": dict(every=18), "1 Hz, noise 0.5 m/s": dict(every=18, noise=0.5),
+                  "1 Hz, noise 0.5 m/s, trusted to 4 m/s": dict(every=18, noise=0.5, sigma=4.0),
+                  "1 Hz, noise 1.0 m/s, trusted to 4 m/s": dict(every=18, noise=1.0, sigma=4.0),
+                  "1 Hz, 30% lost, none past 1.5 s": dict(every=18, dropout=0.3, max_age_s=1.5),
+                  "1 Hz, noise 0.5, reference averaged +-1.5 s": dict(every=18, noise=0.5, smooth=1.5),
+                  "1 Hz, noise 1.0, reference averaged +-1.5 s": dict(every=18, noise=1.0, smooth=1.5),
+                  "1 Hz, noise 1.0, ref +-1.5 s, trusted to 4": dict(every=18, noise=1.0, smooth=1.5, sigma=4.0),
+                  "1 Hz as recorded, reference averaged +-1.5 s": dict(every=18, smooth=1.5),
+                  "1 Hz, noise 1.0 m/s": dict(every=18, noise=1.0), "1 Hz, 1 s late": dict(every=18, lag_s=1.0),
+                  "1 Hz, 2 s late": dict(every=18, lag_s=2.0), "1 Hz, 30% of fixes lost": dict(every=18, dropout=0.3),
+                  "0.5 Hz, noise 0.5 m/s, 1 s late": dict(every=36, noise=0.5, lag_s=1.0)}
+    report = {}
+    for name, kw in conditions.items():
+        sigma, smooth = kw.pop("sigma", 2.0), kw.pop("smooth", 0.0)
+        r = score(S, fps, t, xy, speed_at=degraded(**kw), speed_sigma=sigma, reference_smooth_s=smooth)
+        report[name] = r
+        print(f"  {name:<34} line {r['line_median_ms']:4.0f} / max {r['line_max_ms']:4.0f} ms | along {r['along_median_ms']:4.0f} ms, "
+              f"{100 * r['along_over_100ms']:4.1f}% over 100 | first 3 s {r['first_3s_median_ms']:4.0f} ms | jumps {100 * r['jump_share']:4.1f}%",
+              flush=True)
+    (ROOT / f"gps_speed_robustness_{run}{SUFFIX}.json").write_text(json.dumps(report, indent=2))
+
+
 if __name__ == "__main__":
+    if sys.argv[1] == "robustness":
+        robustness(sys.argv[2])
+        sys.exit()
     assert REFERENCE_TIME_TWO_MODES  # the shipped tracker, lap_series's default
     main()

@@ -2727,6 +2727,28 @@ is the same receiver's position, not independent of its speed; the jumps and the
 The one-mode tracker is no better (line 39 ms). Not yet in the app's session logic
 (`train/session.py`, `train/live.py`).
 
+**What a phone's speed must deliver** (`gps_speed.py robustness`: the 1 Hz speed degraded, one
+noise draw each, trusted to 2 m/s unless said):
+
+| 1 Hz speed | at the line, median / max | along the lap, median / over 100 ms | jumps |
+|---|---|---|---|
+| as recorded | 15 / 66 ms | 62 ms / 32.9% | 0.9% |
+| 1 s late / 2 s late (both laps, one device) | 26 / 92, 13 / 79 | 66 / 34.0%, 73 / 37.8% | 0.5%, 1.0% |
+| 30% of fixes lost, the last held | 127 / 598 | 118 / 54.7% | 11.4% |
+| 30% lost, no reading once the last is 1.5 s old | 43 / 70 | 81 / 40.7% | 1.3% |
+| noise 0.5 m/s a fix | 102 / 146 | 75 / 40.2% | 0.8% |
+| noise 0.5, trusted to 4 m/s | 40 / 113 | 73 / 37.2% | 1.1% |
+| noise 1.0, trusted to 4 m/s | 91 / 136 | 79 / 40.4% | 1.0% |
+| noise 1.0, the reference's speed averaged over ±1.5 s, trusted to 4 | 79 / 128 | 80 / 40.8% | 1.0% |
+
+Lag costs nothing (it cancels: both laps carry it). A stale reading must be dropped, not held
+(the tracker takes no speed that tick; `_run_estimator` skips NaN). Noise is what matters: the
+jumps stay gone at any noise, but where the camera is weak (the line at night) the tracker runs
+on the speed alone and per-fix noise adds up over seconds. Averaging the reference lap's speed
+helps little; the live noise is the cost. So a phone's speed is worth it at ~0.3 m/s per fix or
+better, and each fix should be trusted by the accuracy it reports (Core Location's
+`speedAccuracy`), loosely when it is poor.
+
 **Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
 the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
 `--qat-ranges minmax`, and `--balance 1.0`, a layer's loudest channel over its median beyond 4x
