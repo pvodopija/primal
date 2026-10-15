@@ -43,3 +43,5 @@ G2 rt_oulton_park__fosters filter + speed                       0.87 m   24 ms  
   BHGP full: newtracks_pitch_bal8_s0 single: median   89 ms, p90   461, >100 ms  45.2% | tracker: median   63 ms, p90   219, >100 ms  31.8%
   race-chrono : newtracks_pitch_s0     single: median   44 ms, p90   173, >100 ms  20.2% | tracker: median   36 ms, p90   165, >100 ms  16.8%
   race-chrono : newtracks_pitch_bal8_s0 single: median   50 ms, p90   182, >100 ms  22.1% | tracker: median   38 ms, p90   171, >100 ms  17.0%
+123 runs indexed in /Users/pvodopija/code/primal/results/INDEX.md
+balance done 23:49

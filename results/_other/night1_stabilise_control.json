@@ -1,0 +1,16 @@
+{
+  "as recorded": {
+    "pairs": 917,
+    "shift_px_median": 6.652279072507439,
+    "shift_px_p90": 18.04352284896509,
+    "roll_deg_median": 0.37911141823123795,
+    "shift_jitter_px": 9.78369973200706
+  },
+  "steadied control": {
+    "pairs": 830,
+    "shift_px_median": 7.511750175140021,
+    "shift_px_p90": 20.293086511448994,
+    "roll_deg_median": 0.3630681867580461,
+    "shift_jitter_px": 10.982785180230495
+  }
+}

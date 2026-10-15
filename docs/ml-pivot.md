@@ -2651,6 +2651,45 @@ by construction, so a mid-lap error that cancels by the line goes unseen. Mid-la
 a second measure (track sector loops, a 10-25 Hz GNSS logger) or a consistency test (lap A
 against the fastest directly, and through a third lap).
 
+**The night session's own GPS, and its gyro** (2026-10-15). The file straight off the SD card
+(`night1/GH010018_sd.MP4`; the copy re-exported through Photos has lost it) carries the HERO7's
+telemetry (`experiments/gpmf_read.py` -> `night1/gpmf.npz`): gyro and accelerometer at 198 Hz,
+GPS at 18 Hz (17.8 new fixes a second, 3D fix throughout, DOP 1.2-1.7), the exposure (1/30 s:
+Auto Low Light, so the 60 fps video repeats each picture twice). **The GPS is a mid-lap truth
+for night footage:** lap times from a line through its fixes match the transponder's to 22 ms
+median (max 67). Against it (`experiments/gps_compare.py`: every lap against the fastest, the
+GPS delta at each tick from the nearest point of the reference lap's own GPS path), the pitch
+model is **91 ms median, p90 283, 46% of ticks over 100 ms** (where shown, 85% of the lap: 86
+ms, 44%), against 22 ms at the line. It follows the GPS's shape all lap, with segments of
+0.2-0.6 s jumps no delta can make (a delta moves at most ~0.1-0.2 s a second), and the first
+~3 s after the line wrong on some laps. Some of the 91 ms is the GPS's (Dragy, a 25 Hz logger,
+was 59 ms from the video truth in daylight); the jumps are PRIMAL's. Daylight against Dragy:
+35 ms.
+
+**Steadying the night footage by its gyro does not help PRIMAL**
+(`experiments/gyro_stabilise.py`, `experiments/chains/stabilise.sh`). The camera's orientation
+is integrated from the gyro, smoothed (Gaussian, 0.08 or 0.25 s), and each frame turned to the
+smooth path through an equidistant fisheye, row by row for the rolling shutter. The axes, sync
+and lens are measured from the video (frame-to-frame flow against the integrated gyro: corr
+0.94/0.97/0.89, gyro 28 ms behind the frame times, 890 px a radian at 1920 wide). Over lap 4,
+frame-to-frame jitter falls 9.8 -> 4.0 px and roll jitter 0.38 -> 0.21 deg (the smooth turning
+with the kart stays by design). Scored against a control with the same lens remap and no turn:
+
+| night1, pitch model | delta at the line, median / max | lap times, median / max | against the GPS, median / over 100 ms |
+|---|---|---|---|
+| as recorded | 22 / 89 ms | 66 / 204 ms | 91 ms / 46.3% |
+| control, the lens's own width | 16 / 54 | 68 / 197 | 91 / 46.8% |
+| steadied 0.25 s, own width (turned edges grey) | 28 / 124 | 90 / 355 | 95 / 48.2% |
+| control, zoomed 1.2x (edges off the picture) | 36 / 107 | 147 / 441 | 99 / 49.5% |
+| steadied 0.08 s, zoomed 1.2x | 31 / 428 | 139 / 348 | 102 / 51.0% |
+| steadied 0.25 s, zoomed 1.2x | 28 / 85 | 133 / 319 | 103 / 51.1% |
+
+At the lens's width the grey edges cost more than the steadying gives; zoomed, the narrower
+view costs more than either. The model is already trained through shake (head jitter, shake
+augmentation) and the motion blur of 1/30 s exposures stays in every frame whatever turns
+them. So the GoPro's own stabilisation (and its stream delay) is not needed, and a gyro on the
+glasses is not needed for steadying; the night error is blur and dark, not shake.
+
 **Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
 the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
 `--qat-ranges minmax`, and `--balance 1.0`, a layer's loudest channel over its median beyond 4x

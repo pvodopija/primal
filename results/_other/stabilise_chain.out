@@ -1,0 +1,30 @@
+data/real-footage/night1/stream_s008.mp4: 43893 frames; the turn to the steady path median 0.72 deg, p95 2.85, max 10.25
+data/real-footage/night1/stream_s025.mp4: 43893 frames; the turn to the steady path median 1.78 deg, p95 5.00, max 16.00
+=== control
+  lap times: median |error| 147 ms, max 441 ms over 11 laps
+  delta at the line against the fastest lap: median |error| 36 ms, max 107 ms
+newtracks_pitch_s0_control: PRIMAL vs GPS over every lap, median 99 ms, p90 334, 49.5% over 100 ms; where shown (83%) median 92, p90 266, 46.5% over 100 ms
+as recorded                  917 pairs: shift median 6.65 px, p90 18.04, roll median 0.379 deg, jitter 9.78 px (960 wide, lap 4)
+steadied control             830 pairs: shift median 7.51 px, p90 20.29, roll median 0.363 deg, jitter 10.98 px (960 wide, lap 4)
+=== s008
+  lap times: median |error| 139 ms, max 348 ms over 11 laps
+  delta at the line against the fastest lap: median |error| 31 ms, max 428 ms
+newtracks_pitch_s0_s008: PRIMAL vs GPS over every lap, median 102 ms, p90 341, 51.0% over 100 ms; where shown (82%) median 94, p90 264, 47.7% over 100 ms
+as recorded                  917 pairs: shift median 6.65 px, p90 18.04, roll median 0.379 deg, jitter 9.78 px (960 wide, lap 4)
+steadied s008                834 pairs: shift median 5.57 px, p90 13.90, roll median 0.260 deg, jitter 4.97 px (960 wide, lap 4)
+=== s025
+  lap times: median |error| 133 ms, max 319 ms over 11 laps
+  delta at the line against the fastest lap: median |error| 28 ms, max 85 ms
+newtracks_pitch_s0_s025: PRIMAL vs GPS over every lap, median 103 ms, p90 349, 51.1% over 100 ms; where shown (83%) median 94, p90 276, 47.9% over 100 ms
+as recorded                  917 pairs: shift median 6.65 px, p90 18.04, roll median 0.379 deg, jitter 9.78 px (960 wide, lap 4)
+steadied s025                845 pairs: shift median 5.49 px, p90 12.19, roll median 0.205 deg, jitter 4.02 px (960 wide, lap 4)
+data/real-footage/night1/stream_control_z10.mp4: 1 frames; the turn to the steady path median 0.00 deg, p95 0.00, max 0.00
+=== control_z10
+  lap times: median |error| 68 ms, max 197 ms over 11 laps
+  delta at the line against the fastest lap: median |error| 16 ms, max 54 ms
+newtracks_pitch_s0_control_z10: PRIMAL vs GPS over every lap, median 91 ms, p90 300, 46.8% over 100 ms; where shown (84%) median 86, p90 244, 44.4% over 100 ms
+data/real-footage/night1/stream_s025_z10.mp4: 43893 frames; the turn to the steady path median 1.78 deg, p95 5.00, max 16.00
+=== s025_z10
+  lap times: median |error| 90 ms, max 355 ms over 11 laps
+  delta at the line against the fastest lap: median |error| 28 ms, max 124 ms
+newtracks_pitch_s0_s025_z10: PRIMAL vs GPS over every lap, median 95 ms, p90 296, 48.2% over 100 ms; where shown (82%) median 87, p90 239, 45.3% over 100 ms
