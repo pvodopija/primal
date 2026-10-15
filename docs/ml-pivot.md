@@ -2688,7 +2688,19 @@ At the lens's width the grey edges cost more than the steadying gives; zoomed, t
 view costs more than either. The model is already trained through shake (head jitter, shake
 augmentation) and the motion blur of 1/30 s exposures stays in every frame whatever turns
 them. So the GoPro's own stabilisation (and its stream delay) is not needed, and a gyro on the
-glasses is not needed for steadying; the night error is blur and dark, not shake.
+glasses is not needed for steadying; the night error is not shake.
+
+**Where the night error sits** (`experiments/night_signal.py`: every lap's |PRIMAL - GPS| placed
+on the fastest lap by the GPS, one-second bins, against what the model sees there). Not the
+dark: the six darkest seconds (brightness 7-17 of 255, little detail) score 47-70 ms but one
+(172), the best bins 35-45 ms (so the GPS is at least that good there); error against
+brightness +0.17 and against detail +0.06 (rank correlations over 47 bins). The bad places
+repeat lap after lap (+0.54): the first three seconds after the line (626, 340, 256 ms: the
+line's wrap, the end-of-lap weak spot also seen against Dragy) and 11-19 s (150-230 ms),
+floodlights and a lit sign over a dark field. The delta's impossible jumps follow brightness
+(+0.42): point lights, whose glare and blooming change with the head's angle. Median of the
+bins after the first three: 81 ms. The signal is there at night; the levers are the line's
+wrap and night scenery in training (zero night frames so far).
 
 **Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
 the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
