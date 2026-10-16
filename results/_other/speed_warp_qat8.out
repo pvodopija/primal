@@ -1,0 +1,16 @@
+newtracks_pitch_qat8_s0: lines at [75.0, 124.2, 172.84, 221.53, 270.47, 318.82, 367.07, 415.34]
+  1x (baseline, seed 2: noise floor)     speed error median     4 ms, p90     9,   0.0% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%
+  constant 0.5x                          speed error median    33 ms, p90    69,   1.8% over 100 ms | at the line [-49, -49, -49, -49] ms | shown  98%
+  constant 0.75x                         speed error median    19 ms, p90    46,   2.7% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%
+  constant 0.9x                          speed error median    12 ms, p90    47,   1.6% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%
+  constant 1.1x                          speed error median     7 ms, p90    40,   0.0% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%
+  constant 1.25x                         speed error median    11 ms, p90    42,   2.7% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%
+  constant 1.5x                          speed error median    23 ms, p90    54,   4.6% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%
+  constant 2x                            speed error median    53 ms, p90   106,  11.2% over 100 ms | at the line [0, 0, 49, 49] ms | shown  95%
+  half 0.5x, half 1.5x                   speed error median    32 ms, p90    72,   4.1% over 100 ms | at the line [0, 0, 0, 0] ms | shown  96%
+  half 0.75x, half 1.5x (same total)     speed error median    20 ms, p90    71,   6.8% over 100 ms | at the line [0, 0, 0, 0] ms | shown  97%
+  half 1.5x, half 0.75x (same total)     speed error median    22 ms, p90    59,   6.9% over 100 ms | at the line [0, 0, 0, 0] ms | shown  98%
+  surges +-20%, 8 s period               speed error median    97 ms, p90   203,  48.4% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%
+  surges +-40%, 8 s period               speed error median   126 ms, p90   268,  60.3% over 100 ms | at the line [0, 0, 0, 0] ms | shown  94%
+  mistake: 0.3x for 3 s at 20 s          speed error median     2 ms, p90    59,   7.4% over 100 ms | at the line [0, 0, 0, 0] ms | shown  98%
+  one slow sector: 0.85x for 10 s        speed error median     4 ms, p90    68,   6.3% over 100 ms | at the line [0, 0, 0, 0] ms | shown  99%

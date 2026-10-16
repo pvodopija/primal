@@ -2749,6 +2749,35 @@ helps little; the live noise is the cost. So a phone's speed is worth it at ~0.3
 better, and each fix should be trusted by the accuracy it reports (Core Location's
 `speedAccuracy`), loosely when it is poor.
 
+**Pace unlike the reference's: laps replayed at a known speed** (2026-10-16,
+`experiments/speed_warp.py`, rotax-night: a pro's night laps at 48.2-49.0 s, 60 fps). The
+reference is lap 1 at 1x; laps 3-6 are replayed through the app's engine (`LiveDelta`, the
+shipped tracker, continuous from the lap before) at a known changing speed. The place on screen
+does not depend on the speed it is shown at, so the exact answer is the same lap's reading at
+1x at the frame on screen; the delta moves by the time the warp adds. No truth source needed;
+a second seed at 1x gives the floor (4 ms). The release model (qat8):
+
+| replay speed | camera only, median / p90 / over 100 ms | + a pace reading (sigma 10%) |
+|---|---|---|
+| constant 0.75x / 1.25x | 19 / 46 ms / 2.7%; 11 / 42 / 2.7% | 17 / 33 / 0%; 7 / 24 / 0% |
+| constant 0.5x / 2x | 33 / 69 / 1.8%; 53 / 106 / 11.2% | 27 / 61 / 0%; 46 / 87 / 5.3% |
+| half the lap 0.5x, half 1.5x | 32 / 72 / 4.1% | 30 / 66 / 0.2% |
+| half 0.75x, half 1.5x (the same total) | 20 / 71 / 6.8% | 19 / 38 / 0% |
+| a mistake: 0.3x for 3 s | 2 / 59 / 7.4% | 1 / 17 / 0% |
+| one sector 0.85x for 10 s | 4 / 68 / 6.3% | 2 / 10 / 0% |
+| **surges ±20% / ±40%, 8 s period** | **97 / 203 / 48%; 126 / 268 / 60%** | **11 / 31 / 0%; 10 / 26 / 0%** |
+
+At the line the delta is exact (the time the warp added, to the bin) in every case: a lap's
+total is never lost. A different but steady pace and one-off changes (a mistake, a slow sector, a
+step from slow to fast) cost little: the tracker finds the new rate within a few seconds. Pace
+that keeps changing does not: the tracker's pace model (`REFERENCE_TIME_TWO_MODES`, accel_noise
+0.01) trails each change by 0.5-1 s, so the delta lags and overshoots every surge (the plot,
+`rotax-night/speed_warp/newtracks_pitch_qat8_s0.png`). A pace reading removes it entirely, which
+is the speed sensor's case again (*The GPS's speed in the tracker*) from another side. The test
+warps time only: a lap really driven faster also changes the line and the blur; the surges are
+harsher than a pro's lap-to-lap differences, nearer an amateur's braking points against a
+reference.
+
 **Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
 the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
 `--qat-ranges minmax`, and `--balance 1.0`, a layer's loudest channel over its median beyond 4x
