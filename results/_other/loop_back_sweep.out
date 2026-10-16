@@ -1,0 +1,60 @@
+night1          newtracks_pitch_qat8_s0    loop_back 0.85: NEVER closed                         laps right 0/0 (true reference lap 49.4 s)
+night1          newtracks_pitch_qat8_s0    loop_back 0.80: NEVER closed                         laps right 0/0 (true reference lap 49.4 s)
+night1          newtracks_pitch_qat8_s0    loop_back 0.75: closed  49.44 s (right) by primal    laps right 10/10 (true reference lap 49.4 s)
+night1          v3_mobilenet_lr1_s0        loop_back 0.85: closed  49.30 s (right) by primal    laps right 9/10 (true reference lap 49.4 s)
+night1          v3_mobilenet_lr1_s0        loop_back 0.80: closed  49.30 s (right) by primal    laps right 9/10 (true reference lap 49.4 s)
+night1          v3_mobilenet_lr1_s0        loop_back 0.75: closed  49.30 s (right) by primal    laps right 9/10 (true reference lap 49.4 s)
+indoor-pov      newtracks_pitch_qat8_s0    loop_back 0.85: closed  40.26 s (right) by primal    laps right 10/10 (true reference lap 40.0 s)
+indoor-pov      newtracks_pitch_qat8_s0    loop_back 0.80: closed  40.26 s (right) by primal    laps right 10/10 (true reference lap 40.0 s)
+indoor-pov      newtracks_pitch_qat8_s0    loop_back 0.75: closed  40.14 s (right) by primal    laps right 10/10 (true reference lap 40.0 s)
+indoor-pov      v3_mobilenet_lr1_s0        loop_back 0.85: closed  39.80 s (right) by primal    laps right 9/10 (true reference lap 40.0 s)
+indoor-pov      v3_mobilenet_lr1_s0        loop_back 0.80: closed  43.68 s (FALSE) by look-alike laps right 10/10 (true reference lap 40.0 s)
+indoor-pov      v3_mobilenet_lr1_s0        loop_back 0.75: closed  43.68 s (FALSE) by look-alike laps right 10/10 (true reference lap 40.0 s)
+BHGP            newtracks_pitch_qat8_s0    loop_back 0.85: NEVER closed                         laps right 0/0 (true reference lap 91.0 s)
+BHGP            newtracks_pitch_qat8_s0    loop_back 0.80: closed  92.77 s (FALSE) by look-alike laps right 6/6 (true reference lap 91.0 s)
+BHGP            newtracks_pitch_qat8_s0    loop_back 0.75: closed  92.77 s (FALSE) by look-alike laps right 6/6 (true reference lap 91.0 s)
+BHGP            v3_mobilenet_lr1_s0        loop_back 0.85: NEVER closed                         laps right 0/0 (true reference lap 91.0 s)
+BHGP            v3_mobilenet_lr1_s0        loop_back 0.80: closed  92.77 s (FALSE) by look-alike laps right 6/6 (true reference lap 91.0 s)
+BHGP            v3_mobilenet_lr1_s0        loop_back 0.75: closed  92.77 s (FALSE) by look-alike laps right 6/6 (true reference lap 91.0 s)
+race-chrono     newtracks_pitch_qat8_s0    loop_back 0.85: closed  94.39 s (FALSE) by look-alike laps right 2/2 (true reference lap 91.9 s)
+race-chrono     newtracks_pitch_qat8_s0    loop_back 0.80: closed  94.39 s (FALSE) by look-alike laps right 2/2 (true reference lap 91.9 s)
+race-chrono     newtracks_pitch_qat8_s0    loop_back 0.75: closed  93.64 s (FALSE) by look-alike laps right 2/2 (true reference lap 91.9 s)
+race-chrono     v3_mobilenet_lr1_s0        loop_back 0.85: closed  94.46 s (FALSE) by look-alike laps right 2/2 (true reference lap 91.9 s)
+race-chrono     v3_mobilenet_lr1_s0        loop_back 0.80: closed  94.46 s (FALSE) by look-alike laps right 2/2 (true reference lap 91.9 s)
+race-chrono     v3_mobilenet_lr1_s0        loop_back 0.75: closed  15.25 s (FALSE) by look-alike laps right 1/4 (true reference lap 91.9 s)
+draggy          newtracks_pitch_qat8_s0    loop_back 0.85: closed  39.29 s (right) by primal    laps right 1/1 (true reference lap 39.3 s)
+draggy          newtracks_pitch_qat8_s0    loop_back 0.80: closed  39.29 s (right) by primal    laps right 1/1 (true reference lap 39.3 s)
+draggy          newtracks_pitch_qat8_s0    loop_back 0.75: closed  39.29 s (right) by primal    laps right 1/1 (true reference lap 39.3 s)
+draggy          v3_mobilenet_lr1_s0        loop_back 0.85: closed  39.24 s (right) by primal    laps right 1/1 (true reference lap 39.3 s)
+draggy          v3_mobilenet_lr1_s0        loop_back 0.80: closed  39.24 s (right) by primal    laps right 1/1 (true reference lap 39.3 s)
+draggy          v3_mobilenet_lr1_s0        loop_back 0.75: closed  39.24 s (right) by primal    laps right 1/1 (true reference lap 39.3 s)
+adventure-solo  newtracks_pitch_qat8_s0    loop_back 0.85: closed  75.49 s (FALSE) by primal    laps right 1/3 (true reference lap 38.0 s)
+adventure-solo  newtracks_pitch_qat8_s0    loop_back 0.80: closed  37.91 s (right) by primal    laps right 8/8 (true reference lap 38.0 s)
+adventure-solo  newtracks_pitch_qat8_s0    loop_back 0.75: closed  37.91 s (right) by primal    laps right 8/8 (true reference lap 38.0 s)
+adventure-solo  v3_mobilenet_lr1_s0        loop_back 0.85: closed  75.52 s (FALSE) by primal    laps right 1/3 (true reference lap 38.0 s)
+adventure-solo  v3_mobilenet_lr1_s0        loop_back 0.80: closed  37.97 s (right) by primal    laps right 8/8 (true reference lap 38.0 s)
+adventure-solo  v3_mobilenet_lr1_s0        loop_back 0.75: closed  37.97 s (right) by primal    laps right 8/8 (true reference lap 38.0 s)
+rotax-night     newtracks_pitch_qat8_s0    loop_back 0.85: closed  49.20 s (right) by primal    laps right 11/12 (true reference lap 49.2 s)
+rotax-night     newtracks_pitch_qat8_s0    loop_back 0.80: closed  49.20 s (right) by primal    laps right 11/12 (true reference lap 49.2 s)
+rotax-night     newtracks_pitch_qat8_s0    loop_back 0.75: closed  49.20 s (right) by primal    laps right 11/12 (true reference lap 49.2 s)
+rotax-night     v3_mobilenet_lr1_s0        loop_back 0.85: closed  49.18 s (right) by primal    laps right 11/11 (true reference lap 49.2 s)
+rotax-night     v3_mobilenet_lr1_s0        loop_back 0.80: closed  36.51 s (FALSE) by primal    laps right 11/11 (true reference lap 49.2 s)
+rotax-night     v3_mobilenet_lr1_s0        loop_back 0.75: closed  36.51 s (FALSE) by primal    laps right 11/11 (true reference lap 49.2 s)
+Traceback (most recent call last):
+  File "/Users/pvodopija/code/primal/experiments/loop_back_sweep.py", line 83, in <module>
+    main()
+    ~~~~^^
+  File "/Users/pvodopija/code/primal/experiments/loop_back_sweep.py", line 79, in main
+    Path("runs/lc_logs/loop_back_sweep.json").write_text(json.dumps(report, indent=2))
+                                                         ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.15/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py", line 242, in dumps
+    **kw).encode(obj)
+          ~~~~~~^^^^^
+  File "/opt/homebrew/Cellar/python@3.13/3.13.15/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py", line 202, in encode
+    chunks = self.iterencode(o, _one_shot=True)
+  File "/opt/homebrew/Cellar/python@3.13/3.13.15/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py", line 263, in iterencode
+    return _iterencode(o, 0)
+  File "/opt/homebrew/Cellar/python@3.13/3.13.15/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/encoder.py", line 182, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type int64 is not JSON serializable
