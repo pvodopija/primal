@@ -50,7 +50,13 @@ thresholds (`experiments/loop_back_sweep.py`, START 3 s before a line, no hand c
 (* RaceChrono's first lap starts slowly: the START-to-START lap differs from the line's; the
 laps after it are right.) qat8 separates places more (its mid-lap score ~0.3-0.5 against v3's
 0.4-0.7), so a lower bar admits no look-alike for it and several for v3: 0.75 is the release's
-setting for qat8, and v3 keeps 0.85. The app no longer has a button to close the reference by
+setting for qat8, and v3 keeps 0.85. The pitch model (`newtracks_pitch_s0`, the most accurate,
+float32 on the phone's GPU) has no safe value: at 0.85 the adventure set closes two laps late, at
+0.80 rotax-night never closes, at 0.75 rotax-night never closes and indoor closes falsely
+(46.5 s). That a lower bar loses rotax-night's closure points at the session logic itself (an
+early proposal, rejected, apparently keeping the true one from being proposed; unexamined), so
+until the closure is made robust (a threshold relative to the model's own scores, a second
+proposal after a rejection) qat8 at 0.75 is the release for the phone. The app no longer has a button to close the reference by
 hand (`closeReferenceHere` is unused since "Line here" went), so a missed closure is a session
 without a delta.
 
