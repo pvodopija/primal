@@ -1,0 +1,14 @@
+newtracks_pitch_qat8_s0: lines [75.0, 124.2, 172.84, 221.53, 270.47, 318.82, 367.07, 415.34, 463.77, 512.02, 560.38, 608.62]; timing lap 49.20 s, 946 bins; ruined 8.0-12.0 s
+blind: the bank laps' entries placed 1 ms (median), 311 ms (max) off inside the ruined stretch, 0 ms elsewhere
+blind: the timing lap's own check masks 100% of the ruined bins and 1.2% of the rest (agreement median 0.07 ruined, 0.73 clean)
+  blind: one lap (as today)                    vs the clean timing lap: median     6 ms,  8.5% over 100 | in the ruined stretch   968 ms, 90.7% over 100, shown  18% | shown  92% | at the line    2 ms
+  blind: bank, max                             vs the clean timing lap: median    25 ms, 11.1% over 100 | in the ruined stretch   209 ms, 77.4% over 100, shown 100% | shown 100% | at the line    3 ms
+  blind: bank, mean                            vs the clean timing lap: median    23 ms, 12.0% over 100 | in the ruined stretch   205 ms, 77.4% over 100, shown 100% | shown 100% | at the line   19 ms
+  blind: bank, max, no mask                    vs the clean timing lap: median    26 ms, 10.8% over 100 | in the ruined stretch   208 ms, 77.2% over 100, shown 100% | shown 100% | at the line    3 ms
+newtracks_pitch_qat8_s0: lines [75.0, 124.2, 172.84, 221.53, 270.47, 318.82, 367.07, 415.34, 463.77, 512.02, 560.38, 608.62]; timing lap 49.20 s, 946 bins; ruined 35.0-39.0 s
+blind: the bank laps' entries placed 5345 ms (median), 14004 ms (max) off inside the ruined stretch, 135 ms elsewhere
+blind: the timing lap's own check masks 100% of the ruined bins and 1.0% of the rest (agreement median 0.22 ruined, 0.91 clean)
+  blind: one lap (as today)                    vs the clean timing lap: median     7 ms, 12.4% over 100 | in the ruined stretch   760 ms, 94.4% over 100, shown  30% | shown  91% | at the line    9 ms
+  blind: bank, max                             vs the clean timing lap: median    19 ms,  9.4% over 100 | in the ruined stretch   362 ms, 84.8% over 100, shown  99% | shown 100% | at the line   10 ms
+  blind: bank, mean                            vs the clean timing lap: median    18 ms,  9.6% over 100 | in the ruined stretch   350 ms, 86.6% over 100, shown 100% | shown 100% | at the line    5 ms
+  blind: bank, max, no mask                    vs the clean timing lap: median    18 ms,  9.6% over 100 | in the ruined stretch   365 ms, 85.0% over 100, shown  99% | shown 100% | at the line   11 ms

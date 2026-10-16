@@ -59,3 +59,36 @@ def test_readings_must_agree_before_they_place_a_line():
     scattered = [10.0, 11.0] * 10                                         # half here, half a second away
     assert agreed(scattered, 30, 15, 0.15) is None
     assert agreed([99.0] * 20 + [10.0] * 30, 30, 15, 0.15) == 10.0        # only the last window counts
+
+
+class _Engine:
+    def start_at(self, t, ref):
+        pass
+
+    def push_descriptor(self, d, t):
+        pass
+
+
+def _session_after_laps(lap_times):
+    """A session past its reference lap and `lap_times` laps, its engine a stub."""
+    from train.session import Session
+    s = Session.__new__(Session)
+    s.c, s.laps, s.lap, s.lap_start = SessionConfig(), [], 0, 0.0
+    s.reference_lap_s, s.lap_times = lap_times[0], [lap_times[0]]
+    s._engine = lambda frames, start, line: _Engine()
+    s._new_lap_counters()
+    for lap_s in lap_times[1:]:
+        s.ticks, s.shown_ticks = 10, 10
+        s._lap_ended(s.lap_start + lap_s, s.lap_start + lap_s)
+    return s
+
+
+def test_any_faster_lap_becomes_the_reference_but_not_a_line_misplaced_short():
+    s = _session_after_laps([49.2, 48.6, 48.7])
+    assert s.laps[0].became_reference and abs(s.reference_lap_s - 48.6) < 1e-9
+    s.ticks, s.shown_ticks = 10, 2                       # its delta mostly hidden: still the reference
+    s._lap_ended(s.lap_start + 48.3, s.lap_start + 48.3)
+    assert s.laps[-1].became_reference and abs(s.reference_lap_s - 48.3) < 1e-9
+    s.ticks, s.shown_ticks = 10, 4
+    s._lap_ended(s.lap_start + 34.9, s.lap_start + 34.9)  # the pit in-lap: a misplaced line
+    assert not s.laps[-1].became_reference and abs(s.reference_lap_s - 48.3) < 1e-9

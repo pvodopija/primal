@@ -1,0 +1,47 @@
+{
+  "blind: bank placement": {
+    "gap_median_ms": 0.6056928282447416,
+    "gap_max_ms": 311.1378044098956,
+    "elsewhere_median_ms": 0.0
+  },
+  "blind: junk mask": {
+    "ruined_masked": 1.0,
+    "clean_masked": 0.011507479861910242
+  },
+  "blind: one lap (as today)": {
+    "median_ms": 5.697482282858601,
+    "over_100ms": 0.0853855833183534,
+    "gap_median_ms": 967.605157358264,
+    "gap_over_100ms": 0.9067245119305857,
+    "gap_shown": 0.1843817787418655,
+    "shown": 0.9171118387041186,
+    "at_line_ms_median": 2.0411817650529684
+  },
+  "blind: bank, max": {
+    "median_ms": 25.01123318963039,
+    "over_100ms": 0.11145065612079813,
+    "gap_median_ms": 208.78945228972867,
+    "gap_over_100ms": 0.7744034707158352,
+    "gap_shown": 1.0,
+    "shown": 0.9967258314664829,
+    "at_line_ms_median": 3.271610817465742
+  },
+  "blind: bank, mean": {
+    "median_ms": 23.294084902204304,
+    "over_100ms": 0.12007909401402121,
+    "gap_median_ms": 205.08712599492185,
+    "gap_over_100ms": 0.7744034707158352,
+    "gap_shown": 1.0,
+    "shown": 0.9960365328278477,
+    "at_line_ms_median": 19.102699768819065
+  },
+  "blind: bank, max, no mask": {
+    "median_ms": 25.817299941827798,
+    "over_100ms": 0.10821499191083947,
+    "gap_median_ms": 208.32767253194362,
+    "gap_over_100ms": 0.7722342733188721,
+    "gap_shown": 1.0,
+    "shown": 0.9967258314664829,
+    "at_line_ms_median": 2.5778376293050798
+  }
+}

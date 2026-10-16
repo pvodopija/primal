@@ -1,0 +1,870 @@
+{
+  "night1": {
+    "shown 0.8 (before)": {
+      "reference_lap_s": 49.43537703530271,
+      "laps": [
+        {
+          "lap_s": 49.2905046619197,
+          "became_reference": true,
+          "shown_share": 0.9250681198910081,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.54703421901277,
+          "became_reference": false,
+          "shown_share": 0.79702300405954,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.540366135485954,
+          "became_reference": false,
+          "shown_share": 0.7765814266487214,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.38361555748503,
+          "became_reference": false,
+          "shown_share": 0.699724517906336,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 47.08829776611503,
+          "became_reference": false,
+          "shown_share": 0.6752717391304348,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.07996137590368,
+          "became_reference": false,
+          "shown_share": 0.7250361794500724,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.017058772729115,
+          "became_reference": false,
+          "shown_share": 0.7905686546463245,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.03260583729116,
+          "became_reference": false,
+          "shown_share": 0.6857142857142857,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.008568860060905,
+          "became_reference": false,
+          "shown_share": 0.7972222222222223,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 47.93599322865089,
+          "became_reference": false,
+          "shown_share": 0.7552155771905424,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    },
+    "any faster lap (app now)": {
+      "reference_lap_s": 49.43537703530271,
+      "laps": [
+        {
+          "lap_s": 49.2905046619197,
+          "became_reference": true,
+          "shown_share": 0.9250681198910081,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.54703421901277,
+          "became_reference": false,
+          "shown_share": 0.79702300405954,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.540366135485954,
+          "became_reference": false,
+          "shown_share": 0.7765814266487214,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.38361555748503,
+          "became_reference": true,
+          "shown_share": 0.699724517906336,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 47.986726549019295,
+          "became_reference": true,
+          "shown_share": 0.8531468531468531,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 47.913138480627424,
+          "became_reference": true,
+          "shown_share": 0.819327731092437,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.03871728709157,
+          "became_reference": false,
+          "shown_share": 0.7863128491620112,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.08821121712458,
+          "became_reference": false,
+          "shown_share": 0.8046132971506106,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 47.79886845833505,
+          "became_reference": true,
+          "shown_share": 0.8605299860529986,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.26588134632368,
+          "became_reference": false,
+          "shown_share": 0.9069444444444444,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    }
+  },
+  "indoor-pov": {
+    "shown 0.8 (before)": {
+      "reference_lap_s": 40.14362512512187,
+      "laps": [
+        {
+          "lap_s": 39.04722846372363,
+          "became_reference": true,
+          "shown_share": 0.9862068965517241,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.46015741260065,
+          "became_reference": true,
+          "shown_share": 0.9197207678883071,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 39.18752562628711,
+          "became_reference": false,
+          "shown_share": 0.9605488850771869,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.2922180704507,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.56953099767816,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.01855817988863,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.8856860999868,
+          "became_reference": false,
+          "shown_share": 0.9844559585492227,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.27130956137876,
+          "became_reference": false,
+          "shown_share": 0.7104194857916103,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 45.85134154607607,
+          "became_reference": false,
+          "shown_share": 0.7587209302325582,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.21538672010337,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    },
+    "any faster lap (app now)": {
+      "reference_lap_s": 40.14362512512187,
+      "laps": [
+        {
+          "lap_s": 39.04722846372363,
+          "became_reference": true,
+          "shown_share": 0.9862068965517241,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.46015741260065,
+          "became_reference": true,
+          "shown_share": 0.9197207678883071,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 39.18752562628711,
+          "became_reference": false,
+          "shown_share": 0.9605488850771869,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.2922180704507,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.56953099767816,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.01855817988863,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.8856860999868,
+          "became_reference": false,
+          "shown_share": 0.9844559585492227,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 49.27130956137876,
+          "became_reference": false,
+          "shown_share": 0.7104194857916103,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 45.85134154607607,
+          "became_reference": false,
+          "shown_share": 0.7587209302325582,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.21538672010337,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    }
+  },
+  "BHGP": {
+    "shown 0.8 (before)": {
+      "reference_lap_s": 92.76666666666665,
+      "laps": [
+        {
+          "lap_s": 86.97848702047668,
+          "became_reference": true,
+          "shown_share": 0.8184615384615385,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.03224865263707,
+          "became_reference": true,
+          "shown_share": 0.9171974522292994,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.35997812729607,
+          "became_reference": false,
+          "shown_share": 0.9238699444885012,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.22101607550451,
+          "became_reference": false,
+          "shown_share": 0.9279493269992082,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 83.66698879208559,
+          "became_reference": true,
+          "shown_share": 0.9346613545816733,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.17796539964161,
+          "became_reference": false,
+          "shown_share": 0.937251787132645,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    },
+    "any faster lap (app now)": {
+      "reference_lap_s": 92.76666666666665,
+      "laps": [
+        {
+          "lap_s": 86.97848702047668,
+          "became_reference": true,
+          "shown_share": 0.8184615384615385,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.03224865263707,
+          "became_reference": true,
+          "shown_share": 0.9171974522292994,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.35997812729607,
+          "became_reference": false,
+          "shown_share": 0.9238699444885012,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.22101607550451,
+          "became_reference": false,
+          "shown_share": 0.9279493269992082,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 83.66698879208559,
+          "became_reference": true,
+          "shown_share": 0.9346613545816733,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 84.17796539964161,
+          "became_reference": false,
+          "shown_share": 0.937251787132645,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    }
+  },
+  "race-chrono": {
+    "shown 0.8 (before)": {
+      "reference_lap_s": 93.64355,
+      "laps": [
+        {
+          "lap_s": 87.28191941513867,
+          "became_reference": true,
+          "shown_share": 0.9355828220858896,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 87.64032607974028,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    },
+    "any faster lap (app now)": {
+      "reference_lap_s": 93.64355,
+      "laps": [
+        {
+          "lap_s": 87.28191941513867,
+          "became_reference": true,
+          "shown_share": 0.9355828220858896,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 87.64032607974028,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    }
+  },
+  "draggy": {
+    "shown 0.8 (before)": {
+      "reference_lap_s": 39.2930985030828,
+      "laps": [
+        {
+          "lap_s": 39.419711415456135,
+          "became_reference": false,
+          "shown_share": 0.9215017064846417,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    },
+    "any faster lap (app now)": {
+      "reference_lap_s": 39.2930985030828,
+      "laps": [
+        {
+          "lap_s": 39.419711415456135,
+          "became_reference": false,
+          "shown_share": 0.9215017064846417,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    }
+  },
+  "adventure-solo": {
+    "shown 0.8 (before)": {
+      "reference_lap_s": 37.9138098665501,
+      "laps": [
+        {
+          "lap_s": 37.6960375108935,
+          "became_reference": true,
+          "shown_share": 0.9839285714285714,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.085264573951534,
+          "became_reference": false,
+          "shown_share": 0.9753086419753086,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.41399455001209,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.932662865777104,
+          "became_reference": false,
+          "shown_share": 0.9752212389380531,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.76707539229082,
+          "became_reference": false,
+          "shown_share": 0.9840989399293286,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.28911509633272,
+          "became_reference": true,
+          "shown_share": 0.9839285714285714,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.229019505311896,
+          "became_reference": true,
+          "shown_share": 0.9873646209386282,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.47027322126422,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    },
+    "any faster lap (app now)": {
+      "reference_lap_s": 37.9138098665501,
+      "laps": [
+        {
+          "lap_s": 37.6960375108935,
+          "became_reference": true,
+          "shown_share": 0.9839285714285714,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 38.085264573951534,
+          "became_reference": false,
+          "shown_share": 0.9753086419753086,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.41399455001209,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.932662865777104,
+          "became_reference": false,
+          "shown_share": 0.9752212389380531,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.76707539229082,
+          "became_reference": false,
+          "shown_share": 0.9840989399293286,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.28911509633272,
+          "became_reference": true,
+          "shown_share": 0.9839285714285714,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.229019505311896,
+          "became_reference": true,
+          "shown_share": 0.9873646209386282,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 37.47027322126422,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        }
+      ]
+    }
+  },
+  "rotax-night": {
+    "shown 0.8 (before)": {
+      "reference_lap_s": 49.197724024084735,
+      "laps": [
+        {
+          "lap_s": 48.641812515893875,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.69252860679566,
+          "became_reference": false,
+          "shown_share": 0.9834710743801653,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.94008621581881,
+          "became_reference": false,
+          "shown_share": 0.9768392370572208,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.35160779649186,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.24217238048959,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.27078080374645,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.43805938680015,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.246667277281006,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.354542959698165,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.24262845795806,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.29672454422007,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 34.94356624545935,
+          "became_reference": false,
+          "shown_share": 0.4311774461028192,
+          "voided": false,
+          "true_lap": false,
+          "flag": false
+        }
+      ]
+    },
+    "any faster lap (app now)": {
+      "reference_lap_s": 49.197724024084735,
+      "laps": [
+        {
+          "lap_s": 48.641812515893875,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.69252860679566,
+          "became_reference": false,
+          "shown_share": 0.9834710743801653,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.94008621581881,
+          "became_reference": false,
+          "shown_share": 0.9768392370572208,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.35160779649186,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.24217238048959,
+          "became_reference": true,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.27078080374645,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.43805938680015,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.246667277281006,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.354542959698165,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.24262845795806,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 48.29672454422007,
+          "became_reference": false,
+          "shown_share": 1.0,
+          "voided": false,
+          "true_lap": true,
+          "flag": false
+        },
+        {
+          "lap_s": 34.94356624545935,
+          "became_reference": true,
+          "shown_share": 0.4311774461028192,
+          "voided": false,
+          "true_lap": false,
+          "flag": true
+        }
+      ]
+    }
+  }
+}

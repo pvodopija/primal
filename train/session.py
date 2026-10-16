@@ -68,9 +68,16 @@ class SessionConfig:
     # line the view is the reference's end as much as its start, so the tracker's first readings
     # can sit either side of the line, which is no crossing.
     lap_min_share: float = 0.5
-    # A lap becomes the reference when it is faster and its delta was shown on at least
-    # swap_shown_min of its ticks.
-    swap_shown_min: float = 0.8
+    # A lap becomes the reference when it is faster, not voided and its delta was shown on at least
+    # swap_shown_min of its ticks: 0 since 2026-10-17 (the app's rule: any faster lap), because the
+    # share is measured against the current reference, so one with a broken stretch (a spin, traffic)
+    # failed every later lap there and was never replaced; the first lap is the likeliest to be messy.
+    swap_shown_min: float = 0.0
+    # ... and when the lap is at least this share of the session's median lap so far (the reference
+    # lap's and every lap's not voided): a "lap" much shorter is a misplaced line, e.g. a pit in-lap
+    # read as 34.9 s of ~48.3 (experiments/swap_rule_check.py: 0.9 stops it and no true lap on any
+    # session; 0.95 stops three true laps).
+    swap_min_of_median: float = 0.9
     # Frames missing for longer than this (s): the lap's time is void and the tracker searches afresh.
     gap_s: float = 10.0
 
@@ -245,6 +252,7 @@ class Session:
         self.engine = self._engine(self.frames, self.ref_start, line)
         self.engine.start_at(line, 0.0)
         self.reference_lap_s = line - self.ref_start
+        self.lap_times = [self.reference_lap_s]
         events: list = [ReferenceClosed(t, line, self.reference_lap_s, placed_by)]
         self.state, self.lap, self.lap_start = "live", 0, line
         self._new_lap_counters()
@@ -287,7 +295,10 @@ class Session:
         lap_s = crossing - self.lap_start
         share = self.shown_ticks / max(self.ticks, 1)
         faster = self.reference_lap_s is not None and lap_s < self.reference_lap_s
-        became = (not self.voided) and faster and share >= self.c.swap_shown_min
+        plausible = lap_s >= self.c.swap_min_of_median * float(np.median(self.lap_times))
+        became = (not self.voided) and faster and plausible and share >= self.c.swap_shown_min
+        if not self.voided:
+            self.lap_times.append(lap_s)
         done = LapCompleted(t, self.lap, crossing, lap_s, share, self.voided, became)
         self.laps.append(done)
         if became:

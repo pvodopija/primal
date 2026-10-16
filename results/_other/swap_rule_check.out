@@ -1,0 +1,15 @@
+night1          shown 0.8 (before)         reference  49.44 s; 10 laps, became the reference: ['49.29']; shown 0.77 median
+night1          any faster lap (app now)   reference  49.44 s; 10 laps, became the reference: ['49.29', '48.38', '47.99', '47.91', '47.80']; shown 0.81 median
+indoor-pov      shown 0.8 (before)         reference  40.14 s; 10 laps, became the reference: ['39.05', '38.46', '38.29', '38.02']; shown 0.99 median
+indoor-pov      any faster lap (app now)   reference  40.14 s; 10 laps, became the reference: ['39.05', '38.46', '38.29', '38.02']; shown 0.99 median
+BHGP            shown 0.8 (before)         reference  92.77 s; 6 laps, became the reference: ['86.98', '84.03', '83.67']; shown 0.93 median
+BHGP            any faster lap (app now)   reference  92.77 s; 6 laps, became the reference: ['86.98', '84.03', '83.67']; shown 0.93 median
+race-chrono     shown 0.8 (before)         reference  93.64 s; 2 laps, became the reference: ['87.28']; shown 0.97 median
+race-chrono     any faster lap (app now)   reference  93.64 s; 2 laps, became the reference: ['87.28']; shown 0.97 median
+draggy          shown 0.8 (before)         reference  39.29 s; 1 laps, became the reference: -; shown 0.92 median
+draggy          any faster lap (app now)   reference  39.29 s; 1 laps, became the reference: -; shown 0.92 median
+adventure-solo  shown 0.8 (before)         reference  37.91 s; 8 laps, became the reference: ['37.70', '37.41', '37.29', '37.23']; shown 0.98 median
+adventure-solo  any faster lap (app now)   reference  37.91 s; 8 laps, became the reference: ['37.70', '37.41', '37.29', '37.23']; shown 0.98 median
+rotax-night     shown 0.8 (before)         reference  49.20 s; 12 laps, became the reference: ['48.64', '48.35', '48.24']; shown 1.00 median
+rotax-night     any faster lap (app now)   reference  49.20 s; 12 laps, became the reference: ['48.64', '48.35', '48.24', '34.94!']; shown 1.00 median
+laps that became the reference while not a true lap: 1

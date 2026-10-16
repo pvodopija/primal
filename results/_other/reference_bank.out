@@ -1,0 +1,20 @@
+newtracks_pitch_qat8_s0: lines [75.0, 124.2, 172.84, 221.53, 270.47, 318.82, 367.07, 415.34, 463.77, 512.02, 560.38, 608.62]; timing lap 49.20 s, 946 bins; ruined 20.0-24.0 s
+clean laps (the bank must cost nothing):
+  one lap (as today)                           vs the clean timing lap: median     0 ms,  0.0% over 100 | in the ruined stretch     0 ms,  0.0% over 100, shown 100% | shown 100% | at the line    0 ms
+  bank, max                                    vs the clean timing lap: median    24 ms,  1.0% over 100 | in the ruined stretch    18 ms,  0.0% over 100, shown 100% | shown 100% | at the line    6 ms
+  bank, mean                                   vs the clean timing lap: median    22 ms,  2.3% over 100 | in the ruined stretch    20 ms,  0.0% over 100, shown 100% | shown 100% | at the line   14 ms
+blind: the bank laps' entries placed 0 ms (median), 301 ms (max) off inside the ruined stretch, 0 ms elsewhere
+blind: the timing lap's own check masks 100% of the ruined bins and 1.0% of the rest (agreement median 0.07 ruined, 0.72 clean)
+  blind: one lap (as today)                    vs the clean timing lap: median     6 ms,  9.6% over 100 | in the ruined stretch   670 ms, 92.3% over 100, shown  17% | shown  91% | at the line    4 ms
+  blind: bank, max                             vs the clean timing lap: median    24 ms,  7.2% over 100 | in the ruined stretch   174 ms, 72.2% over 100, shown 100% | shown 100% | at the line    6 ms
+  blind: bank, mean                            vs the clean timing lap: median    22 ms,  8.6% over 100 | in the ruined stretch   142 ms, 67.8% over 100, shown 100% | shown 100% | at the line   19 ms
+  blind: bank, max, no mask                    vs the clean timing lap: median    24 ms,  7.4% over 100 | in the ruined stretch   171 ms, 72.2% over 100, shown 100% | shown 100% | at the line    4 ms
+spin: the bank laps' entries placed 1 ms (median), 452 ms (max) off inside the ruined stretch, 0 ms elsewhere
+spin: the timing lap's own check masks 65% of the ruined bins and 1.2% of the rest (agreement median 0.45 ruined, 0.72 clean)
+  spin: one lap (as today)                     vs the clean timing lap: median     4 ms,  9.3% over 100 | in the ruined stretch   513 ms, 91.8% over 100, shown  18% | shown  92% | at the line    4 ms
+  spin: bank, max                              vs the clean timing lap: median    32 ms, 10.7% over 100 | in the ruined stretch   275 ms, 78.9% over 100, shown 100% | shown 100% | at the line    8 ms
+  spin: bank, mean                             vs the clean timing lap: median    26 ms, 10.9% over 100 | in the ruined stretch   255 ms, 77.4% over 100, shown 100% | shown 100% | at the line   14 ms
+  spin: bank, max, no mask                     vs the clean timing lap: median    32 ms, 10.4% over 100 | in the ruined stretch   269 ms, 76.6% over 100, shown 100% | shown 100% | at the line    4 ms
+  wrong track: one lap                         shown 7.6% of ticks (must stay near 0)
+  wrong track: bank, max                       shown 9.3% of ticks (must stay near 0)
+  wrong track: bank, mean                      shown 5.7% of ticks (must stay near 0)

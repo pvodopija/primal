@@ -2778,6 +2778,39 @@ warps time only: a lap really driven faster also changes the line and the blur; 
 harsher than a pro's lap-to-lap differences, nearer an amateur's braking points against a
 reference.
 
+**A recognition bank: several laps for "where am I", one lap's clock** (2026-10-17 prototype,
+`experiments/reference_bank.py`, rotax-night, the release model). The delta keeps one lap's clock
+(the timing lap); the live clip is matched against it and two more laps, each placed on the timing
+lap's bins by PRIMAL itself (the lap run live against it, its confident ticks giving the moment it
+passed each bin, steady pace across unconfident stretches); "max" takes each bin's best correlation
+then the head once, "mean" runs the head per lap and averages the beliefs. The timing lap finds its
+own bad stretch by itself: bins whose descriptor disagrees with the other laps' at the same place
+(cosine under 0.5) are masked. Lap 1 was ruined for 4 s ("blind": black frames; "spin": the view
+from elsewhere on the lap) and laps 4-11 scored against the clean lap 1 run alone (no truth for
+this video):
+
+| ruined stretch | its bins found | one lap: error there, shown there | bank (max / mean): error there, shown there | bank elsewhere |
+|---|---|---|---|---|
+| none | - | - | - | 24 / 22 ms off the one-lap run |
+| blind, 20-24 s | 100% (1% false elsewhere) | 670 ms, 17% | 174 / 142 ms, 100% | |
+| spin, 20-24 s | 65% (1.2%) | 513 ms, 18% | 275 / 255 ms, 100% | |
+| blind, 8-12 s | 100% (1.2%) | 968 ms, 18% | 209 / 205 ms, 100% | |
+| blind, 35-39 s | 100% (1.0%) | 760 ms, 30% | 362 / 350 ms, 99% | |
+
+The bank keeps the delta on through a stretch the timing lap saw badly and finds that stretch on
+its own, but there it is only good to ~150-350 ms. Not the placement: the bank laps' entries sit
+where a build on the clean lap puts them (0-1 ms median; at 35-39 s the placement itself failed,
+5 s off). Through another lap the live lap inherits that lap's alignment error to the timing lap
+as well as its own, and PRIMAL's lap-to-lap alignments are not consistent to better than that
+(the place-tied errors of *Multi-lap*, 2026-09-30: voting helped only with label alignment).
+Wrong-track control (an indoor bank against these laps): shown 7.6% one lap, 9.3% bank max, 5.7%
+bank mean. So a bank turns "hidden" into "shown, ±200 ms" and costs ~20 ms elsewhere; with any
+faster lap now becoming the reference (releases.md), a broken stretch lasts one lap, and the bank
+is not worth the app's complexity yet. What did work, and is cheap: the cross-lap agreement that
+found the ruined bins (blind 100%, spin 65%, ~1% false), a lap-quality signal independent of the
+current reference. Revisit the bank when lap-to-lap alignment is tighter (a speed input), or for
+long occlusions (traffic) where hiding is worse than ±200 ms.
+
 **Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
 the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
 `--qat-ranges minmax`, and `--balance 1.0`, a layer's loudest channel over its median beyond 4x

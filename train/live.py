@@ -113,6 +113,10 @@ class LiveDelta:
     def _encode(self, frames: np.ndarray) -> torch.Tensor:
         return encode_frames(self.model, frames, self.device)
 
+    def _logits(self, clip: torch.Tensor) -> torch.Tensor:
+        """The matching: a clip (K, D) against the reference, (1, N) logits over its bins."""
+        return self.model.head(torch.einsum("kd,nd->kn", clip, self.ref)[None] * self.scale)
+
     def _ref_time(self, bins: float) -> float:
         cycle = np.r_[self.times, self.lap_time]
         return float(np.interp(bins % self.times.size, np.arange(self.times.size + 1), cycle))
@@ -152,7 +156,7 @@ class LiveDelta:
         wanted = t - np.arange(self.clip_len - 1, -1, -1) * self.spacing
         pick = np.abs(stamps[None, :] - wanted[:, None]).argmin(1)
         clip = torch.stack([self.history[i][1] for i in pick])
-        logits = self.model.head(torch.einsum("kd,nd->kn", clip, self.ref)[None] * self.scale)
+        logits = self._logits(clip)
         belief = logits.softmax(-1)[0].cpu().double().numpy()  # MPS has no float64
         if self.hint is not None:
             t0, r0, sd = self.hint

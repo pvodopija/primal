@@ -20,7 +20,9 @@ PYTHONPATH=. ./.venv/bin/python -m train.release RUN --name primal-<what>-<yyyym
 | `primal-v3-mobilenet-lr1-s0-20261012` | `v3_mobilenet_lr1_s0` | float16 | Neural Engine | 0.9995 | replaced |
 | `primal-newtracks-pitch-s0-20261014` | `newtracks_pitch_s0` | **float32** | GPU (not the Neural Engine) | 1.0000 | replaced |
 | `primal-qat8-20261014` | `newtracks_pitch_qat8_s0` | float16 | Neural Engine | 0.9997 | replaced: its reference never closed |
-| `primal-qat8-lb075-20261016` | `newtracks_pitch_qat8_s0` | float16 | Neural Engine | 0.9997 | **current** (app branch `model-qat8-lb075`) |
+| `primal-qat8-lb075-20261016` | `newtracks_pitch_qat8_s0` | float16 | Neural Engine | 0.9997 | replaced |
+| `primal-qat8-lb075-swap0-20261017` | `newtracks_pitch_qat8_s0` | float16 | Neural Engine | 0.9997 | **current** (made by the app agent; primal's copy rebuilt the same way) |
+| `primal-qat8-lb075-swapguard-20261017` | `newtracks_pitch_qat8_s0` | float16 | Neural Engine | 0.9997 | **next**: needs `swap_min_of_median` in the app's Swift engine |
 
 The 20261012 rebuild of the release model carries every tracker and session setting in
 `release.json`; the two 20261014 releases use the same contract (plus
@@ -82,11 +84,33 @@ Tracker, share of ticks off by more than 100 ms (lower is better); details in
 - **`primal-qat8-20261014`:** the pitch model fine-tuned under simulated int8; float16 now
   exact, so it runs on the Neural Engine. Best on two of the three real videos, a little
   weaker on pitch and on the simulated tests.
-- **In the app for the next track test: `primal-qat8-lb075-20261016`** (Neural Engine, closes
-  the reference on every real video primal has, the night video end to end in the Simulator).
-  `primal-newtracks-pitch-s0-20261014` (GPU) would need its own `loop_back` measured first.
+- **In the app: `primal-qat8-lb075-swap0-20261017`; next `primal-qat8-lb075-swapguard-20261017`**
+  (the same models; closes the reference on every real video primal has; any faster lap becomes
+  the reference, a misplaced short "lap" does not). `primal-newtracks-pitch-s0-20261014` (GPU)
+  has no safe `loop_back` yet (below).
 
 Neither runs on Halo's NPU in int8 yet (`docs/ml-pivot.md`, "MobileNet on Halo's NPU").
+
+### Any faster lap becomes the reference (2026-10-17)
+
+The app (at Pavle's request) runs `primal-qat8-lb075-swap0-20261017`: `session.swap_shown_min`
+0.8 -> 0. The shown share is measured against the current reference, so a reference with a broken
+stretch (a spin, traffic) failed every later lap there and was never replaced; a faster lap is far
+more often the cleaner one, and the first lap the messiest. Replayed on every real session as the
+app runs it (`experiments/swap_rule_check.py`, loop_back 0.75): on Pavle's night session the old
+rule swapped once (49.29 s) and the new one through every faster lap (49.29, 48.38, 47.99, 47.91,
+47.80 s, all true laps, shown 0.77 -> 0.81 median); indoor, BHGP, RaceChrono, Dragy and adventure
+swap exactly as before. One false reference: on rotax-night the pit in-lap, read as a 34.94 s lap
+(a look-alike line in the pit lane, delta shown 43%, not voided), became the reference, which a
+second stint would have been timed against. Guard: a lap becomes the reference only if it is at
+least `swap_min_of_median` of the session's median lap so far (the reference lap's and every lap
+not voided). At 0.9 (and 0.92) it stops the in-lap and no true lap on any session; at 0.95 it stops
+three true laps. In `train/session.py` (`SessionConfig.swap_min_of_median = 0.9`,
+`swap_shown_min = 0.0`, tests/test_session.py) and in `primal-qat8-lb075-swapguard-20261017`
+(made by `experiments/release_retune.py`, which now takes the session from the release itself,
+a setting it predates off). The app's Swift engine ignores the new key until it implements it:
+`plausible = lapS >= swapMinOfMedian * median(lap times so far)`, the reference lap's and each
+non-voided lap's, before the lap's own is added.
 
 ## Putting a release in the app
 
