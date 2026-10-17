@@ -1,0 +1,3 @@
+night1, 11534 picture pairs with flow; corr(flow, gyro) +0.86, corr(flow, GPS sideways accel) -0.79
+  optical flow 960x540   corner vs straight AUROC 0.847 | left vs right 93.5%
+  gyro                   corner vs straight AUROC 0.904 | left vs right 97.0%

@@ -1,0 +1,46 @@
+{
+  "unseen AC circuits": {
+    "model, one frame": {
+      "corner_auroc": 0.6568555881695748,
+      "corner_balanced_accuracy": 0.6394784662834238,
+      "left_right_accuracy": 0.7161327672713238
+    },
+    "model, two frames": {
+      "corner_auroc": 0.6649892382200193,
+      "corner_balanced_accuracy": 0.646180192315505,
+      "left_right_accuracy": 0.732793001415155
+    },
+    "raw pixels": {
+      "corner_auroc": 0.5646551067460237,
+      "corner_balanced_accuracy": 0.5371608325377318,
+      "left_right_accuracy": 0.6350186543162228
+    },
+    "image slide": {
+      "corner_auroc": 0.8223221167627031,
+      "corner_balanced_accuracy": 0.7262569022662794,
+      "left_right_accuracy": 0.9015824006175222
+    }
+  },
+  "night1, real (trained on AC only)": {
+    "model, one frame": {
+      "corner_auroc": 0.5684704458329976,
+      "corner_balanced_accuracy": 0.5567843368548377,
+      "left_right_accuracy": 0.638228055783429
+    },
+    "model, two frames": {
+      "corner_auroc": 0.5710903834751494,
+      "corner_balanced_accuracy": 0.5574771208426452,
+      "left_right_accuracy": 0.649712879409352
+    },
+    "raw pixels": {
+      "corner_auroc": 0.4513813090149805,
+      "corner_balanced_accuracy": 0.4960176114790756,
+      "left_right_accuracy": 0.5887339349193328
+    },
+    "image slide": {
+      "corner_auroc": 0.8112330763586866,
+      "corner_balanced_accuracy": 0.7501826979568027,
+      "left_right_accuracy": 0.16735028712059064
+    }
+  }
+}

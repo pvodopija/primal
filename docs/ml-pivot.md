@@ -2811,6 +2811,34 @@ found the ruined bins (blind 100%, spin 65%, ~1% false), a lap-quality signal in
 current reference. Revisit the bank when lap-to-lap alignment is tighter (a speed input), or for
 long occlusions (traffic) where hiding is worse than ±200 ms.
 
+**Does the model know a corner from a straight?** (2026-10-17, `experiments/corner_probe.py`,
+`experiments/corner_flow.py`.) Labels from the car's own path: AC's new-circuit recordings carry
+position, heading and speed per frame (`pose.npz`; the wide renders turned into the training view
+with the camera's turn undone); sideways acceleration over 4 m/s² is a corner, under 1 m/s² a
+straight, its sign left or right. Logistic probes trained on the eight training circuits (and
+their mirror images), tested on the two the model never saw, every 0.2 s; then on Pavle's night
+session labelled by its GPS (its 0.5 s lag taken out: the gyro's turning matches the GPS's at
+-0.84), the probes trained on AC alone. The release model:
+
+| | unseen AC circuits: corner AUROC / left-right | night session (real): corner AUROC / left-right |
+|---|---|---|
+| model, one frame (128-d descriptor) | 0.66 / 72% | 0.57 / 64% |
+| model, two frames 0.2 s apart | 0.67 / 73% | 0.57 / 65% |
+| raw pixels (37x20 grey and its change) | 0.57 / 64% | 0.45 / 59% |
+| the picture's slide on the model's 148x80 crop | 0.82 / 90% | 0.81 / sign unusable (+0.06 against the gyro) |
+| optical flow on the video at 960x540 | | **0.85 / 94%** |
+| the camera's gyro | | 0.90 / 97% |
+
+The descriptor knows corners only faintly: above raw pixels on AC, near chance on real footage. It
+was trained to tell places apart while ignoring how the camera turns and moves, so "turning" is
+what it learned to discard. The camera's own motion carries it: optical flow at a camera's
+resolution marks corners and their direction on real night footage nearly as well as the gyro
+(`night1/corner_flow_lap11.png`: the flow's turning follows the GPS's sideways acceleration
+through every corner of the fastest lap, losing it only in the darkest stretches where no feature
+is tracked). For session analysis (corners as sectors, time won or lost per corner) the corner map
+comes from the reference lap's video, once, after it closes: flow on the recorded stream, or the
+gyro or GPS when the camera has them.
+
 **Channel balancing by training did not work** (2026-10-15/16, `experiments/chains/balance.sh`:
 the pitch model trained on 2500 steps under simulated int8 with TFLite's min/max ranges,
 `--qat-ranges minmax`, and `--balance 1.0`, a layer's loudest channel over its median beyond 4x

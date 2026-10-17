@@ -1,0 +1,13 @@
+{
+  "pairs": 11534,
+  "corr_flow_gyro": 0.8638830324510437,
+  "corr_flow_gps": -0.7881493394972471,
+  "optical flow 960x540": {
+    "corner_auroc": 0.8470314381092446,
+    "left_right_accuracy": 0.9345692475463467
+  },
+  "gyro": {
+    "corner_auroc": 0.9041040955915948,
+    "left_right_accuracy": 0.970010905125409
+  }
+}

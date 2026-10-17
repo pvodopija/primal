@@ -1,0 +1,12 @@
+newtracks_pitch_qat8_s0: AC training circuits 103200 pairs (55% corner, 22% straight); unseen circuits 24398 pairs (64% corner, 15% straight)
+night1 (real, GPS labels): 5867 pairs (62% corner, 22% straight)
+unseen AC circuits:
+  model, one frame     corner vs straight AUROC 0.657, balanced accuracy 63.9% | left vs right 71.6%
+  model, two frames    corner vs straight AUROC 0.665, balanced accuracy 64.6% | left vs right 73.3%
+  raw pixels           corner vs straight AUROC 0.565, balanced accuracy 53.7% | left vs right 63.5%
+  image slide          corner vs straight AUROC 0.822, balanced accuracy 72.6% | left vs right 90.2%
+night1, real (trained on AC only):
+  model, one frame     corner vs straight AUROC 0.568, balanced accuracy 55.7% | left vs right 63.8%
+  model, two frames    corner vs straight AUROC 0.571, balanced accuracy 55.7% | left vs right 65.0%
+  raw pixels           corner vs straight AUROC 0.451, balanced accuracy 49.6% | left vs right 58.9%
+  image slide          corner vs straight AUROC 0.811, balanced accuracy 75.0% | left vs right 16.7%
